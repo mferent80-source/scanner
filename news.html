@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market News — Crypto &amp; Nasdaq</title>
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230b0f17'/><path d='M16 20h32v4H16zm0 8h32v4H16zm0 8h24v4H16zm0 8h28v4H16z' fill='%235bb0ff'/></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0b0f17; --bg-grad:radial-gradient(1200px 600px at 50% -200px, #141c2e 0%, #0b0f17 55%);
+    --panel:#141a28; --panel2:#1d2537; --border:#2a3247; --border-soft:#1f2638;
+    --text:#e8eef5; --muted:#8892a6;
+    --bull-s:#22d66b; --bear-s:#ff4d4d; --warn:#d4892c;
+    --accent:#5bb0ff; --accent2:#8b6fff;
+    --crypto-1:#f7931a; --crypto-2:#ffd86b;
+    --stocks-1:#1976d2; --stocks-2:#5bb0ff;
+    --radius: 12px; --radius-sm: 8px;
+    --ease: cubic-bezier(.4,0,.2,1);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+    --shadow: 0 4px 14px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.2);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); background-image: var(--bg-grad);
+    background-attachment: fixed;
+    color: var(--text); padding: 12px;
+    font-size: 13px; min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    background: linear-gradient(180deg, rgba(30,38,57,.85), rgba(20,26,40,.92));
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    padding: 11px 16px; border-radius: var(--radius);
+    border: 1px solid var(--border); margin-bottom: 10px;
+    box-shadow: var(--shadow);
+    position: sticky; top: 8px; z-index: 50;
+  }
+  header h1 {
+    font-size: 15px; font-weight: 700; letter-spacing: -.2px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-right: auto;
+  }
+  .nav-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--panel2); border: 1px solid var(--border);
+    padding: 6px 11px; border-radius: var(--radius-sm);
+    color: var(--text); text-decoration: none; font-size: 11px; font-weight: 600;
+    transition: all .15s var(--ease);
+  }
+  .nav-link:hover { background: var(--accent); border-color: var(--accent); color: #000; transform: translateY(-1px); }
+  button, input, select {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    padding: 6px 10px; border-radius: var(--radius-sm); font-size: 12px; font-family: inherit;
+    transition: all .15s var(--ease);
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,176,255,.15); }
+  button { cursor: pointer; font-weight: 600; }
+  button:hover { background: var(--accent); border-color: var(--accent); color: #000; transform: translateY(-1px); }
+  button.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-color: transparent; color: #fff;
+    box-shadow: 0 2px 8px rgba(91,176,255,.3);
+  }
+  button.primary:hover { filter: brightness(1.1); }
+  button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
+  .status-dot.ok { background: var(--bull-s); box-shadow: 0 0 6px var(--bull-s); }
+  .status-dot.load { background: var(--warn); animation: pulse 1s infinite; }
+  .status-dot.err { background: var(--bear-s); }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  /* Search + filter bar */
+  .toolbar {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 10px;
+    box-shadow: var(--shadow-sm);
+  }
+  .toolbar input[type="search"] {
+    flex: 1; min-width: 200px; max-width: 400px;
+    padding: 7px 12px;
+  }
+  .chip {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    padding: 4px 11px; border-radius: 999px; font-size: 11px; cursor: pointer;
+    transition: all .15s var(--ease); font-weight: 600;
+  }
+  .chip:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .chip.active { background: var(--accent); color: #000; border-color: var(--accent); box-shadow: 0 2px 8px rgba(91,176,255,.35); }
+
+  /* Two-column layout */
+  .news-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  @media (max-width: 900px) { .news-grid { grid-template-columns: 1fr; } }
+
+  .column {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 150px);
+  }
+  .col-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--border-soft);
+    position: relative;
+  }
+  .col-head::before {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  }
+  .column.crypto .col-head::before { background: linear-gradient(90deg, var(--crypto-1), var(--crypto-2)); }
+  .column.stocks .col-head::before { background: linear-gradient(90deg, var(--stocks-1), var(--stocks-2)); }
+  .col-title {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .col-icon {
+    width: 34px; height: 34px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .column.crypto .col-icon { background: linear-gradient(135deg, var(--crypto-1), var(--crypto-2)); box-shadow: 0 2px 8px rgba(247,147,26,.25); }
+  .column.stocks .col-icon { background: linear-gradient(135deg, var(--stocks-1), var(--stocks-2)); box-shadow: 0 2px 8px rgba(91,176,255,.25); }
+  .col-title h2 {
+    font-size: 15px; font-weight: 700; letter-spacing: -.2px;
+  }
+  .col-title .col-sub {
+    font-size: 10px; color: var(--muted); letter-spacing: .3px;
+    text-transform: uppercase; font-weight: 600;
+  }
+  .col-meta {
+    font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+
+  .col-body {
+    flex: 1; overflow-y: auto; padding: 10px 14px;
+  }
+  .col-body::-webkit-scrollbar { width: 8px; }
+  .col-body::-webkit-scrollbar-track { background: transparent; }
+  .col-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .col-body::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* News items */
+  .news-item {
+    padding: 10px 12px; border-radius: var(--radius-sm);
+    background: var(--panel2);
+    cursor: pointer; font-size: 12px; line-height: 1.4;
+    transition: all .15s var(--ease); border-left: 2px solid var(--border);
+    margin-bottom: 6px;
+    display: block; text-decoration: none; color: var(--text);
+  }
+  .news-item:hover {
+    background: #242c42; transform: translateX(3px);
+  }
+  .column.crypto .news-item:hover { border-left-color: var(--crypto-1); }
+  .column.stocks .news-item:hover { border-left-color: var(--stocks-2); }
+  .news-title { font-weight: 600; display: block; margin-bottom: 4px; color: var(--text); }
+  .news-meta-row {
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--muted); font-size: 10px;
+  }
+  .news-source {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    background: var(--panel); font-weight: 700; font-size: 9px;
+    letter-spacing: .4px; text-transform: uppercase;
+  }
+  .news-ticker {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    background: rgba(91,176,255,.18); color: var(--accent);
+    font-weight: 700; font-size: 9px; letter-spacing: .3px;
+    margin-left: 5px;
+  }
+  .news-time { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .news-time.fresh { color: var(--bull-s); }
+
+  /* Empty + error states */
+  .empty, .error {
+    padding: 40px 20px; text-align: center; color: var(--muted);
+    font-size: 12px;
+  }
+  .error { color: var(--bear-s); }
+  .error small { color: var(--muted); display: block; margin-top: 6px; font-size: 10px; }
+  .loading {
+    padding: 30px; text-align: center; color: var(--muted); font-size: 12px;
+  }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Proxy config panel (collapsed) */
+  details.proxy-box {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 10px; overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  details.proxy-box summary {
+    padding: 10px 16px; cursor: pointer; font-weight: 600; font-size: 12px;
+    user-select: none;
+  }
+  details.proxy-box summary:hover { background: var(--panel2); }
+  .proxy-body {
+    padding: 12px 16px; border-top: 1px solid var(--border-soft);
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  }
+  .proxy-body input { flex: 1; min-width: 250px; font-size: 11px; }
+
+  footer {
+    margin-top: 12px; padding: 10px 16px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); font-size: 11px; color: var(--muted);
+    text-align: center;
+  }
+</style>
+
+  <!-- PWA metadata -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0a0d13" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f6fa" media="(prefers-color-scheme: light)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Scanner Pro">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+</head>
+<body>
+
+<header>
+  <h1>📰 Market News Hub</h1>
+  <span><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span>
+  <a href="scanner-hub.html" class="nav-link" title="Back to hub">🏠 Hub</a>
+  <a href="scanner-crypto.html" class="nav-link" title="Crypto scanner">🪙 Crypto</a>
+  <a href="scanner-stocks.html" class="nav-link" title="Stocks scanner">📈 Stocks</a>
+  <select id="autoRefresh" title="Auto-refresh interval">
+    <option value="0">Auto: OFF</option>
+    <option value="120">Auto: 2m</option>
+    <option value="300" selected>Auto: 5m</option>
+    <option value="600">Auto: 10m</option>
+    <option value="1800">Auto: 30m</option>
+  </select>
+  <button class="primary" id="refreshBtn">↻ Refresh</button>
+</header>
+
+<!-- PROXY CONFIG (optional, pre-filled from shared storage) -->
+<details class="proxy-box" id="proxyBox">
+  <summary>🛡️ Custom Proxy (optional — recomandat pentru acces fără rate-limits)</summary>
+  <div class="proxy-body">
+    <input type="text" id="customProxy" placeholder="https://xxx.youruser.workers.dev/?url=">
+    <button id="testProxy">🧪 Test</button>
+    <button id="saveProxy" class="primary">💾 Save</button>
+    <span style="font-size:10px;color:var(--muted)">Partajat cu scanner-ele (cheia: msp_shared_proxy)</span>
+  </div>
+</details>
+
+<!-- SEARCH + FILTERS -->
+<div class="toolbar">
+  <input type="search" id="searchInput" placeholder="🔍 Caută în titluri...">
+  <label style="font-size:11px;color:var(--muted);margin-left:4px">Show:</label>
+  <button class="chip active" data-filter="all">All</button>
+  <button class="chip" data-filter="crypto">🪙 Crypto only</button>
+  <button class="chip" data-filter="stocks">📈 Stocks only</button>
+  <label style="font-size:11px;color:var(--muted);margin-left:4px">Recent:</label>
+  <button class="chip" data-time="all">All</button>
+  <button class="chip active" data-time="24h" title="Ultimele 24 ore">24h</button>
+  <button class="chip" data-time="6h" title="Ultimele 6 ore">6h</button>
+  <button class="chip" data-time="1h" title="Ultima oră">1h</button>
+  <span style="margin-left:auto;font-size:11px;color:var(--muted)" id="totalCount">—</span>
+</div>
+
+<!-- TWO-COLUMN NEWS GRID -->
+<div class="news-grid">
+  <section class="column crypto" id="cryptoCol">
+    <div class="col-head">
+      <div class="col-title">
+        <div class="col-icon">🪙</div>
+        <div>
+          <h2>Crypto News</h2>
+          <div class="col-sub">CryptoCompare • Cointelegraph • CoinDesk • Decrypt</div>
+        </div>
+      </div>
+      <div class="col-meta" id="cryptoMeta">loading...</div>
+    </div>
+    <div class="col-body" id="cryptoList">
+      <div class="loading"><span class="spinner"></span>Se încarcă știrile crypto...</div>
+    </div>
+  </section>
+
+  <section class="column stocks" id="stocksCol">
+    <div class="col-head">
+      <div class="col-title">
+        <div class="col-icon">📈</div>
+        <div>
+          <h2>Nasdaq / Stocks News</h2>
+          <div class="col-sub">Yahoo Finance • CNBC • MarketWatch • Reuters</div>
+        </div>
+      </div>
+      <div class="col-meta" id="stocksMeta">loading...</div>
+    </div>
+    <div class="col-body" id="stocksList">
+      <div class="loading"><span class="spinner"></span>Se încarcă știrile stocks...</div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  Click orice știre → se deschide în tab nou • Filtrele + search se aplică instant • Auto-refresh persistă între sesiuni
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG (shared with scanner pages)
+// ═══════════════════════════════════════════════════════════════
+
+const LS_PROXY = "msp_shared_proxy";
+const LS_FILTER = "news_filter";
+const LS_TIME = "news_time";
+const LS_AUTO = "news_auto";
+
+let CUSTOM_PROXY = localStorage.getItem(LS_PROXY) || "";
+let currentFilter = localStorage.getItem(LS_FILTER) || "all";
+let currentTime = localStorage.getItem(LS_TIME) || "24h";
+let searchQ = "";
+let autoTimer = null;
+let cryptoNews = [];
+let stocksNews = [];
+
+// Nasdaq / popular stock tickers to fetch news for
+const STOCK_TICKERS = [
+  "NVDA","AAPL","TSLA","MSFT","AMD","META","AMZN","GOOG",
+  "NFLX","AVGO","INTC","COIN","QQQ","SPY"
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  PROXY + CORS HELPERS (same logic as scanner — shared behavior)
+// ═══════════════════════════════════════════════════════════════
+
+function normalizeProxyUrl(u) {
+  u = (u || "").trim();
+  if (!u) return "";
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+  if (!u.includes("?url=") && !u.includes("&url=")) {
+    u = u.replace(/\/+$/, "") + "/?url=";
+  }
+  return u;
+}
+
+const CORS_PROXIES = [
+  (u) => `https://api.codetabs.com/v1/proxy?quest=${u}`,
+  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  (u) => `https://thingproxy.freeboard.io/fetch/${u}`
+];
+let _lastWorkingProxy = 0;
+
+async function fetchJsonViaProxy(targetUrl) {
+  const cp = normalizeProxyUrl(CUSTOM_PROXY);
+  const proxies = cp ? [(u) => cp + encodeURIComponent(u), ...CORS_PROXIES] : CORS_PROXIES;
+  const n = proxies.length;
+  const order = [];
+  for (let i = 0; i < n; i++) order.push((_lastWorkingProxy + i) % n);
+  let lastErr;
+  for (const idx of order) {
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 10000);
+      const r = await fetch(proxies[idx](targetUrl), { signal: ctl.signal });
+      clearTimeout(timer);
+      if (!r.ok) { lastErr = new Error(`P${idx}:HTTP ${r.status}`); continue; }
+      const text = await r.text();
+      const trimmed = text.trim();
+      if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("["))) {
+        lastErr = new Error(`P${idx}:bad body`); continue;
+      }
+      try { const json = JSON.parse(text); _lastWorkingProxy = idx; return json; }
+      catch (pe) { lastErr = new Error(`P${idx}:parse`); continue; }
+    } catch (e) { lastErr = e; }
+  }
+  throw new Error("proxies failed: " + (lastErr?.message || "?"));
+}
+
+async function fetchRssViaProxy(rssUrl) {
+  const cp = normalizeProxyUrl(CUSTOM_PROXY);
+  const proxies = cp ? [(u) => cp + encodeURIComponent(u), ...CORS_PROXIES] : CORS_PROXIES;
+  let lastErr;
+  for (let i = 0; i < proxies.length; i++) {
+    try {
+      const ctl = new AbortController();
+      const tm = setTimeout(() => ctl.abort(), 10000);
+      const r = await fetch(proxies[i](rssUrl), { signal: ctl.signal });
+      clearTimeout(tm);
+      if (!r.ok) { lastErr = new Error(`P${i}:HTTP ${r.status}`); continue; }
+      const text = await r.text();
+      if (!text || text.length < 100) { lastErr = new Error(`P${i}:empty`); continue; }
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, "text/xml");
+      if (xml.querySelector("parsererror")) { lastErr = new Error(`P${i}:bad XML`); continue; }
+      const items = Array.from(xml.querySelectorAll("item, entry"));
+      if (!items.length) { lastErr = new Error(`P${i}:no items`); continue; }
+      return items.map(it => {
+        const linkEl = it.querySelector("link");
+        let link = linkEl?.textContent?.trim() || linkEl?.getAttribute("href") || "";
+        return {
+          title: (it.querySelector("title")?.textContent || "").trim(),
+          url: link,
+          ts: new Date(it.querySelector("pubDate")?.textContent || it.querySelector("published")?.textContent || Date.now()).getTime()
+        };
+      }).filter(n => n.title && n.url);
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("RSS fetch failed");
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  NEWS FETCHERS
+// ═══════════════════════════════════════════════════════════════
+
+function timeAgo(ts) {
+  const sec = Math.floor((Date.now() - ts) / 1000);
+  if (sec < 60) return sec + "s";
+  if (sec < 3600) return Math.floor(sec / 60) + "m";
+  if (sec < 86400) return Math.floor(sec / 3600) + "h";
+  return Math.floor(sec / 86400) + "d";
+}
+
+// Crypto: combine CryptoCompare JSON + multiple RSS feeds for better coverage.
+// Returns deduped, sorted (newest first) array.
+async function fetchNewsCrypto() {
+  const results = [];
+  const errors = [];
+
+  // Source 1: CryptoCompare JSON (best quality, has source attribution)
+  try {
+    const url = "https://min-api.cryptocompare.com/data/v2/news/?lang=EN";
+    let data;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error("CC " + r.status);
+      data = await r.json();
+    } catch { data = await fetchJsonViaProxy(url); }
+    const items = (data?.Data || []).slice(0, 30).map(n => ({
+      title: n.title,
+      source: n.source_info?.name || n.source || "CryptoCompare",
+      url: n.url,
+      ts: (n.published_on || 0) * 1000
+    })).filter(n => n.title && n.url);
+    results.push(...items);
+  } catch (e) { errors.push("CryptoCompare: " + e.message); }
+
+  // Source 2-4: RSS feeds (run in parallel; ignore individual failures)
+  const rssFeeds = [
+    { url: "https://cointelegraph.com/rss", source: "Cointelegraph" },
+    { url: "https://www.coindesk.com/arc/outboundfeeds/rss/", source: "CoinDesk" },
+    { url: "https://decrypt.co/feed", source: "Decrypt" }
+  ];
+  const rssResults = await Promise.allSettled(
+    rssFeeds.map(f => fetchRssViaProxy(f.url).then(items => items.slice(0, 15).map(n => ({ ...n, source: f.source }))))
+  );
+  rssResults.forEach((r, i) => {
+    if (r.status === "fulfilled") results.push(...r.value);
+    else errors.push(rssFeeds[i].source + ": " + (r.reason?.message || "fail"));
+  });
+
+  if (!results.length) throw new Error(errors.slice(0, 2).join(" • "));
+
+  // Dedupe by title, sort newest first
+  const seen = new Set();
+  return results
+    .filter(n => !seen.has(n.title) && seen.add(n.title))
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, 60);
+}
+
+// Stocks/Nasdaq: Yahoo Finance search + Google News RSS fallback.
+// Yahoo search is the best source — structured, per-ticker, provider attribution.
+async function fetchNewsStocks() {
+  const results = [];
+  const errors = [];
+
+  // Source 1: Yahoo Finance search per ticker (parallelized, staggered)
+  const BATCH_SIZE = 4; // limit concurrent proxy hits
+  for (let i = 0; i < STOCK_TICKERS.length; i += BATCH_SIZE) {
+    const batch = STOCK_TICKERS.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.allSettled(batch.map(async t => {
+      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${t}&newsCount=5&quotesCount=0`;
+      const data = await fetchJsonViaProxy(url);
+      return (data?.news || []).filter(n => n.title && n.link).map(n => ({
+        title: n.title,
+        source: n.publisher || "Yahoo",
+        url: n.link,
+        ts: (n.providerPublishTime || 0) * 1000,
+        ticker: t
+      }));
+    }));
+    batchResults.forEach(r => {
+      if (r.status === "fulfilled") results.push(...r.value);
+    });
+    if (i + BATCH_SIZE < STOCK_TICKERS.length) await new Promise(r => setTimeout(r, 300));
+  }
+
+  // Source 2: Google News RSS for Nasdaq market-wide news (covers macro + broader stories)
+  try {
+    const items = await fetchRssViaProxy("https://news.google.com/rss/search?q=nasdaq+OR+stock+market&hl=en");
+    results.push(...items.slice(0, 15).map(n => ({ ...n, source: "Google News" })));
+  } catch (e) { errors.push("Google: " + e.message); }
+
+  if (!results.length) throw new Error(errors.slice(0, 2).join(" • ") || "no data");
+
+  // Dedupe by title, sort newest first
+  const seen = new Set();
+  return results
+    .filter(n => n.title && !seen.has(n.title) && seen.add(n.title))
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, 60);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDERING
+// ═══════════════════════════════════════════════════════════════
+
+function setStatus(cls, txt) {
+  const d = document.getElementById("statusDot");
+  d.className = "status-dot " + cls;
+  document.getElementById("statusText").textContent = txt;
+}
+
+function escapeHtml(s) {
+  return (s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Time cutoff in ms for the current filter
+function timeCutoff() {
+  switch (currentTime) {
+    case "1h":  return Date.now() - 3600_000;
+    case "6h":  return Date.now() - 6 * 3600_000;
+    case "24h": return Date.now() - 24 * 3600_000;
+    default:    return 0;
+  }
+}
+
+function filterItems(items) {
+  const cutoff = timeCutoff();
+  const q = searchQ.toLowerCase().trim();
+  return items.filter(n => {
+    if (cutoff > 0 && n.ts < cutoff) return false;
+    if (q && !n.title.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function renderItem(n) {
+  const ageSec = Math.floor((Date.now() - n.ts) / 1000);
+  const fresh = ageSec < 3600; // less than 1h old
+  return `<a class="news-item" href="${escapeHtml(n.url)}" target="_blank" rel="noopener">
+    <span class="news-title">${escapeHtml(n.title)}</span>
+    <div class="news-meta-row">
+      <span>
+        <span class="news-source">${escapeHtml(n.source || "?")}</span>
+        ${n.ticker ? `<span class="news-ticker">${escapeHtml(n.ticker)}</span>` : ""}
+      </span>
+      <span class="news-time ${fresh ? "fresh" : ""}">${timeAgo(n.ts)}</span>
+    </div>
+  </a>`;
+}
+
+function renderColumn(id, items, errOrEmpty, meta) {
+  const el = document.getElementById(id);
+  if (errOrEmpty) {
+    el.innerHTML = `<div class="error">❌ ${escapeHtml(errOrEmpty)}
+      <small>Click 🧪 Test în secțiunea Proxy pentru a verifica conexiunea,
+      sau deschide scanner-ul principal pentru a configura un proxy Cloudflare.</small></div>`;
+    return;
+  }
+  if (!items.length) {
+    el.innerHTML = `<div class="empty">Niciun rezultat pentru filtrele curente.</div>`;
+    return;
+  }
+  el.innerHTML = items.map(renderItem).join("");
+}
+
+function renderAll() {
+  // Determine what to render based on filter
+  const showCrypto = currentFilter === "all" || currentFilter === "crypto";
+  const showStocks = currentFilter === "all" || currentFilter === "stocks";
+
+  // Toggle column visibility
+  document.getElementById("cryptoCol").style.display = showCrypto ? "" : "none";
+  document.getElementById("stocksCol").style.display = showStocks ? "" : "none";
+  // If only one column, make it full width
+  const grid = document.querySelector(".news-grid");
+  grid.style.gridTemplateColumns = (showCrypto && showStocks) ? "1fr 1fr" : "1fr";
+
+  const filteredCrypto = filterItems(cryptoNews);
+  const filteredStocks = filterItems(stocksNews);
+
+  if (showCrypto) renderColumn("cryptoList", filteredCrypto, null);
+  if (showStocks) renderColumn("stocksList", filteredStocks, null);
+
+  document.getElementById("cryptoMeta").textContent = `${filteredCrypto.length} items`;
+  document.getElementById("stocksMeta").textContent = `${filteredStocks.length} items`;
+
+  const total = (showCrypto ? filteredCrypto.length : 0) + (showStocks ? filteredStocks.length : 0);
+  document.getElementById("totalCount").textContent = `${total} total`;
+}
+
+async function loadAll() {
+  setStatus("load", "Loading...");
+  document.getElementById("refreshBtn").disabled = true;
+
+  // Show loading state only on the columns we're about to fetch
+  const showCrypto = currentFilter === "all" || currentFilter === "crypto";
+  const showStocks = currentFilter === "all" || currentFilter === "stocks";
+  if (showCrypto) document.getElementById("cryptoList").innerHTML = `<div class="loading"><span class="spinner"></span>Se încarcă...</div>`;
+  if (showStocks) document.getElementById("stocksList").innerHTML = `<div class="loading"><span class="spinner"></span>Se încarcă...</div>`;
+
+  // Fetch in parallel — skip the column that's filtered out
+  const cryptoP = showCrypto ? fetchNewsCrypto() : Promise.resolve(cryptoNews);
+  const stocksP = showStocks ? fetchNewsStocks() : Promise.resolve(stocksNews);
+  const [cr, st] = await Promise.allSettled([cryptoP, stocksP]);
+
+  if (cr.status === "fulfilled") cryptoNews = cr.value;
+  else if (showCrypto) renderColumn("cryptoList", [], cr.reason?.message || "eroare");
+
+  if (st.status === "fulfilled") stocksNews = st.value;
+  else if (showStocks) renderColumn("stocksList", [], st.reason?.message || "eroare");
+
+  const okCount = (cr.status === "fulfilled" ? 1 : 0) + (st.status === "fulfilled" ? 1 : 0);
+  const totalCount = (showCrypto ? 1 : 0) + (showStocks ? 1 : 0);
+  setStatus(okCount === totalCount ? "ok" : okCount > 0 ? "warn" : "err",
+    `${cryptoNews.length} crypto + ${stocksNews.length} stocks • ${new Date().toLocaleTimeString("ro-RO")}`);
+
+  renderAll();
+  document.getElementById("refreshBtn").disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EVENT WIRING
+// ═══════════════════════════════════════════════════════════════
+
+// Proxy config
+document.getElementById("customProxy").value = CUSTOM_PROXY;
+document.getElementById("saveProxy").onclick = () => {
+  CUSTOM_PROXY = normalizeProxyUrl(document.getElementById("customProxy").value);
+  document.getElementById("customProxy").value = CUSTOM_PROXY;
+  localStorage.setItem(LS_PROXY, CUSTOM_PROXY);
+  _lastWorkingProxy = 0;
+  setStatus("ok", CUSTOM_PROXY ? "Proxy salvat" : "Proxy șters");
+  setTimeout(() => setStatus("", "Ready"), 1500);
+};
+document.getElementById("testProxy").onclick = async () => {
+  const pUrl = normalizeProxyUrl(document.getElementById("customProxy").value);
+  if (!pUrl) { alert("Introdu mai întâi URL-ul proxy-ului"); return; }
+  document.getElementById("customProxy").value = pUrl;
+  setStatus("load", "Testing proxy...");
+  try {
+    const testUrl = "https://min-api.cryptocompare.com/data/v2/news/?lang=EN";
+    const ctl = new AbortController();
+    const tm = setTimeout(() => ctl.abort(), 12000);
+    const r = await fetch(pUrl + encodeURIComponent(testUrl), { signal: ctl.signal });
+    clearTimeout(tm);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const text = await r.text();
+    if (!text.trim().startsWith("{")) throw new Error("răspuns ne-JSON");
+    setStatus("ok", "✓ Proxy OK!");
+    alert("✅ Proxy funcționează!\n\nApasă 💾 Save pentru a-l folosi.");
+  } catch (e) {
+    setStatus("err", "Test failed");
+    alert("❌ Test eșuat: " + e.message);
+  }
+};
+
+// Asset filter chips
+document.querySelectorAll(".chip[data-filter]").forEach(chip => {
+  chip.onclick = () => {
+    document.querySelectorAll(".chip[data-filter]").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    currentFilter = chip.dataset.filter;
+    localStorage.setItem(LS_FILTER, currentFilter);
+    // If switching to a filter whose data is stale/missing, refetch
+    const needCrypto = (currentFilter === "all" || currentFilter === "crypto") && cryptoNews.length === 0;
+    const needStocks = (currentFilter === "all" || currentFilter === "stocks") && stocksNews.length === 0;
+    if (needCrypto || needStocks) loadAll();
+    else renderAll();
+  };
+});
+
+// Time filter chips
+document.querySelectorAll(".chip[data-time]").forEach(chip => {
+  chip.onclick = () => {
+    document.querySelectorAll(".chip[data-time]").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    currentTime = chip.dataset.time;
+    localStorage.setItem(LS_TIME, currentTime);
+    renderAll();
+  };
+});
+
+// Search input (debounced)
+let searchTimer;
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    searchQ = e.target.value;
+    renderAll();
+  }, 150);
+});
+
+// Refresh button
+document.getElementById("refreshBtn").onclick = loadAll;
+
+// Auto-refresh
+const savedAuto = localStorage.getItem(LS_AUTO);
+if (savedAuto !== null) document.getElementById("autoRefresh").value = savedAuto;
+document.getElementById("autoRefresh").onchange = (e) => {
+  clearInterval(autoTimer);
+  const sec = parseInt(e.target.value, 10);
+  localStorage.setItem(LS_AUTO, e.target.value);
+  if (sec > 0) autoTimer = setInterval(loadAll, sec * 1000);
+};
+const initAuto = parseInt(document.getElementById("autoRefresh").value, 10);
+if (initAuto > 0) autoTimer = setInterval(loadAll, initAuto * 1000);
+
+// Apply saved filter UI state
+document.querySelectorAll(".chip[data-filter]").forEach(c => c.classList.toggle("active", c.dataset.filter === currentFilter));
+document.querySelectorAll(".chip[data-time]").forEach(c => c.classList.toggle("active", c.dataset.time === currentTime));
+
+// Live timestamp refresh (every 30s, updates "X minutes ago" without re-fetching)
+setInterval(() => {
+  if (cryptoNews.length || stocksNews.length) renderAll();
+}, 30_000);
+
+// Initial load
+loadAll();
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  PWA — Service Worker registration + Install prompt handling
+// ═══════════════════════════════════════════════════════════════
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(err => {
+      console.warn("SW registration failed:", err);
+    });
+  });
+}
+
+// Capture the beforeinstallprompt event so we can show a custom install button.
+// Android Chrome fires this when the site is PWA-installable but not yet installed.
+// iOS Safari doesn't fire it — users have to use Share → Add to Home Screen manually.
+let _deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  showInstallBanner();
+});
+
+function showInstallBanner() {
+  // Don't re-show if user already dismissed it this session or in the last 7 days.
+  const dismissed = localStorage.getItem("pwa_install_dismissed");
+  if (dismissed && (Date.now() - parseInt(dismissed, 10)) < 7 * 86400000) return;
+  if (document.getElementById("pwa-install-banner")) return;
+  const banner = document.createElement("div");
+  banner.id = "pwa-install-banner";
+  banner.style.cssText = `
+    position:fixed; bottom:56px; left:50%; transform:translateX(-50%);
+    background:#121826; border:1px solid #6a9ac9; border-radius:10px;
+    padding:10px 14px; color:#d6dde8; font-size:12px; font-family:inherit;
+    display:flex; gap:10px; align-items:center; z-index:200;
+    box-shadow:0 8px 24px rgba(0,0,0,.5); max-width:calc(100% - 24px);
+  `;
+  banner.innerHTML = `
+    <span style="font-size:16px">📲</span>
+    <span style="flex:1">Instalează Scanner Pro pe telefon</span>
+    <button id="pwa-install-btn" style="background:linear-gradient(135deg,#6a9ac9,#8871c7);color:#fff;border:0;padding:5px 12px;border-radius:6px;font-weight:700;font-size:11px;cursor:pointer">Instalează</button>
+    <button id="pwa-dismiss-btn" style="background:transparent;border:0;color:#6b7487;font-size:18px;cursor:pointer;padding:0 4px" aria-label="Închide">×</button>
+  `;
+  document.body.appendChild(banner);
+  document.getElementById("pwa-install-btn").onclick = async () => {
+    if (!_deferredInstallPrompt) return;
+    _deferredInstallPrompt.prompt();
+    const { outcome } = await _deferredInstallPrompt.userChoice;
+    _deferredInstallPrompt = null;
+    banner.remove();
+    if (outcome !== "accepted") {
+      localStorage.setItem("pwa_install_dismissed", Date.now().toString());
+    }
+  };
+  document.getElementById("pwa-dismiss-btn").onclick = () => {
+    banner.remove();
+    localStorage.setItem("pwa_install_dismissed", Date.now().toString());
+  };
+}
+</script>
+
+</body>
+</html>
