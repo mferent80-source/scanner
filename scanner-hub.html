@@ -14,6 +14,7 @@
     --crypto-1:#f7931a; --crypto-2:#ffd86b;
     --stocks-1:#1976d2; --stocks-2:#5bb0ff;
     --news-1:#22d66b; --news-2:#5bdcb0;
+    --events-1:#8b6fff; --events-2:#c89bff;
     --ease: cubic-bezier(.4,0,.2,1);
   }
   html, body { height: 100%; }
@@ -44,9 +45,8 @@
   }
 
   .cards {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px;
   }
-  @media (max-width: 960px) { .cards { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
 
   .card {
@@ -76,6 +76,7 @@
   .card.crypto { --bar: linear-gradient(90deg, var(--crypto-1), var(--crypto-2)); --glow: rgba(247,147,26,.2); }
   .card.stocks { --bar: linear-gradient(90deg, var(--stocks-1), var(--stocks-2)); --glow: rgba(91,176,255,.2); }
   .card.news   { --bar: linear-gradient(90deg, var(--news-1), var(--news-2));     --glow: rgba(34,214,107,.2); }
+  .card.events { --bar: linear-gradient(90deg, var(--events-1), var(--events-2)); --glow: rgba(139,111,255,.2); }
 
   .card-icon {
     width: 56px; height: 56px; border-radius: 14px;
@@ -86,6 +87,7 @@
   .card.crypto .card-icon { background: linear-gradient(135deg, var(--crypto-1), var(--crypto-2)); box-shadow: 0 6px 20px rgba(247,147,26,.3); }
   .card.stocks .card-icon { background: linear-gradient(135deg, var(--stocks-1), var(--stocks-2)); box-shadow: 0 6px 20px rgba(91,176,255,.3); }
   .card.news   .card-icon { background: linear-gradient(135deg, var(--news-1), var(--news-2));     box-shadow: 0 6px 20px rgba(34,214,107,.3); }
+  .card.events .card-icon { background: linear-gradient(135deg, var(--events-1), var(--events-2)); box-shadow: 0 6px 20px rgba(139,111,255,.3); }
 
   .card h2 {
     font-size: 22px; font-weight: 700; letter-spacing: -.3px;
@@ -186,6 +188,20 @@
           <li>Auto-refresh 5 min • marcaj FRESH pentru știri &lt;1h</li>
         </ul>
         <span class="card-cta">Deschide News</span>
+      </a>
+
+      <a class="card events" href="crypto-events.html" target="_blank" rel="noopener">
+        <div class="card-icon">⚡</div>
+        <h2>Crypto Events</h2>
+        <div class="card-sub">Movers • Sentiment • Funding</div>
+        <ul>
+          <li>Top Gainers / Losers la 1h și 24h (CoinGecko top 100)</li>
+          <li>Most Active by Volume + Open Interest top 10</li>
+          <li>Funding Rates + Liquidations recente (OKX SWAP)</li>
+          <li>Token Unlocks 60 zile (DefiLlama, cache 5 min)</li>
+          <li>Fear &amp; Greed + BTC.D + ETH.D + Trending CoinGecko</li>
+        </ul>
+        <span class="card-cta">Deschide Events</span>
       </a>
     </div>
 
