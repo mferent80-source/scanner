@@ -493,7 +493,7 @@
 <body>
 
 <header>
-  <h1>🔍 Scanner Pro — 25/200 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v12</span></h1>
+  <h1>🔍 Scanner Pro — 25/200 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v13</span></h1>
   <div class="ctl"><span><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span></div>
   <div class="header-stats" id="headerStats"></div>
   <div class="ctl"><label>TF:</label>
@@ -3594,24 +3594,53 @@ document.getElementById("autoPickWatchlistBtn").onclick = () => {
     alert("Rulează un scan întâi (apasă ↻ SCAN).");
     return;
   }
-  // Filtrează doar setup-uri LONG (exclude SHORT/dist)
-  const longSetups = rows.filter(r => !r.error && (r.accum || r.stage2));
-  if (longSetups.length === 0) {
-    alert("Niciun setup LONG detectat în scanul curent.\n\nÎncearcă pe TF 1d și asigură-te că ai apăsat ↻ SCAN.");
+
+  // Detectează TF curent — criteriile accum/stage2 sunt calculate doar pe 1d
+  const curTF = document.getElementById("timeframe").value;
+  const isDaily = curTF === "1d";
+
+  // Algoritmul de scoring acceptă acum 3 nivele de calitate (de la strict la relaxat):
+  //   1. Setup confirmat (accum complet sau stage2) — bonus mare
+  //   2. Setup parțial (accumScore >= 3 din 5) — bonus mediu
+  //   3. Doar bias LONG (score general > 0) — fallback când nu sunt setup-uri
+  const scored = rows
+    .filter(r => !r.error)
+    .map(r => {
+      let s = 0;
+      let tier = "general";
+      // Tier 1: setup confirmat
+      if (r.accum) {
+        s += (r.accumScore || 0) * 2; // 0-10 pts
+        tier = "accum";
+        if (r.accumTrigger) s += 5;
+        if (r.accumSpring) s += 8;
+      } else if (r.stage2) {
+        s += 8;
+        tier = "stage2";
+      } else if (r.accumScore && r.accumScore >= 3) {
+        // Tier 2: setup parțial (3 sau 4 din 5 criterii)
+        s += r.accumScore * 1.5; // ex: 3 → 4.5pts, 4 → 6pts
+        tier = "partial";
+      }
+      // Tier 3: bias LONG generic — adăugat la oricare tier
+      const general = r.score || 0;
+      if (general > 6) s += 3;
+      else if (general > 3) s += 2;
+      else if (general > 0) s += 1;
+      // Penalizare mică pentru bias SHORT (evităm să adăugăm SHORT-uri în watchlist LONG)
+      if (general < -3) s -= 2;
+      return { sym: r.sym, score: s, tier, raw: r };
+    })
+    .filter(x => x.score > 0); // doar cele cu scor pozitiv
+
+  if (scored.length === 0) {
+    const tip = isDaily
+      ? "Niciun simbol cu bias LONG sau setup în scanul curent.\nÎncearcă pe alt TF sau extinde lista cu 'Load Top 200 USDT'."
+      : `Ești pe TF=${curTF}. Setup-urile Accum/Stage2 sunt calculate DOAR pe TF=1d.\n\nComută la TF=1d și apasă ↻ SCAN, apoi încearcă din nou.`;
+    alert(tip);
     return;
   }
 
-  const scored = longSetups.map(r => {
-    let s = 0;
-    s += (r.accumScore || 0) * 2;
-    if (r.accumTrigger) s += 5;
-    if (r.accumSpring) s += 8;
-    if (r.stage2) s += 4;
-    const absScore = Math.abs(r.score || 0);
-    if (absScore > 6) s += 3;
-    else if (absScore > 3) s += 1;
-    return { sym: r.sym, score: s };
-  });
   scored.sort((a, b) => b.score - a.score);
   const top30 = scored.slice(0, 30);
 
@@ -3624,10 +3653,25 @@ document.getElementById("autoPickWatchlistBtn").onclick = () => {
     return;
   }
 
-  const preview = newAdds.slice(0, 10).map(x => shortName(x.sym) + " (" + x.score.toFixed(0) + ")").join(", ");
+  // Statistici per tier pentru context
+  const stats = { accum: 0, stage2: 0, partial: 0, general: 0 };
+  newAdds.forEach(x => stats[x.tier]++);
+
+  // Etichetă vizuală pentru tier
+  const tierIcon = (t) => ({ accum: "🏗️", stage2: "✅", partial: "🔶", general: "📈" }[t] || "");
+  const preview = newAdds.slice(0, 10).map(x => `${tierIcon(x.tier)}${shortName(x.sym)}(${x.score.toFixed(0)})`).join(" ");
+
+  const breakdown = [
+    stats.accum   ? `${stats.accum} 🏗️ Accum` : null,
+    stats.stage2  ? `${stats.stage2} ✅ Stage2` : null,
+    stats.partial ? `${stats.partial} 🔶 Parțial (3-4/5 criterii)` : null,
+    stats.general ? `${stats.general} 📈 Doar bias LONG` : null,
+  ].filter(Boolean).join(", ");
+
   if (!confirm(
-    `Adăugi ${newAdds.length} simboluri noi la watchlist (din top 30 LONG)?\n\n` +
+    `Adăugi ${newAdds.length} simboluri noi la watchlist?\n\n` +
     `Watchlist: ${current.length} → ${current.length + newAdds.length}\n\n` +
+    `Compoziție: ${breakdown}\n\n` +
     `Top picks: ${preview}${newAdds.length > 10 ? "..." : ""}`
   )) return;
 
