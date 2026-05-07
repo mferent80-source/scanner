@@ -606,6 +606,8 @@
   <button class="chip" data-filter="sig" data-val="divbear" title="Divergență bearish: preț HH + oscilator LH (reversal down)">🐻 Bear Div</button>
   <button class="chip" data-filter="sig" data-val="accum" title="Setup acumulare 6 săptămâni — conservator, doar TF 1d">🏗️ Accum</button>
   <button class="chip" data-filter="sig" data-val="accumtrig" title="Acumulare + semn declanșare LONG activ (breakout / RSI cross / MA20>MA50)">🏗️🚀 Trigger</button>
+  <button class="chip" data-filter="sig" data-val="dist" title="Setup distribuție 6 săptămâni (top zone, opusul acumulării) — doar TF 1d">📉 Distrib</button>
+  <button class="chip" data-filter="sig" data-val="disttrig" title="Distribuție + semn declanșare SHORT activ (breakdown / RSI cross / MA20<MA50)">📉🔻 Trig.S</button>
   <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
   <button class="chip gold" id="gridModeBtn" title="Sortează după ADX invers — cele mai bune pentru grid trading pe Pionex">🤖 Grid Mode</button>
   <button class="chip" style="margin-left:auto" id="exportCsv">📥 CSV</button>
@@ -1341,6 +1343,127 @@ function computeAccumulation(bars, tf) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  DISTRIBUTION DETECTION (Wyckoff distribution, opusul acumulării)
+// ═══════════════════════════════════════════════════════════════
+// Setup de distribuție = smart money vinde la top după rally.
+// Util pentru SHORT sau ieșire din longuri existente.
+//
+// Criterii DISTRIBUȚIE (toate îndeplinite):
+//   1. Range strâns 6w (același ca accum): (max-min)/avg < 30%
+//   2. BB squeeze: width(20,2) < 70% din media 60d
+//   3. MA50 aproape plat: |slope 20d| < 5%
+//   4. PREMIUM față de min 90 zile: preț > 1.30 × min(90)
+//      (acumularea cere discount; aici cere premium = top zone)
+//   5. Volum stabil sau în creștere (vol14 / vol42 > 0.95)
+//
+// Semne declanșare SHORT:
+//   A. Breakdown: close < rangeLow × 0.995 + vol > 1.3× SMA(20)
+//   B. RSI cross 45: rsi curent < 45 dar rsi[len-5] între 50 și 60
+//   C. MA20 < MA50 (intermediate death cross)
+
+function computeDistribution(bars, tf) {
+  if (tf !== "1d") return { dist: false, trigger: false, score: 0, reasons: [], triggers: [] };
+  const { closes, highs, lows, volumes } = bars;
+  if (!closes || closes.length < 90) return { dist: false, trigger: false, score: 0, reasons: [], triggers: [] };
+
+  const n = closes.length;
+  const c = closes[n - 1];
+
+  // 1) Range strâns 6 săptămâni (fără candela curentă)
+  const rangeWindow = closes.slice(-43, -1);
+  const rangeHighs = highs.slice(-43, -1);
+  const rangeLows = lows.slice(-43, -1);
+  const rMax = Math.max(...rangeHighs);
+  const rMin = Math.min(...rangeLows);
+  const rAvg = rangeWindow.reduce((a,b)=>a+b,0) / rangeWindow.length;
+  const rangePct = rAvg > 0 ? (rMax - rMin) / rAvg : 999;
+  const c1_range = rangePct < 0.30;
+
+  // 2) BB squeeze (refolosesc inline ca să nu depind de funcția din computeAccumulation)
+  function bbWidth(arr, period = 20, mult = 2) {
+    if (arr.length < period) return null;
+    const slice = arr.slice(-period);
+    const m = slice.reduce((a,b)=>a+b,0) / period;
+    const v = slice.reduce((a,b)=>a + (b-m)*(b-m), 0) / period;
+    return 2 * mult * Math.sqrt(v);
+  }
+  const bbCur = bbWidth(closes, 20, 2);
+  const bbHistory = [];
+  for (let i = n - 60; i < n; i++) {
+    if (i < 19) continue;
+    const w = bbWidth(closes.slice(0, i + 1), 20, 2);
+    if (w !== null && !isNaN(w)) bbHistory.push(w);
+  }
+  const bbAvg = bbHistory.length ? bbHistory.reduce((a,b)=>a+b,0) / bbHistory.length : null;
+  const c2_squeeze = bbCur !== null && bbAvg !== null && bbCur < 0.70 * bbAvg;
+
+  // 3) MA50 plat
+  function smaArr(arr, p) {
+    const out = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (i < p - 1) { out.push(null); continue; }
+      let s = 0;
+      for (let j = i - p + 1; j <= i; j++) s += arr[j];
+      out.push(s / p);
+    }
+    return out;
+  }
+  const ma50 = smaArr(closes, 50);
+  const ma50Now = ma50[n - 1];
+  const ma50Past = ma50[n - 21];
+  const ma50Slope = (ma50Now && ma50Past) ? Math.abs((ma50Now - ma50Past) / ma50Past) : 999;
+  const c3_flat = ma50Slope < 0.05;
+
+  // 4) PREMIUM față de min 90 zile (preț >> min, opusul "discount")
+  const min90 = Math.min(...lows.slice(-90));
+  const premium = min90 > 0 ? c / min90 : 0;
+  const c4_premium = premium > 1.30; // preț cu 30%+ peste min 90d
+
+  // 5) Volum stabil/crescător
+  const vol14 = volumes.slice(-14).reduce((a,b)=>a+b,0) / 14;
+  const vol42Slice = volumes.slice(-42, -14);
+  const vol42Avg = vol42Slice.length ? vol42Slice.reduce((a,b)=>a+b,0) / vol42Slice.length : 0;
+  const volRatio = vol42Avg > 0 ? vol14 / vol42Avg : 0;
+  const c5_vol = volRatio > 0.95;
+
+  const reasons = [];
+  if (c1_range) reasons.push(`Range strâns 6w (${(rangePct*100).toFixed(1)}%)`);
+  if (c2_squeeze) reasons.push(`BB squeeze (${(bbCur/bbAvg*100).toFixed(0)}% din media 60d)`);
+  if (c3_flat) reasons.push(`MA50 plat (slope ${(ma50Slope*100).toFixed(1)}%)`);
+  if (c4_premium) reasons.push(`Premium ${((premium-1)*100).toFixed(0)}% peste min 90d`);
+  if (c5_vol) reasons.push(`Volum stabil (${volRatio.toFixed(2)}x)`);
+
+  const dist = c1_range && c2_squeeze && c3_flat && c4_premium && c5_vol;
+
+  // Triggere SHORT
+  const triggers = [];
+  // A) Breakdown cu volum
+  const vol20Avg = volumes.slice(-21, -1).reduce((a,b)=>a+b,0) / 20;
+  const lastVol = volumes[n - 1];
+  if (c < rMin * 0.995 && vol20Avg > 0 && lastVol / vol20Avg > 1.3) {
+    triggers.push(`Breakdown -${((1 - c/rMin)*100).toFixed(1)}% cu vol ${(lastVol/vol20Avg).toFixed(2)}x`);
+  }
+  // B) RSI cross 45 (din zona 50-60)
+  const rsiNow = rsi(closes, 14);
+  const rsiSlice = closes.slice(0, n - 4);
+  const rsiPast = rsiSlice.length >= 15 ? rsi(rsiSlice, 14) : NaN;
+  if (rsiNow < 45 && !isNaN(rsiPast) && rsiPast >= 50 && rsiPast <= 60) {
+    triggers.push(`RSI cross 45 (${rsiPast.toFixed(1)} → ${rsiNow.toFixed(1)})`);
+  }
+  // C) MA20 < MA50
+  const ma20 = smaArr(closes, 20);
+  const ma20Now = ma20[n - 1];
+  if (ma20Now && ma50Now && ma20Now < ma50Now) {
+    triggers.push(`MA20 < MA50 (${ma20Now.toFixed(2)} < ${ma50Now.toFixed(2)})`);
+  }
+  const trigger = triggers.length > 0;
+
+  const score = [c1_range, c2_squeeze, c3_flat, c4_premium, c5_vol].filter(Boolean).length;
+
+  return { dist, trigger, score, reasons, triggers };
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  COMPUTE METRICS
 // ═══════════════════════════════════════════════════════════════
 
@@ -1441,6 +1564,8 @@ function computeMetrics(bars, tf) {
 
   // Setup acumulare 6w (calculat doar pe TF 1d, conform spec Marius)
   const accumData = computeAccumulation(bars, tf);
+  // Setup distribuție 6w (opusul acumulării — pentru SHORT)
+  const distData = computeDistribution(bars, tf);
 
   return {
     price: displayPrice, rsi: r, trend: tr, macd: mState, vol: vr, mom, score,
@@ -1450,6 +1575,8 @@ function computeMetrics(bars, tf) {
     divDir: divergence.dir, divSources: divergence.sources, divBars: divergence.bars, divStrength: divergence.strength, divBonus,
     accum: accumData.accum, accumTrigger: accumData.trigger, accumScore: accumData.score,
     accumReasons: accumData.reasons, accumTriggers: accumData.triggers,
+    dist: distData.dist, distTrigger: distData.trigger, distScore: distData.score,
+    distReasons: distData.reasons, distTriggers: distData.triggers,
     extMeta: bars.meta || null
   };
 }
@@ -1791,6 +1918,8 @@ function applyFilters(list) {
     if (FILTERS.sig === "divbear" && r.divDir !== "bear") return false;
     if (FILTERS.sig === "accum" && !r.accum) return false;
     if (FILTERS.sig === "accumtrig" && !(r.accum && r.accumTrigger)) return false;
+    if (FILTERS.sig === "dist" && !r.dist) return false;
+    if (FILTERS.sig === "disttrig" && !(r.dist && r.distTrigger)) return false;
     return true;
   });
 }
@@ -1878,12 +2007,25 @@ function render() {
       const bd = r.accumTrigger ? "#22c55e" : "#3b82f6";
       accumBadge = `<span title="${tip.replace(/"/g,'&quot;')}" style="display:inline-block;padding:1px 5px;border-radius:3px;background:${bg};border:1px solid ${bd};color:${bd};font-size:9px;font-weight:700;margin-right:4px;cursor:help">🏗️${trigIcon}</span>`;
     }
+    // Badge distribuție: 📉 pentru setup activ, 🔻 dacă trigger SHORT declanșat
+    let distBadge = "";
+    if (r.dist) {
+      const tipReasons = (r.distReasons || []).map(s => "✓ " + s).join("\n");
+      const tipTriggers = (r.distTriggers && r.distTriggers.length)
+        ? "\n\n🔻 DECLANȘATOR SHORT ACTIV:\n" + r.distTriggers.map(s => "• " + s).join("\n")
+        : "\n\n(fără declanșator încă — doar consolidare la top)";
+      const tip = `📉 DISTRIBUȚIE (${r.distScore}/5)\n${tipReasons}${tipTriggers}`;
+      const trigIcon = r.distTrigger ? "🔻" : "";
+      const bg = r.distTrigger ? "rgba(239,68,68,.18)" : "rgba(244,114,182,.15)";
+      const bd = r.distTrigger ? "#ef4444" : "#f472b6";
+      distBadge = `<span title="${tip.replace(/"/g,'&quot;')}" style="display:inline-block;padding:1px 5px;border-radius:3px;background:${bg};border:1px solid ${bd};color:${bd};font-size:9px;font-weight:700;margin-right:4px;cursor:help">📉${trigIcon}</span>`;
+    }
     return `<tr onclick="window.open('${tvUrl(r.sym)}','_blank')">
       <td><span class="rank ${rankBg(i)}">${i+1}</span></td>
       <td class="sym-cell">
         <div style="display:flex;align-items:center;gap:4px">
           <div>
-            <div class="sym-name">${accumBadge}${shortName(r.sym)}</div>
+            <div class="sym-name">${accumBadge}${distBadge}${shortName(r.sym)}</div>
             <div class="sym-price">${fmtPrice(r.price)} <span style="color:${chgColor}">${chgStr}</span>${extChip}</div>
           </div>
           ${sparkline(r.spark, up)}
