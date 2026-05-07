@@ -493,7 +493,7 @@
 <body>
 
 <header>
-  <h1>🔍 Scanner Pro — 25 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v11</span></h1>
+  <h1>🔍 Scanner Pro — 25/200 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v12</span></h1>
   <div class="ctl"><span><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span></div>
   <div class="header-stats" id="headerStats"></div>
   <div class="ctl"><label>TF:</label>
@@ -548,9 +548,11 @@
 <details class="config" id="configBox">
   <summary>⚙️ Simboluri (25) + Proxy</summary>
   <div class="sym-grid" id="symGrid"></div>
-  <div style="padding: 0 14px 10px; display: flex; gap: 8px;">
+  <div style="padding: 0 14px 10px; display: flex; gap: 8px; flex-wrap:wrap;">
     <button id="saveSyms" class="primary">Save & Rescan</button>
-    <button id="resetSyms">Reset default</button>
+    <button id="resetSyms">Reset default (25)</button>
+    <button id="loadTop200Btn" title="Fetch top 200 USDT pairs after Binance volume (cached 24h)">📦 Load Top 200 USDT</button>
+    <button id="autoPickWatchlistBtn" title="După scan: top 30 LONG după criterii (Accum/Spring/Stage2 + score) → adaugă în watchlist" style="background:rgba(34,197,94,.15);border-color:#22c55e;color:#22c55e;">🎯 Auto-pick Top 30 LONG → Watchlist</button>
     <span style="margin-left:auto;color:var(--muted);font-size:11px;align-self:center">💡 Tip: poți scrie doar <b>BTC</b> → devine <b>BINANCE:BTCUSDT</b>. Pentru altă bursă (BYBIT, NYSE, AMEX) scrie prefixul explicit.</span>
   </div>
   <div style="padding: 10px 14px; border-top: 1px solid var(--border); background: var(--panel2)">
@@ -3524,6 +3526,116 @@ document.getElementById("resetSyms").onclick = () => {
   SYMBOLS = [...DEFAULT_SYMBOLS];
   localStorage.setItem(LS.syms, JSON.stringify(SYMBOLS));
   renderSymGrid();
+};
+
+// ── LOAD TOP 200 USDT — fetch dinamic Binance, cache 24h ─────────
+const TOP200_CACHE_KEY = "scanner_top200_cache";
+async function fetchTop200USDT() {
+  // Verifică cache 24h
+  try {
+    const cached = JSON.parse(localStorage.getItem(TOP200_CACHE_KEY) || "{}");
+    if (cached.list && cached.ts && (Date.now() - cached.ts) < 86400000) {
+      return cached.list;
+    }
+  } catch (e) {}
+
+  // Fetch live de la Binance: ticker 24h sortat după volum quote (USDT)
+  const r = await fetch("https://api.binance.com/api/v3/ticker/24hr");
+  if (!r.ok) throw new Error("Binance API error " + r.status);
+  const data = await r.json();
+
+  // Filtre:
+  //  - doar pereche XXXUSDT
+  //  - exclude leveraged tokens (UPUSDT, DOWNUSDT, BULLUSDT, BEARUSDT)
+  //  - exclude pairs cu alte stablecoin-uri (USDC/FDUSD/TUSD/BUSD/DAI/USDP)
+  const top200 = data
+    .filter(t => /USDT$/.test(t.symbol))
+    .filter(t => !/(UP|DOWN|BULL|BEAR)USDT$/.test(t.symbol))
+    .filter(t => !/(USDC|FDUSD|TUSD|BUSD|DAI|USDP)USDT$/.test(t.symbol))
+    .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+    .slice(0, 200)
+    .map(t => "BINANCE:" + t.symbol);
+
+  localStorage.setItem(TOP200_CACHE_KEY, JSON.stringify({ list: top200, ts: Date.now() }));
+  return top200;
+}
+
+document.getElementById("loadTop200Btn").onclick = async () => {
+  if (!confirm("Încarci top 200 USDT pairs (după volum Binance)?\n\nLista se cache-uiește 24h. Scanul ulterior va dura ~10-15 sec (vs. 2-3s acum).")) return;
+  const btn = document.getElementById("loadTop200Btn");
+  btn.disabled = true;
+  btn.textContent = "⏳ Loading top 200...";
+  setStatus("load", "Fetching top 200 USDT pairs...");
+  try {
+    const list = await fetchTop200USDT();
+    SYMBOLS = list;
+    localStorage.setItem(LS.syms, JSON.stringify(SYMBOLS));
+    renderSymGrid();
+    setStatus("ok", `✓ Top ${list.length} USDT pairs loaded`);
+    setTimeout(() => setStatus("", "Ready"), 3000);
+  } catch (e) {
+    setStatus("err", "Failed: " + e.message);
+    alert("Eroare la fetch: " + e.message + "\n\nVerifică conexiunea sau Binance API.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "📦 Load Top 200 USDT";
+  }
+};
+
+// ── AUTO-PICK TOP 30 LONG → adaugă în watchlist ──────────────────
+// Scor combinat (doar setup-uri LONG, exclude SHORT/distribuție):
+//   accumScore × 2  (0-10)
+//   + 5 dacă accumTrigger
+//   + 8 dacă accumSpring (Wyckoff Spring high-probability)
+//   + 4 dacă stage2 (post-breakout consolidat)
+//   + 3 dacă |scoreGeneral| > 6, +1 dacă > 3
+document.getElementById("autoPickWatchlistBtn").onclick = () => {
+  if (!rows.length) {
+    alert("Rulează un scan întâi (apasă ↻ SCAN).");
+    return;
+  }
+  // Filtrează doar setup-uri LONG (exclude SHORT/dist)
+  const longSetups = rows.filter(r => !r.error && (r.accum || r.stage2));
+  if (longSetups.length === 0) {
+    alert("Niciun setup LONG detectat în scanul curent.\n\nÎncearcă pe TF 1d și asigură-te că ai apăsat ↻ SCAN.");
+    return;
+  }
+
+  const scored = longSetups.map(r => {
+    let s = 0;
+    s += (r.accumScore || 0) * 2;
+    if (r.accumTrigger) s += 5;
+    if (r.accumSpring) s += 8;
+    if (r.stage2) s += 4;
+    const absScore = Math.abs(r.score || 0);
+    if (absScore > 6) s += 3;
+    else if (absScore > 3) s += 1;
+    return { sym: r.sym, score: s };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  const top30 = scored.slice(0, 30);
+
+  // Adaugă la watchlist (deduplicate, NU înlocuiește)
+  const current = getWatchlist();
+  const newAdds = top30.filter(x => !current.includes(x.sym));
+
+  if (newAdds.length === 0) {
+    alert(`Toate cele ${top30.length} simboluri din top sunt deja în watchlist.`);
+    return;
+  }
+
+  const preview = newAdds.slice(0, 10).map(x => shortName(x.sym) + " (" + x.score.toFixed(0) + ")").join(", ");
+  if (!confirm(
+    `Adăugi ${newAdds.length} simboluri noi la watchlist (din top 30 LONG)?\n\n` +
+    `Watchlist: ${current.length} → ${current.length + newAdds.length}\n\n` +
+    `Top picks: ${preview}${newAdds.length > 10 ? "..." : ""}`
+  )) return;
+
+  saveWatchlist([...current, ...newAdds.map(x => x.sym)]);
+  if (typeof updateWatchlistCounter === "function") updateWatchlistCounter();
+  if (typeof render === "function") render();
+  setStatus("ok", `🎯 Adăugat ${newAdds.length} simboluri în watchlist`);
+  setTimeout(() => setStatus("", "Ready"), 4000);
 };
 
 document.getElementById("saveKey").onclick = () => {
