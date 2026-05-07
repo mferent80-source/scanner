@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Multi-Symbol Scanner Pro — 20 Symbols + MTF + Risk</title>
+<title>Multi-Symbol Scanner Pro — 25 Symbols + MTF + Risk</title>
 <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%234fa3ff'/><stop offset='1' stop-color='%237c5cff'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='%230f1419'/><circle cx='27' cy='27' r='13' fill='none' stroke='url(%23g)' stroke-width='5'/><line x1='37' y1='37' x2='51' y2='51' stroke='url(%23g)' stroke-width='6' stroke-linecap='round'/><circle cx='27' cy='27' r='6' fill='%2300c853' opacity='.9'/></svg>">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -493,7 +493,7 @@
 <body>
 
 <header>
-  <h1>🔍 Scanner Pro — 20 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v10</span></h1>
+  <h1>🔍 Scanner Pro — 25 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v11</span></h1>
   <div class="ctl"><span><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span></div>
   <div class="header-stats" id="headerStats"></div>
   <div class="ctl"><label>TF:</label>
@@ -546,7 +546,7 @@
 
 <!-- SYMBOLS CONFIG -->
 <details class="config" id="configBox">
-  <summary>⚙️ Simboluri (20) + Proxy</summary>
+  <summary>⚙️ Simboluri (25) + Proxy</summary>
   <div class="sym-grid" id="symGrid"></div>
   <div style="padding: 0 14px 10px; display: flex; gap: 8px;">
     <button id="saveSyms" class="primary">Save & Rescan</button>
@@ -748,7 +748,7 @@ const IS_STOCKS = MODE === "stocks";
 
 // Update document title to match mode
 document.title = IS_CRYPTO
-  ? "Crypto Scanner — 20 Assets + MTF + Divergences"
+  ? "Crypto Scanner — 25 Assets + MTF + Divergences"
   : "Stocks Scanner — Pre/Regular/After + MTF + Divergences";
 
 // ═══════════════════════════════════════════════════════════════
@@ -788,7 +788,8 @@ const DEFAULT_SYMBOLS_CRYPTO = [
   "BINANCE:DOGEUSDT","BINANCE:BNBUSDT","BINANCE:ADAUSDT","BINANCE:AVAXUSDT",
   "BINANCE:LINKUSDT","BINANCE:DOTUSDT","BINANCE:MATICUSDT","BINANCE:LTCUSDT",
   "BINANCE:ATOMUSDT","BINANCE:NEARUSDT","BINANCE:APTUSDT","BINANCE:ARBUSDT",
-  "BINANCE:OPUSDT","BINANCE:INJUSDT","BINANCE:SUIUSDT","BINANCE:TRXUSDT"
+  "BINANCE:OPUSDT","BINANCE:INJUSDT","BINANCE:SUIUSDT","BINANCE:TRXUSDT",
+  "BINANCE:PEPEUSDT","BINANCE:WIFUSDT","BINANCE:JUPUSDT","BINANCE:TIAUSDT","BINANCE:SEIUSDT"
 ];
 const DEFAULT_SYMBOLS_STOCKS = [
   "NASDAQ:NVDA","NASDAQ:AAPL","NASDAQ:TSLA","NASDAQ:MSFT",
@@ -3842,7 +3843,7 @@ function initModeUI() {
   const h1 = document.querySelector("header h1");
   if (h1) {
     h1.innerHTML = IS_CRYPTO
-      ? '🪙 <span class="mode-badge crypto">CRYPTO</span> Scanner — 20 Assets + MTF + Div'
+      ? '🪙 <span class="mode-badge crypto">CRYPTO</span> Scanner — 25 Assets + MTF + Div'
       : '📈 <span class="mode-badge stocks">STOCKS</span> Scanner — Pre/Regular/Post + MTF + Div';
   }
 
