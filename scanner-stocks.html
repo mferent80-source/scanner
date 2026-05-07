@@ -493,7 +493,7 @@
 <body>
 
 <header>
-  <h1>🔍 Scanner Pro — 20 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v13</span></h1>
+  <h1>🔍 Scanner Pro — 20 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v14</span></h1>
   <div class="ctl"><span><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span></div>
   <div class="header-stats" id="headerStats"></div>
   <div class="ctl"><label>TF:</label>
@@ -613,7 +613,8 @@
   <button class="chip" data-filter="sig" data-val="divbull" title="Divergență bullish: preț LL + oscilator HL (reversal up)">🐂 Bull Div</button>
   <button class="chip" data-filter="sig" data-val="divbear" title="Divergență bearish: preț HH + oscilator LH (reversal down)">🐻 Bear Div</button>
   <button class="chip" data-filter="sig" data-val="watch" title="Doar simbolurile din watchlist-ul personal (⭐ pe rând pentru add/remove)">⭐ Watchlist <span id="watchlistCounter" style="opacity:.7"></span></button>
-  <button class="chip" data-filter="sig" data-val="accum" title="Setup acumulare 6 săptămâni — conservator, doar TF 1d">🏗️ Accum</button>
+  <button class="chip" data-filter="sig" data-val="accum" title="Setup acumulare 6 săptămâni — toate 5 criterii îndeplinite, doar TF 1d">🏗️ Accum</button>
+  <button class="chip" data-filter="sig" data-val="accumpartial" title="Acumulare parțială: 3 sau 4 din 5 criterii îndeplinite (în formare)">🔶 Parțial</button>
   <button class="chip" data-filter="sig" data-val="accumtrig" title="Acumulare + semn declanșare LONG activ (breakout / RSI cross / MA20>MA50)">🏗️🚀 Trigger</button>
   <button class="chip" data-filter="sig" data-val="spring" title="Wyckoff Spring: false breakdown sub rangeLow + recuperare rapidă — high-probability LONG">💎 Spring</button>
   <button class="chip" data-filter="sig" data-val="stage2" title="Stage 2 confirmat (Weinstein): breakout acum 5-15z, menținut + RSI>50 stabil + MA20>MA50">✅ Stage 2</button>
@@ -2124,6 +2125,7 @@ function applyFilters(list) {
     if (FILTERS.sig === "divbear" && r.divDir !== "bear") return false;
     if (FILTERS.sig === "watch" && !isInWatchlist(r.sym)) return false;
     if (FILTERS.sig === "accum" && !r.accum) return false;
+    if (FILTERS.sig === "accumpartial" && !(!r.accum && r.accumScore >= 3)) return false;
     if (FILTERS.sig === "accumtrig" && !(r.accum && r.accumTrigger)) return false;
     if (FILTERS.sig === "spring" && !(r.accum && r.accumSpring)) return false;
     if (FILTERS.sig === "stage2" && !r.stage2) return false;
@@ -2217,6 +2219,11 @@ function render() {
       const bg = r.accumSpring ? "rgba(234,179,8,.20)" : (r.accumTrigger ? "rgba(34,197,94,.18)" : "rgba(59,130,246,.15)");
       const bd = r.accumSpring ? "#eab308" : (r.accumTrigger ? "#22c55e" : "#3b82f6");
       accumBadge = `<span title="${tip.replace(/"/g,'&quot;')}" style="display:inline-block;padding:1px 5px;border-radius:3px;background:${bg};border:1px solid ${bd};color:${bd};font-size:9px;font-weight:700;margin-right:4px;cursor:help">🏗️${trigIcon}</span>`;
+    } else if (r.accumScore && r.accumScore >= 3) {
+      // Setup parțial: 3 sau 4 din 5 criterii — badge portocaliu 🔶
+      const tipReasons = (r.accumReasons || []).map(s => "✓ " + s).join("\n");
+      const tip = `🔶 ACUMULARE PARȚIALĂ (${r.accumScore}/5 criterii)\n${tipReasons}\n\n(nu îndeplinește toate 5 — încă în formare)`;
+      accumBadge = `<span title="${tip.replace(/"/g,'&quot;')}" style="display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(251,146,60,.18);border:1px solid #fb923c;color:#fb923c;font-size:9px;font-weight:700;margin-right:4px;cursor:help">🔶 ${r.accumScore}/5</span>`;
     }
     // Badge Stage 2 (post-breakout consolidat) — verde-cyan pentru entry "safer"
     let stage2Badge = "";
