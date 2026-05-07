@@ -1353,6 +1353,103 @@ function computeAccumulation(bars, tf) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  TRADE PLAN — generator pentru setup-urile detectate
+// ═══════════════════════════════════════════════════════════════
+
+function buildTradePlan(r) {
+  if (!r || r.error) return null;
+  const c = r.price;
+  const atr = r.atr || (c * 0.02);
+
+  let dir = null, kind = null;
+  if (r.accum && r.accumSpring) { dir = "LONG"; kind = "Spring"; }
+  else if (r.accum && r.accumTrigger) { dir = "LONG"; kind = "Accum Trigger"; }
+  else if (r.stage2) { dir = "LONG"; kind = "Stage 2"; }
+  else if (r.dist && r.distTrigger) { dir = "SHORT"; kind = "Dist Trigger"; }
+  else return null;
+
+  const rangeHeight = atr * 6;
+  let entry = c, sl, tp1, tp2;
+  if (dir === "LONG") {
+    sl = c - atr * 1.5;
+    tp1 = c + rangeHeight;
+    tp2 = c + rangeHeight * 2;
+  } else {
+    sl = c + atr * 1.5;
+    tp1 = c - rangeHeight;
+    tp2 = c - rangeHeight * 2;
+  }
+
+  const risk = Math.abs(entry - sl);
+  const reward1 = Math.abs(tp1 - entry);
+  const reward2 = Math.abs(tp2 - entry);
+  const rr1 = risk > 0 ? reward1 / risk : 0;
+  const rr2 = risk > 0 ? reward2 / risk : 0;
+
+  return { sym: r.sym, dir, kind, entry, sl, tp1, tp2, rr1, rr2, atr, riskPct: (risk / c) * 100 };
+}
+
+window.openTradePlanModal = function(symRaw) {
+  const sym = decodeURIComponent(symRaw);
+  const r = rows.find(x => x.sym === sym);
+  if (!r) return;
+  const plan = buildTradePlan(r);
+  if (!plan) return;
+
+  let modal = document.getElementById("tradePlanModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "tradePlanModal";
+    modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;";
+    document.body.appendChild(modal);
+  }
+  const dirColor = plan.dir === "LONG" ? "#22c55e" : "#ef4444";
+  const fmt2 = v => Number(v).toLocaleString("en-US", { maximumFractionDigits: v < 1 ? 6 : v < 100 ? 4 : 2 });
+  const planText =
+`📋 Trade Plan — ${shortName(plan.sym)}
+Setup: ${plan.kind} (${plan.dir})
+
+Entry:  ${fmt2(plan.entry)}
+SL:     ${fmt2(plan.sl)}    (${plan.riskPct.toFixed(2)}% risk)
+TP1:    ${fmt2(plan.tp1)}   R:R = ${plan.rr1.toFixed(2)}
+TP2:    ${fmt2(plan.tp2)}   R:R = ${plan.rr2.toFixed(2)}
+
+ATR(14): ${fmt2(plan.atr)}`;
+
+  modal.innerHTML = `
+    <div style="background:var(--panel);border:1px solid var(--border);border-left:4px solid ${dirColor};border-radius:12px;max-width:480px;width:100%;font-family:'Inter',system-ui,sans-serif;color:var(--text);">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="font-weight:800;font-size:14px;">📋 Trade Plan — ${shortName(plan.sym)}</div>
+        <button onclick="document.getElementById('tradePlanModal').remove()" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;">✕</button>
+      </div>
+      <div style="padding:16px;font-size:13px;line-height:1.7;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <span style="background:${dirColor};color:white;padding:3px 10px;border-radius:4px;font-weight:800;font-size:11px;">${plan.dir}</span>
+          <span style="color:var(--muted);font-size:11px;">${plan.kind}</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;">
+          <tr><td style="padding:6px 0;color:var(--muted);">Entry</td><td style="text-align:right;font-weight:700;">${fmt2(plan.entry)}</td></tr>
+          <tr><td style="padding:6px 0;color:var(--muted);">Stop Loss</td><td style="text-align:right;font-weight:700;color:#ef4444;">${fmt2(plan.sl)} <span style="color:var(--muted);font-weight:400;font-size:11px;">(${plan.riskPct.toFixed(2)}% risk)</span></td></tr>
+          <tr><td style="padding:6px 0;color:var(--muted);">TP1</td><td style="text-align:right;font-weight:700;color:#22c55e;">${fmt2(plan.tp1)} <span style="color:var(--muted);font-weight:400;font-size:11px;">R:R ${plan.rr1.toFixed(2)}</span></td></tr>
+          <tr><td style="padding:6px 0;color:var(--muted);">TP2</td><td style="text-align:right;font-weight:700;color:#22c55e;">${fmt2(plan.tp2)} <span style="color:var(--muted);font-weight:400;font-size:11px;">R:R ${plan.rr2.toFixed(2)}</span></td></tr>
+          <tr><td colspan="2" style="padding-top:10px;border-top:1px dashed var(--border);"></td></tr>
+          <tr><td style="padding:6px 0;color:var(--muted);font-size:11px;">ATR(14)</td><td style="text-align:right;color:var(--muted);font-size:11px;">${fmt2(plan.atr)}</td></tr>
+        </table>
+        <div style="margin-top:14px;padding:10px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.5;">
+          ℹ️ SL = entry ± 1.5×ATR · TP-uri = ±1× / ±2× rangeHeight (estimat ATR×6).
+          Ajustează după nivele tehnice reale (support/resist) vizibile pe chart.
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button onclick="navigator.clipboard.writeText(${JSON.stringify(planText)}).then(()=>{this.textContent='✓ Copiat';setTimeout(()=>this.textContent='📋 Copiază plan',1500)})" style="flex:1;background:var(--accent,#3b82f6);color:white;border:none;border-radius:6px;padding:10px;cursor:pointer;font-weight:700;font-size:12px;">📋 Copiază plan</button>
+          <button onclick="window.open('${tvUrl(plan.sym)}','_blank')" style="flex:1;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:10px;cursor:pointer;font-weight:700;font-size:12px;">📊 TradingView</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  STAGE 2 CONFIRMED (Weinstein) — post-breakout consolidat
 // ═══════════════════════════════════════════════════════════════
 
@@ -2119,7 +2216,12 @@ function render() {
       <td class="hide-mobile">${divBadge(r)}</td>
       <td><span class="badge ${sg.cls}">${r.score.toFixed(1)} (${scorePct}%)</span></td>
       <td><span class="badge ${sg.cls}">${sg.txt}</span></td>
-      <td><button class="open-btn" onclick="event.stopPropagation();window.open('${tvUrl(r.sym)}','_blank')">TV</button></td>
+      <td>
+        ${(r.accumTrigger || r.accumSpring || r.stage2 || r.distTrigger)
+          ? `<button class="open-btn" style="background:rgba(59,130,246,.18);border-color:#3b82f6;color:#3b82f6;margin-right:3px" onclick="event.stopPropagation();window.openTradePlanModal('${encodeURIComponent(r.sym)}')" title="Trade Plan: Entry / SL / TP / R:R">📋</button>`
+          : ""}
+        <button class="open-btn" onclick="event.stopPropagation();window.open('${tvUrl(r.sym)}','_blank')">TV</button>
+      </td>
     </tr>`;
   }).join("");
 
