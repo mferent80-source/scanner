@@ -493,7 +493,7 @@
 <body>
 
 <header>
-  <h1>🔍 Scanner Pro — 20 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v14</span></h1>
+  <h1>🔍 Scanner Pro — 20 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v15</span></h1>
   <div class="ctl"><span><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span></div>
   <div class="header-stats" id="headerStats"></div>
   <div class="ctl"><label>TF:</label>
@@ -615,6 +615,7 @@
   <button class="chip" data-filter="sig" data-val="watch" title="Doar simbolurile din watchlist-ul personal (⭐ pe rând pentru add/remove)">⭐ Watchlist <span id="watchlistCounter" style="opacity:.7"></span></button>
   <button class="chip" data-filter="sig" data-val="accum" title="Setup acumulare 6 săptămâni — toate 5 criterii îndeplinite, doar TF 1d">🏗️ Accum</button>
   <button class="chip" data-filter="sig" data-val="accumpartial" title="Acumulare parțială: 3 sau 4 din 5 criterii îndeplinite (în formare)">🔶 Parțial</button>
+  <button class="chip" data-filter="sig" data-val="biaslong" title="Bias LONG (score > 0) fără setup specific — doar direcție pozitivă">📈 Bias LONG</button>
   <button class="chip" data-filter="sig" data-val="accumtrig" title="Acumulare + semn declanșare LONG activ (breakout / RSI cross / MA20>MA50)">🏗️🚀 Trigger</button>
   <button class="chip" data-filter="sig" data-val="spring" title="Wyckoff Spring: false breakdown sub rangeLow + recuperare rapidă — high-probability LONG">💎 Spring</button>
   <button class="chip" data-filter="sig" data-val="stage2" title="Stage 2 confirmat (Weinstein): breakout acum 5-15z, menținut + RSI>50 stabil + MA20>MA50">✅ Stage 2</button>
@@ -2126,6 +2127,7 @@ function applyFilters(list) {
     if (FILTERS.sig === "watch" && !isInWatchlist(r.sym)) return false;
     if (FILTERS.sig === "accum" && !r.accum) return false;
     if (FILTERS.sig === "accumpartial" && !(!r.accum && r.accumScore >= 3)) return false;
+    if (FILTERS.sig === "biaslong" && !(!r.accum && (!r.accumScore || r.accumScore < 3) && !r.stage2 && !r.dist && r.score > 0)) return false;
     if (FILTERS.sig === "accumtrig" && !(r.accum && r.accumTrigger)) return false;
     if (FILTERS.sig === "spring" && !(r.accum && r.accumSpring)) return false;
     if (FILTERS.sig === "stage2" && !r.stage2) return false;
@@ -2224,6 +2226,15 @@ function render() {
       const tipReasons = (r.accumReasons || []).map(s => "✓ " + s).join("\n");
       const tip = `🔶 ACUMULARE PARȚIALĂ (${r.accumScore}/5 criterii)\n${tipReasons}\n\n(nu îndeplinește toate 5 — încă în formare)`;
       accumBadge = `<span title="${tip.replace(/"/g,'&quot;')}" style="display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(251,146,60,.18);border:1px solid #fb923c;color:#fb923c;font-size:9px;font-weight:700;margin-right:4px;cursor:help">🔶 ${r.accumScore}/5</span>`;
+    } else if (!r.stage2 && !r.dist && r.score > 0) {
+      // Bias LONG generic (fără setup specific) — badge verde-lime 📈
+      const sc = r.score;
+      const intensity = sc > 6 ? "STR" : sc > 3 ? "MED" : "WEAK";
+      const tip = `📈 BIAS LONG (score ${sc.toFixed(1)} — ${intensity})\n` +
+        `RSI ${r.rsi?.toFixed(1) || "—"} · ADX ${r.adx?.toFixed(0) || "—"}\n\n` +
+        `(fără setup Accum/Stage2 — doar bias direcțional)`;
+      const bg = sc > 6 ? "rgba(132,204,22,.20)" : sc > 3 ? "rgba(132,204,22,.14)" : "rgba(132,204,22,.08)";
+      accumBadge = `<span title="${tip.replace(/"/g,'&quot;')}" style="display:inline-block;padding:1px 5px;border-radius:3px;background:${bg};border:1px solid #84cc16;color:#84cc16;font-size:9px;font-weight:700;margin-right:4px;cursor:help">📈 ${sc.toFixed(1)}</span>`;
     }
     // Badge Stage 2 (post-breakout consolidat) — verde-cyan pentru entry "safer"
     let stage2Badge = "";
