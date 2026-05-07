@@ -607,6 +607,7 @@
   <button class="chip" data-filter="sig" data-val="accum" title="Setup acumulare 6 săptămâni — conservator, doar TF 1d">🏗️ Accum</button>
   <button class="chip" data-filter="sig" data-val="accumtrig" title="Acumulare + semn declanșare LONG activ (breakout / RSI cross / MA20>MA50)">🏗️🚀 Trigger</button>
   <button class="chip" data-filter="sig" data-val="spring" title="Wyckoff Spring: false breakdown sub rangeLow + recuperare rapidă — high-probability LONG">💎 Spring</button>
+  <button class="chip" data-filter="sig" data-val="stage2" title="Stage 2 confirmat (Weinstein): breakout acum 5-15z, menținut + RSI>50 stabil + MA20>MA50">✅ Stage 2</button>
   <button class="chip" data-filter="sig" data-val="dist" title="Setup distribuție 6 săptămâni (top zone, opusul acumulării) — doar TF 1d">📉 Distrib</button>
   <button class="chip" data-filter="sig" data-val="disttrig" title="Distribuție + semn declanșare SHORT activ (breakdown / RSI cross / MA20<MA50)">📉🔻 Trig.S</button>
   <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
@@ -1354,6 +1355,92 @@ function computeAccumulation(bars, tf) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  STAGE 2 CONFIRMED (Weinstein) — post-breakout consolidat
+// ═══════════════════════════════════════════════════════════════
+// Pentru entry "later but safer": coin care a făcut breakout din acumulare
+// acum 5-15 zile, s-a menținut deasupra rezistenței, RSI > 50 stabil.
+// Util pentru cei care nu vor să prindă breakout fresh — preferă confirmare.
+
+function computeStage2(bars, tf) {
+  if (tf !== "1d") return { stage2: false, daysSince: null, reasons: [] };
+  const { closes, highs, lows, volumes } = bars;
+  if (!closes || closes.length < 90) return { stage2: false, daysSince: null, reasons: [] };
+
+  const n = closes.length;
+  const c = closes[n - 1];
+
+  // Caut breakout în fereastra [n-15, n-5] = acum 5-15 zile
+  // Pentru fiecare candle din fereastră, verific dacă a fost breakout din rangeHigh
+  // calculat pe ferestrele de 6 săpt din momentul respectiv.
+  let breakoutIdx = -1;
+  let rangeHighAtBreakout = null;
+  for (let i = n - 15; i <= n - 5; i++) {
+    if (i < 50) continue; // nevoie de istorie pentru range
+    // Range 6w înaintea candelei i
+    const histHighs = highs.slice(Math.max(0, i - 42), i);
+    if (histHighs.length < 30) continue;
+    const histRangeHigh = Math.max(...histHighs);
+    if (closes[i] > histRangeHigh * 1.005) {
+      breakoutIdx = i;
+      rangeHighAtBreakout = histRangeHigh;
+      break;
+    }
+  }
+  if (breakoutIdx === -1) return { stage2: false, daysSince: null, reasons: [] };
+
+  // Verific menținerea: toate candle-urile [breakoutIdx+1 .. n-1] au close > rangeHighAtBreakout
+  const heldAbove = closes.slice(breakoutIdx + 1).every(cl => cl > rangeHighAtBreakout * 0.98);
+
+  // RSI stabil > 50 (medie ultimele 5 zile + valoarea curentă)
+  function rsiArrLocal(arr, len = 14) {
+    const out = new Array(arr.length).fill(undefined);
+    if (arr.length < len + 1) return out;
+    let gain = 0, loss = 0;
+    for (let i = 1; i <= len; i++) {
+      const d = arr[i] - arr[i-1];
+      if (d >= 0) gain += d; else loss -= d;
+    }
+    let avgG = gain / len, avgL = loss / len;
+    out[len] = avgL === 0 ? 100 : 100 - 100 / (1 + avgG/avgL);
+    for (let i = len + 1; i < arr.length; i++) {
+      const d = arr[i] - arr[i-1];
+      const g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
+      avgG = (avgG * (len - 1) + g) / len;
+      avgL = (avgL * (len - 1) + l) / len;
+      out[i] = avgL === 0 ? 100 : 100 - 100 / (1 + avgG/avgL);
+    }
+    return out;
+  }
+  const rsiArrAll = rsiArrLocal(closes, 14);
+  const last5RSI = rsiArrAll.slice(-5).filter(v => typeof v === "number");
+  const rsiOK = last5RSI.length === 5 && last5RSI.every(v => v > 50);
+
+  // MA20 încă > MA50 (trend up consolidat)
+  function smaArr(arr, p) {
+    const out = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (i < p - 1) { out.push(null); continue; }
+      let s = 0;
+      for (let j = i - p + 1; j <= i; j++) s += arr[j];
+      out.push(s / p);
+    }
+    return out;
+  }
+  const ma20Arr = smaArr(closes, 20);
+  const ma50Arr = smaArr(closes, 50);
+  const maOK = ma20Arr[n-1] && ma50Arr[n-1] && ma20Arr[n-1] > ma50Arr[n-1];
+
+  const stage2 = heldAbove && rsiOK && maOK;
+  const daysSince = n - 1 - breakoutIdx;
+  const reasons = [];
+  if (heldAbove) reasons.push(`Menținut peste rangeHigh (${rangeHighAtBreakout.toFixed(2)}) de ${daysSince}z`);
+  if (rsiOK) reasons.push(`RSI > 50 stabil 5z (medie ${(last5RSI.reduce((a,b)=>a+b,0)/5).toFixed(1)})`);
+  if (maOK) reasons.push(`MA20 > MA50 (${ma20Arr[n-1].toFixed(2)} > ${ma50Arr[n-1].toFixed(2)})`);
+
+  return { stage2, daysSince, reasons, breakoutPrice: rangeHighAtBreakout };
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  DISTRIBUTION DETECTION (Wyckoff distribution, opusul acumulării)
 // ═══════════════════════════════════════════════════════════════
 // Setup de distribuție = smart money vinde la top după rally.
@@ -1577,6 +1664,8 @@ function computeMetrics(bars, tf) {
   const accumData = computeAccumulation(bars, tf);
   // Setup distribuție 6w (opusul acumulării — pentru SHORT)
   const distData = computeDistribution(bars, tf);
+  // Stage 2 confirmat (post-breakout 5-15 zile, consolidare deasupra rezistenței)
+  const stage2Data = computeStage2(bars, tf);
 
   return {
     price: displayPrice, rsi: r, trend: tr, macd: mState, vol: vr, mom, score,
@@ -1589,6 +1678,7 @@ function computeMetrics(bars, tf) {
     accumSpring: accumData.spring,
     dist: distData.dist, distTrigger: distData.trigger, distScore: distData.score,
     distReasons: distData.reasons, distTriggers: distData.triggers,
+    stage2: stage2Data.stage2, stage2Days: stage2Data.daysSince, stage2Reasons: stage2Data.reasons, stage2BreakoutPrice: stage2Data.breakoutPrice,
     extMeta: bars.meta || null
   };
 }
@@ -1931,6 +2021,7 @@ function applyFilters(list) {
     if (FILTERS.sig === "accum" && !r.accum) return false;
     if (FILTERS.sig === "accumtrig" && !(r.accum && r.accumTrigger)) return false;
     if (FILTERS.sig === "spring" && !(r.accum && r.accumSpring)) return false;
+    if (FILTERS.sig === "stage2" && !r.stage2) return false;
     if (FILTERS.sig === "dist" && !r.dist) return false;
     if (FILTERS.sig === "disttrig" && !(r.dist && r.distTrigger)) return false;
     return true;
@@ -2021,6 +2112,13 @@ function render() {
       const bd = r.accumSpring ? "#eab308" : (r.accumTrigger ? "#22c55e" : "#3b82f6");
       accumBadge = `<span title="${tip.replace(/"/g,'&quot;')}" style="display:inline-block;padding:1px 5px;border-radius:3px;background:${bg};border:1px solid ${bd};color:${bd};font-size:9px;font-weight:700;margin-right:4px;cursor:help">🏗️${trigIcon}</span>`;
     }
+    // Badge Stage 2 (post-breakout consolidat) — verde-cyan pentru entry "safer"
+    let stage2Badge = "";
+    if (r.stage2) {
+      const tipReasons = (r.stage2Reasons || []).map(s => "✓ " + s).join("\n");
+      const tip = `✅ STAGE 2 CONFIRMAT (breakout acum ${r.stage2Days}z)\n${tipReasons}`;
+      stage2Badge = `<span title="${tip.replace(/"/g,'&quot;')}" style="display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(20,184,166,.18);border:1px solid #14b8a6;color:#14b8a6;font-size:9px;font-weight:700;margin-right:4px;cursor:help">✅ ${r.stage2Days}z</span>`;
+    }
     // Badge distribuție: 📉 pentru setup activ, 🔻 dacă trigger SHORT declanșat
     let distBadge = "";
     if (r.dist) {
@@ -2039,7 +2137,7 @@ function render() {
       <td class="sym-cell">
         <div style="display:flex;align-items:center;gap:4px">
           <div>
-            <div class="sym-name">${accumBadge}${distBadge}${shortName(r.sym)}</div>
+            <div class="sym-name">${accumBadge}${stage2Badge}${distBadge}${shortName(r.sym)}</div>
             <div class="sym-price">${fmtPrice(r.price)} <span style="color:${chgColor}">${chgStr}</span>${extChip}</div>
           </div>
           ${sparkline(r.spark, up)}
