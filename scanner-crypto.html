@@ -606,6 +606,7 @@
   <button class="chip" data-filter="sig" data-val="divbear" title="Divergență bearish: preț HH + oscilator LH (reversal down)">🐻 Bear Div</button>
   <button class="chip" data-filter="sig" data-val="accum" title="Setup acumulare 6 săptămâni — conservator, doar TF 1d">🏗️ Accum</button>
   <button class="chip" data-filter="sig" data-val="accumtrig" title="Acumulare + semn declanșare LONG activ (breakout / RSI cross / MA20>MA50)">🏗️🚀 Trigger</button>
+  <button class="chip" data-filter="sig" data-val="spring" title="Wyckoff Spring: false breakdown sub rangeLow + recuperare rapidă — high-probability LONG">💎 Spring</button>
   <button class="chip" data-filter="sig" data-val="dist" title="Setup distribuție 6 săptămâni (top zone, opusul acumulării) — doar TF 1d">📉 Distrib</button>
   <button class="chip" data-filter="sig" data-val="disttrig" title="Distribuție + semn declanșare SHORT activ (breakdown / RSI cross / MA20<MA50)">📉🔻 Trig.S</button>
   <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
@@ -1334,12 +1335,22 @@ function computeAccumulation(bars, tf) {
   if (ma20Now && ma50Now && ma20Now > ma50Now) {
     triggers.push(`MA20 > MA50 (${ma20Now.toFixed(2)} > ${ma50Now.toFixed(2)})`);
   }
+  // D) WYCKOFF SPRING: fake breakdown sub rangeLow apoi recuperare rapidă peste rangeLow
+  // Setup high-probability — preț a sub rangeLow în ultimele 10 zile, dar acum > rangeLow + 2%
+  const recentLows = lows.slice(-11, -1); // ultimele 10 zile (fără azi)
+  const minRecent = recentLows.length ? Math.min(...recentLows) : null;
+  const springTriggered = minRecent !== null && minRecent < rMin && c > rMin * 1.02;
+  if (springTriggered) {
+    const undershootPct = ((rMin - minRecent) / rMin * 100).toFixed(1);
+    const recoveryPct = ((c / rMin - 1) * 100).toFixed(1);
+    triggers.push(`💎 SPRING: undershoot -${undershootPct}% → recuperare +${recoveryPct}% peste rangeLow`);
+  }
   const trigger = triggers.length > 0;
 
   // Score 0-5: număr de criterii îndeplinite
   const score = [c1_range, c2_squeeze, c3_flat, c4_discount, c5_vol].filter(Boolean).length;
 
-  return { accum, trigger, score, reasons, triggers };
+  return { accum, trigger, score, reasons, triggers, spring: springTriggered };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1575,6 +1586,7 @@ function computeMetrics(bars, tf) {
     divDir: divergence.dir, divSources: divergence.sources, divBars: divergence.bars, divStrength: divergence.strength, divBonus,
     accum: accumData.accum, accumTrigger: accumData.trigger, accumScore: accumData.score,
     accumReasons: accumData.reasons, accumTriggers: accumData.triggers,
+    accumSpring: accumData.spring,
     dist: distData.dist, distTrigger: distData.trigger, distScore: distData.score,
     distReasons: distData.reasons, distTriggers: distData.triggers,
     extMeta: bars.meta || null
@@ -1918,6 +1930,7 @@ function applyFilters(list) {
     if (FILTERS.sig === "divbear" && r.divDir !== "bear") return false;
     if (FILTERS.sig === "accum" && !r.accum) return false;
     if (FILTERS.sig === "accumtrig" && !(r.accum && r.accumTrigger)) return false;
+    if (FILTERS.sig === "spring" && !(r.accum && r.accumSpring)) return false;
     if (FILTERS.sig === "dist" && !r.dist) return false;
     if (FILTERS.sig === "disttrig" && !(r.dist && r.distTrigger)) return false;
     return true;
@@ -2002,9 +2015,10 @@ function render() {
         ? "\n\n🚀 DECLANȘATOR ACTIV:\n" + r.accumTriggers.map(s => "• " + s).join("\n")
         : "\n\n(fără declanșator încă — doar consolidare)";
       const tip = `🏗️ ACUMULARE (${r.accumScore}/5)\n${tipReasons}${tipTriggers}`;
-      const trigIcon = r.accumTrigger ? "🚀" : "";
-      const bg = r.accumTrigger ? "rgba(34,197,94,.18)" : "rgba(59,130,246,.15)";
-      const bd = r.accumTrigger ? "#22c55e" : "#3b82f6";
+      // Spring (Wyckoff) = trigger high-probability — culoare aurie
+      const trigIcon = r.accumSpring ? "💎" : (r.accumTrigger ? "🚀" : "");
+      const bg = r.accumSpring ? "rgba(234,179,8,.20)" : (r.accumTrigger ? "rgba(34,197,94,.18)" : "rgba(59,130,246,.15)");
+      const bd = r.accumSpring ? "#eab308" : (r.accumTrigger ? "#22c55e" : "#3b82f6");
       accumBadge = `<span title="${tip.replace(/"/g,'&quot;')}" style="display:inline-block;padding:1px 5px;border-radius:3px;background:${bg};border:1px solid ${bd};color:${bd};font-size:9px;font-weight:700;margin-right:4px;cursor:help">🏗️${trigIcon}</span>`;
     }
     // Badge distribuție: 📉 pentru setup activ, 🔻 dacă trigger SHORT declanșat
