@@ -604,6 +604,7 @@
   <button class="chip" data-filter="sig" data-val="volhot">Vol&gt;1.5</button>
   <button class="chip" data-filter="sig" data-val="divbull" title="Divergență bullish: preț LL + oscilator HL (reversal up)">🐂 Bull Div</button>
   <button class="chip" data-filter="sig" data-val="divbear" title="Divergență bearish: preț HH + oscilator LH (reversal down)">🐻 Bear Div</button>
+  <button class="chip" data-filter="sig" data-val="watch" title="Doar simbolurile din watchlist-ul personal (⭐ pe rând pentru add/remove)">⭐ Watchlist <span id="watchlistCounter" style="opacity:.7"></span></button>
   <button class="chip" data-filter="sig" data-val="accum" title="Setup acumulare 6 săptămâni — conservator, doar TF 1d">🏗️ Accum</button>
   <button class="chip" data-filter="sig" data-val="accumtrig" title="Acumulare + semn declanșare LONG activ (breakout / RSI cross / MA20>MA50)">🏗️🚀 Trigger</button>
   <button class="chip" data-filter="sig" data-val="spring" title="Wyckoff Spring: false breakdown sub rangeLow + recuperare rapidă — high-probability LONG">💎 Spring</button>
@@ -1220,6 +1221,38 @@ const MTF_CONFIG = {
   "4h":  { htf1: { mult: 6,  label: "1d" }, htf2: { mult: 42, label: "1w" } },
   "1d":  { htf1: { mult: 7,  label: "1w" }, htf2: { mult: 30, label: "1M" } }
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  WATCHLIST PERSISTENTĂ (localStorage — rezistă la refresh/deploy)
+// ═══════════════════════════════════════════════════════════════
+const WATCHLIST_KEY = "scanner_watchlist";
+
+function getWatchlist() {
+  try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]"); }
+  catch (e) { return []; }
+}
+function saveWatchlist(list) {
+  localStorage.setItem(WATCHLIST_KEY, JSON.stringify(list));
+}
+function isInWatchlist(sym) {
+  return getWatchlist().includes(sym);
+}
+window.toggleWatchlist = function(symRaw) {
+  const sym = decodeURIComponent(symRaw);
+  const list = getWatchlist();
+  const idx = list.indexOf(sym);
+  if (idx >= 0) list.splice(idx, 1);
+  else list.push(sym);
+  saveWatchlist(list);
+  if (typeof render === "function") render();
+  if (typeof updateWatchlistCounter === "function") updateWatchlistCounter();
+};
+function updateWatchlistCounter() {
+  const el = document.getElementById("watchlistCounter");
+  if (!el) return;
+  const n = getWatchlist().length;
+  el.textContent = n > 0 ? `(${n})` : "";
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  TRADE PLAN — generator pentru setup-urile detectate (Accum/Spring/Stage2/Dist)
@@ -2129,6 +2162,7 @@ function applyFilters(list) {
     if (FILTERS.sig === "volhot" && !(r.vol > 1.5)) return false;
     if (FILTERS.sig === "divbull" && r.divDir !== "bull") return false;
     if (FILTERS.sig === "divbear" && r.divDir !== "bear") return false;
+    if (FILTERS.sig === "watch" && !isInWatchlist(r.sym)) return false;
     if (FILTERS.sig === "accum" && !r.accum) return false;
     if (FILTERS.sig === "accumtrig" && !(r.accum && r.accumTrigger)) return false;
     if (FILTERS.sig === "spring" && !(r.accum && r.accumSpring)) return false;
@@ -2175,8 +2209,10 @@ function render() {
 
   tbody.innerHTML = filtered.map((r, i) => {
     if (r.error) {
+      const inWatchE = isInWatchlist(r.sym);
+      const starBtnE = `<button onclick="event.stopPropagation();window.toggleWatchlist('${encodeURIComponent(r.sym)}')" style="background:transparent;border:none;cursor:pointer;font-size:14px;padding:0 2px;color:${inWatchE ? "#fbbf24" : "#4a4a55"};">${inWatchE ? "★" : "☆"}</button>`;
       return `<tr onclick="window.open('${tvUrl(r.sym)}','_blank')">
-        <td><span class="rank bg-neut">${i+1}</span></td>
+        <td><span class="rank bg-neut">${i+1}</span>${starBtnE}</td>
         <td class="sym-cell"><div class="sym-name">${shortName(r.sym)}</div><div class="err-cell">${r.error}</div></td>
         <td colspan="11" class="err-cell">Eroare fetch</td>
         <td><button class="open-btn" onclick="event.stopPropagation();window.open('${tvUrl(r.sym)}','_blank')">TV</button></td>
@@ -2243,8 +2279,10 @@ function render() {
       const bd = r.distTrigger ? "#ef4444" : "#f472b6";
       distBadge = `<span title="${tip.replace(/"/g,'&quot;')}" style="display:inline-block;padding:1px 5px;border-radius:3px;background:${bg};border:1px solid ${bd};color:${bd};font-size:9px;font-weight:700;margin-right:4px;cursor:help">📉${trigIcon}</span>`;
     }
+    const inWatch = isInWatchlist(r.sym);
+    const starBtn = `<button onclick="event.stopPropagation();window.toggleWatchlist('${encodeURIComponent(r.sym)}')" title="${inWatch ? "Scoate din watchlist" : "Adaugă în watchlist"}" style="background:transparent;border:none;cursor:pointer;font-size:14px;padding:0 2px;color:${inWatch ? "#fbbf24" : "#4a4a55"};">${inWatch ? "★" : "☆"}</button>`;
     return `<tr onclick="window.open('${tvUrl(r.sym)}','_blank')">
-      <td><span class="rank ${rankBg(i)}">${i+1}</span></td>
+      <td><span class="rank ${rankBg(i)}">${i+1}</span>${starBtn}</td>
       <td class="sym-cell">
         <div style="display:flex;align-items:center;gap:4px">
           <div>
@@ -2536,22 +2574,31 @@ function getSetupSig(r) {
   return sigs;
 }
 
-function playSetupAlertSound() {
-  // Audio API simplu — un beep scurt la 800Hz, fără asset extern
+function playSetupAlertSound(priority = false) {
+  // Audio API — un beep la 800Hz (normal) sau două beepuri la 1000Hz (prioritar pentru watchlist)
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = 800;
-    osc.type = "sine";
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.45);
-    setTimeout(() => ctx.close(), 600);
+    const beep = (start, freq) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + 0.30);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + 0.35);
+    };
+    if (priority) {
+      beep(0,    1000);
+      beep(0.18, 1000);
+      setTimeout(() => ctx.close(), 800);
+    } else {
+      beep(0, 800);
+      setTimeout(() => ctx.close(), 600);
+    }
   } catch (e) { /* unsupported / blocked */ }
 }
 
@@ -2592,11 +2639,16 @@ function checkSetupAlerts() {
   const lines = fresh.map(labelOf);
 
   // Status bar (vizibil în UI)
-  setStatus("ok", `🔔 ${fresh.length} setup nou${fresh.length > 1 ? "ri" : ""}: ${lines.slice(0, 2).join(" · ")}${fresh.length > 2 ? "..." : ""}`);
+  // Verifică dacă vreunul din triggerele noi e pe un simbol din watchlist → prioritar
+  const watch = getWatchlist();
+  const hasWatchHit = fresh.some(s => watch.includes(s.split(":")[0]));
+
+  const watchPrefix = hasWatchHit ? "⭐ " : "";
+  setStatus("ok", `${watchPrefix}🔔 ${fresh.length} setup nou${fresh.length > 1 ? "ri" : ""}: ${lines.slice(0, 2).join(" · ")}${fresh.length > 2 ? "..." : ""}`);
   setTimeout(() => setStatus("", "Ready"), 6000);
 
-  // Sound (un beep — nu spam dacă mai multe simultan)
-  playSetupAlertSound();
+  // Sound: 2 beepuri la 1000Hz (prioritar) dacă watchlist hit, altfel 1 beep la 800Hz
+  playSetupAlertSound(hasWatchHit);
 
   // Browser notification (dacă permission granted)
   if ("Notification" in window && Notification.permission === "granted") {
@@ -3932,6 +3984,11 @@ if ("serviceWorker" in navigator) {
     });
   });
 }
+
+// Initialize watchlist counter (badge cu nr. simboluri salvate)
+window.addEventListener("DOMContentLoaded", () => {
+  if (typeof updateWatchlistCounter === "function") updateWatchlistCounter();
+});
 
 // Capture the beforeinstallprompt event so we can show a custom install button.
 // Android Chrome fires this when the site is PWA-installable but not yet installed.
