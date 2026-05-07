@@ -2401,6 +2401,100 @@ function checkAlerts() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  SETUP ALERTS — notificare când apare TRIGGER nou (Accum/Spring/Stage2/Dist)
+// ═══════════════════════════════════════════════════════════════
+// Compară lista de simboluri cu trigger setup vs scanul anterior (localStorage).
+// Pentru simbolurile care AU APĂRUT (nu erau înainte) → toast + sound + notification.
+// Astfel Marius nu trebuie să verifice manual la fiecare scan.
+
+const SETUP_ALERT_KEY = "scanner_setup_triggers_seen";
+
+function getSetupSig(r) {
+  // Cheie unică per tip de setup (un simbol poate avea simultan accum+stage2+dist)
+  if (!r || r.error) return [];
+  const sigs = [];
+  if (r.accum && r.accumSpring) sigs.push(r.sym + ":SPRING");
+  if (r.accum && r.accumTrigger && !r.accumSpring) sigs.push(r.sym + ":ACCUM_TRIG");
+  if (r.stage2) sigs.push(r.sym + ":STAGE2");
+  if (r.dist && r.distTrigger) sigs.push(r.sym + ":DIST_TRIG");
+  return sigs;
+}
+
+function playSetupAlertSound() {
+  // Audio API simplu — un beep scurt la 800Hz, fără asset extern
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.45);
+    setTimeout(() => ctx.close(), 600);
+  } catch (e) { /* unsupported / blocked */ }
+}
+
+function checkSetupAlerts() {
+  // Lista curentă de signaturi (sym + tip setup)
+  const ok = rows.filter(r => !r.error);
+  const currentSigs = new Set();
+  ok.forEach(r => getSetupSig(r).forEach(s => currentSigs.add(s)));
+
+  // Lista anterioară din localStorage
+  let seenArr = [];
+  try { seenArr = JSON.parse(localStorage.getItem(SETUP_ALERT_KEY) || "[]"); } catch (e) {}
+  const seenSet = new Set(seenArr);
+
+  // Calc NOI = current - seen (excludem cele déjà știute)
+  const fresh = [];
+  currentSigs.forEach(s => { if (!seenSet.has(s)) fresh.push(s); });
+
+  // Prima rulare după load (no localStorage entry) — primează silent
+  // (altfel toate ar declanșa la prima încărcare = enervant)
+  const isFirstRun = seenArr.length === 0;
+
+  // Update localStorage cu noua listă (înlocuim, nu accumulăm — setup care dispare ar trebui să iasă)
+  localStorage.setItem(SETUP_ALERT_KEY, JSON.stringify([...currentSigs]));
+
+  if (isFirstRun || fresh.length === 0) return;
+
+  // Mapare sig → text uman + emoji
+  const labelOf = (sig) => {
+    const [sym, tipo] = sig.split(":");
+    const name = shortName(sym);
+    if (tipo === "SPRING")     return `💎 ${name}: Wyckoff Spring`;
+    if (tipo === "ACCUM_TRIG") return `🚀 ${name}: Acumulare TRIGGER`;
+    if (tipo === "STAGE2")     return `✅ ${name}: Stage 2 confirmat`;
+    if (tipo === "DIST_TRIG")  return `🔻 ${name}: Distribuție SHORT trigger`;
+    return name;
+  };
+  const lines = fresh.map(labelOf);
+
+  // Status bar (vizibil în UI)
+  setStatus("ok", `🔔 ${fresh.length} setup nou${fresh.length > 1 ? "ri" : ""}: ${lines.slice(0, 2).join(" · ")}${fresh.length > 2 ? "..." : ""}`);
+  setTimeout(() => setStatus("", "Ready"), 6000);
+
+  // Sound (un beep — nu spam dacă mai multe simultan)
+  playSetupAlertSound();
+
+  // Browser notification (dacă permission granted)
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      new Notification(`Scanner Pro — ${fresh.length} setup nou${fresh.length > 1 ? "ri" : ""}`, {
+        body: lines.join("\n"),
+        tag: "setup-alert",
+        silent: false
+      });
+    } catch (e) { /* ignore */ }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  HEATMAP VIEW
 // ═══════════════════════════════════════════════════════════════
 
@@ -3115,6 +3209,8 @@ async function scan() {
 
     // Check alerts after render (so UI updates first)
     checkAlerts();
+    // Check setup alerts (Accum trigger / Spring / Stage 2 / Dist trigger)
+    checkSetupAlerts();
 
     // Fetch market health in background (doesn't block)
     fetchMarketHealth().catch(e => {

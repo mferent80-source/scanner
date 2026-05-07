@@ -2366,6 +2366,84 @@ function checkAlerts() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  SETUP ALERTS — notificare când apare TRIGGER nou
+// ═══════════════════════════════════════════════════════════════
+
+const SETUP_ALERT_KEY = "scanner_setup_triggers_seen";
+
+function getSetupSig(r) {
+  if (!r || r.error) return [];
+  const sigs = [];
+  if (r.accum && r.accumSpring) sigs.push(r.sym + ":SPRING");
+  if (r.accum && r.accumTrigger && !r.accumSpring) sigs.push(r.sym + ":ACCUM_TRIG");
+  if (r.stage2) sigs.push(r.sym + ":STAGE2");
+  if (r.dist && r.distTrigger) sigs.push(r.sym + ":DIST_TRIG");
+  return sigs;
+}
+
+function playSetupAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.45);
+    setTimeout(() => ctx.close(), 600);
+  } catch (e) {}
+}
+
+function checkSetupAlerts() {
+  const ok = rows.filter(r => !r.error);
+  const currentSigs = new Set();
+  ok.forEach(r => getSetupSig(r).forEach(s => currentSigs.add(s)));
+
+  let seenArr = [];
+  try { seenArr = JSON.parse(localStorage.getItem(SETUP_ALERT_KEY) || "[]"); } catch (e) {}
+  const seenSet = new Set(seenArr);
+
+  const fresh = [];
+  currentSigs.forEach(s => { if (!seenSet.has(s)) fresh.push(s); });
+
+  const isFirstRun = seenArr.length === 0;
+  localStorage.setItem(SETUP_ALERT_KEY, JSON.stringify([...currentSigs]));
+
+  if (isFirstRun || fresh.length === 0) return;
+
+  const labelOf = (sig) => {
+    const [sym, tipo] = sig.split(":");
+    const name = shortName(sym);
+    if (tipo === "SPRING")     return `💎 ${name}: Wyckoff Spring`;
+    if (tipo === "ACCUM_TRIG") return `🚀 ${name}: Acumulare TRIGGER`;
+    if (tipo === "STAGE2")     return `✅ ${name}: Stage 2 confirmat`;
+    if (tipo === "DIST_TRIG")  return `🔻 ${name}: Distribuție SHORT trigger`;
+    return name;
+  };
+  const lines = fresh.map(labelOf);
+
+  setStatus("ok", `🔔 ${fresh.length} setup nou${fresh.length > 1 ? "ri" : ""}: ${lines.slice(0, 2).join(" · ")}${fresh.length > 2 ? "..." : ""}`);
+  setTimeout(() => setStatus("", "Ready"), 6000);
+
+  playSetupAlertSound();
+
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      new Notification(`Scanner Pro — ${fresh.length} setup nou${fresh.length > 1 ? "ri" : ""}`, {
+        body: lines.join("\n"),
+        tag: "setup-alert",
+        silent: false
+      });
+    } catch (e) {}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  HEATMAP VIEW
 // ═══════════════════════════════════════════════════════════════
 
@@ -3080,6 +3158,7 @@ async function scan() {
 
     // Check alerts after render (so UI updates first)
     checkAlerts();
+    checkSetupAlerts();
 
     // Fetch market health in background (doesn't block)
     fetchMarketHealth().catch(e => {
