@@ -127,6 +127,14 @@
 
   /* Header quick-stats pill (rendered client-side into #headerStats) */
   .header-stats { display:flex; gap:8px; font-size:10px; align-items:center; }
+
+  /* Ver-badge: arată CACHE_VERSION în header pentru debug cache SW */
+  .ver-badge {
+    display:inline-block; padding:2px 7px; margin-left:8px; border-radius:4px;
+    background:rgba(59,130,246,.15); color:#3b82f6; border:1px solid rgba(59,130,246,.4);
+    font-size:10px; font-weight:700; font-variant-numeric:tabular-nums;
+    vertical-align:middle; letter-spacing:.3px;
+  }
   .header-stats span {
     padding:3px 7px; border-radius:var(--radius-sm); background:var(--panel2);
     border:1px solid var(--border-soft); font-weight:700; font-variant-numeric:tabular-nums;
@@ -485,7 +493,7 @@
 <body>
 
 <header>
-  <h1>🔍 Scanner Pro — 20 Assets + MTF + Risk Mgmt</h1>
+  <h1>🔍 Scanner Pro — 20 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v10</span></h1>
   <div class="ctl"><span><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span></div>
   <div class="header-stats" id="headerStats"></div>
   <div class="ctl"><label>TF:</label>
