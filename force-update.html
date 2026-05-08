@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔄 Force Update PWA — Scanner</title>
+<meta name="theme-color" content="#0a0d13">
+<!-- Cache-bust: NU se cache-ează niciodată ca să poată fi accesată chiar și când SW vechi servește versiuni cache -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    background: #0a0d13;
+    background-image: radial-gradient(1400px 700px at 50% -200px, #1a1d2e 0%, #0a0d13 60%);
+    color: #d6dde8;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .box {
+    background: #121826; border: 1px solid #242b3e; border-radius: 16px;
+    padding: 28px 30px; max-width: 480px; width: 100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5);
+  }
+  h1 {
+    font-size: 20px; font-weight: 800; letter-spacing: -.3px; margin-bottom: 6px;
+    background: linear-gradient(90deg, #5bb0ff, #8b6fff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  p { font-size: 13px; color: #aab3c2; line-height: 1.6; margin-bottom: 14px; }
+  .step {
+    background: #1a2032; border: 1px solid #1b2133;
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 8px;
+    font-size: 12px; color: #d6dde8;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .step.ok { border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.06); }
+  .step.err { border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.06); color: #fca5a5; }
+  .step.pending { border-color: rgba(91,176,255,.3); background: rgba(91,176,255,.04); }
+  .step .icon { font-size: 16px; flex-shrink: 0; }
+  .actions { display: flex; gap: 8px; margin-top: 18px; }
+  .btn {
+    flex: 1; padding: 11px 14px; border-radius: 8px; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit; border: 1px solid #242b3e;
+    background: #1a2032; color: #d6dde8;
+    transition: all .15s ease;
+  }
+  .btn:hover { border-color: #5bb0ff; }
+  .btn.primary {
+    background: linear-gradient(135deg, #5bb0ff, #8b6fff);
+    border-color: transparent; color: #fff;
+  }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .meta {
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid #1b2133;
+    font-size: 10.5px; color: #6b7487; line-height: 1.5;
+  }
+  code { background: #1f2638; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="box">
+  <h1>🔄 Force Update PWA</h1>
+  <p>Unele browsere/PWA-uri rețin Service Worker-ul vechi chiar și după update. Această pagină îl elimină complet și încarcă versiunea curentă.</p>
+
+  <div id="steps">
+    <div class="step pending" id="step1"><span class="icon">⏳</span><span>Detectez Service Workers...</span></div>
+    <div class="step pending" id="step2"><span class="icon">⏳</span><span>Șterg cache-urile...</span></div>
+    <div class="step pending" id="step3"><span class="icon">⏳</span><span>Re-înregistrez SW nou...</span></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" type="button" id="restartBtn">🔁 Repetă</button>
+    <button class="btn primary" type="button" id="goHubBtn">🏠 Mergi la Hub</button>
+  </div>
+
+  <div class="meta" id="meta">
+    <b>Status:</b> <span id="metaStatus">pornire...</span><br>
+    <b>SW count:</b> <span id="metaSwCount">—</span> · <b>Cache count:</b> <span id="metaCacheCount">—</span>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+(function () {
+  function setStep(id, cls, icon, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = "step " + cls;
+    el.innerHTML = `<span class="icon">${icon}</span><span>${text}</span>`;
+  }
+
+  async function run() {
+    const status = document.getElementById("metaStatus");
+    const swCount = document.getElementById("metaSwCount");
+    const cacheCount = document.getElementById("metaCacheCount");
+
+    setStep("step1", "pending", "⏳", "Detectez Service Workers...");
+    setStep("step2", "pending", "⏳", "Șterg cache-urile...");
+    setStep("step3", "pending", "⏳", "Re-înregistrez SW nou...");
+
+    try {
+      // 1) Unregister all SWs
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        swCount.textContent = regs.length;
+        for (const r of regs) await r.unregister();
+        setStep("step1", "ok", "✅", `Service Workers eliminate: <b>${regs.length}</b>`);
+      } else {
+        setStep("step1", "err", "⚠️", "Browser-ul nu suportă Service Workers");
+      }
+
+      // 2) Delete all caches
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        cacheCount.textContent = keys.length;
+        await Promise.all(keys.map(k => caches.delete(k)));
+        setStep("step2", "ok", "✅", `Cache-uri șterse: <b>${keys.length}</b> ${keys.length ? "(" + keys.join(", ") + ")" : ""}`);
+      } else {
+        setStep("step2", "err", "⚠️", "Browser-ul nu suportă Cache API");
+      }
+
+      // 3) Re-register
+      if ("serviceWorker" in navigator) {
+        // Cache-bust query string ca să forțeze fetch fresh
+        const reg = await navigator.serviceWorker.register("sw.js?v=" + Date.now());
+        setStep("step3", "ok", "✅", "SW nou înregistrat (versiune curentă)");
+      }
+
+      status.textContent = "✅ GATA — apasă „Mergi la Hub" sau revino la pagina de care ai nevoie";
+      status.style.color = "#22c55e";
+    } catch (e) {
+      console.error("[force-update] error", e);
+      status.textContent = "❌ Eroare: " + (e && e.message ? e.message : e);
+      status.style.color = "#ef4444";
+    }
+  }
+
+  document.getElementById("restartBtn").addEventListener("click", run);
+  document.getElementById("goHubBtn").addEventListener("click", () => {
+    // Bypass cache cu query string + forțează full reload
+    window.location.href = "scanner-hub.html?fresh=" + Date.now();
+  });
+
+  // Auto-run la încărcare
+  run();
+})();
+</script>
+
+</body>
+</html>
