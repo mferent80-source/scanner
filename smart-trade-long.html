@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎯 Smart Trade Long — Multi-Symbol Scanner Pro</title>
+<meta name="theme-color" content="#0a0d13">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23f97316'/><stop offset='1' stop-color='%2322c55e'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='%230f1419'/><circle cx='32' cy='32' r='20' fill='none' stroke='url(%23g)' stroke-width='4'/><circle cx='32' cy='32' r='4' fill='%23f97316'/><line x1='32' y1='12' x2='32' y2='52' stroke='url(%23g)' stroke-width='2' opacity='.5'/></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0a0d13; --bg-grad:radial-gradient(1400px 700px at 50% -200px, #1a1d11 0%, #0a0d13 60%);
+    --panel:#121826; --panel2:#1a2032; --panel3:#1f2638;
+    --border:#242b3e; --border-soft:#1b2133;
+    --text:#d6dde8; --text-dim:#aab3c2; --muted:#6b7487;
+    --bull-s:#22c55e; --bear-s:#ef4444;
+    --ready:#22c55e; --ok:#06b6d4; --mixt:#facc15; --no:#ef4444;
+    --accent:#f97316; --accent2:#22c55e;
+    --header-bg:linear-gradient(180deg,rgba(38,30,18,.92),rgba(18,24,38,.95));
+    --row-hover:rgba(249,115,22,.06);
+    --radius:10px; --radius-sm:6px;
+    --ease:cubic-bezier(.4,0,.2,1);
+    color-scheme:dark;
+  }
+  html, body { height:100%; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+    background:var(--bg); background-image:var(--bg-grad); background-attachment:fixed;
+    color:var(--text); padding:10px; font-size:12px; min-height:100vh;
+    -webkit-font-smoothing:antialiased; line-height:1.4;
+    font-feature-settings:"cv11","ss01","tnum";
+  }
+
+  header {
+    display:flex; flex-wrap:wrap; align-items:center; gap:7px;
+    background:var(--header-bg);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    padding:7px 12px; border-radius:var(--radius);
+    border:1px solid var(--border); margin-bottom:8px;
+    position:sticky; top:6px; z-index:50;
+  }
+  header h1 {
+    font-size:13px; font-weight:700; letter-spacing:-.2px;
+    background:linear-gradient(90deg,#f97316,#22c55e);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    margin-right:auto; white-space:nowrap;
+  }
+  .ver-badge {
+    display:inline-block; padding:2px 7px; margin-left:6px; border-radius:4px;
+    background:rgba(249,115,22,.15); color:#f97316; border:1px solid rgba(249,115,22,.4);
+    font-size:10px; font-weight:700; font-variant-numeric:tabular-nums;
+    vertical-align:middle; letter-spacing:.3px;
+    -webkit-text-fill-color:initial;
+  }
+  .nav-link {
+    display:inline-flex; align-items:center; gap:3px;
+    background:var(--panel2); border:1px solid var(--border);
+    padding:3px 8px; border-radius:var(--radius-sm);
+    color:var(--text-dim); text-decoration:none; font-size:11px; font-weight:600;
+    transition:all .12s var(--ease);
+  }
+  .nav-link:hover { background:var(--panel3); border-color:var(--accent); color:var(--text); }
+
+  .status-pill {
+    font-size:10px; padding:3px 9px; border-radius:999px;
+    background:var(--panel2); border:1px solid var(--border-soft);
+    color:var(--text-dim); font-variant-numeric:tabular-nums;
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .status-pill .dot { width:7px; height:7px; border-radius:50%; background:var(--muted); }
+  .status-pill.scanning .dot { background:#facc15; animation:pulse 1s infinite; }
+  .status-pill.ready .dot { background:#22c55e; }
+  @keyframes pulse { 50% { opacity:.4; } }
+
+  button.btn {
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    padding:6px 12px; border-radius:var(--radius-sm); font-size:12px; font-weight:600;
+    cursor:pointer; font-family:inherit;
+    transition:all .12s var(--ease);
+  }
+  button.btn:hover { background:var(--panel3); border-color:var(--accent); }
+  button.btn.primary {
+    background:linear-gradient(135deg,#f97316,#22c55e); color:#fff; border-color:transparent;
+  }
+  button.btn.primary:hover { filter:brightness(1.1); }
+  button.btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* Settings panel */
+  .settings-panel {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    margin-bottom:8px; overflow:hidden;
+  }
+  .settings-panel summary {
+    padding:9px 12px; cursor:pointer; font-weight:600; user-select:none; font-size:11.5px;
+    display:flex; align-items:center; gap:6px; transition:background .12s var(--ease);
+    list-style:none;
+  }
+  .settings-panel summary::-webkit-details-marker { display:none; }
+  .settings-panel summary::before {
+    content:"▶"; font-size:8px; color:var(--muted); transition:transform .15s var(--ease); display:inline-block; width:10px;
+  }
+  .settings-panel[open] summary::before { transform:rotate(90deg); }
+  .settings-panel summary:hover { background:var(--panel2); }
+  .settings-grid {
+    padding:10px 12px 14px; border-top:1px solid var(--border-soft);
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;
+  }
+  .cfg-field { display:flex; flex-direction:column; gap:5px; }
+  .cfg-field label { font-size:10.5px; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+  .cfg-field input[type=number] {
+    padding:7px 10px; background:var(--panel2); color:var(--text);
+    border:1px solid var(--border); border-radius:var(--radius-sm); font-size:13px; font-family:inherit;
+    font-variant-numeric:tabular-nums; font-weight:700;
+  }
+  .cfg-field input[type=number]:focus { outline:none; border-color:var(--accent); }
+  .cfg-field .hint { font-size:10px; color:var(--muted); }
+
+  /* Stats */
+  .stats-strip {
+    display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;
+  }
+  .stat-pill {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:5px 10px; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums;
+    display:inline-flex; gap:4px; align-items:center;
+  }
+  .stat-pill .stat-val { font-weight:800; }
+  .stat-pill .stat-lbl { color:var(--muted); font-weight:500; }
+
+  /* Filter */
+  .filter-bar {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:6px 10px; margin-bottom:8px; display:flex; gap:5px; flex-wrap:wrap; align-items:center;
+  }
+  .filter-bar label { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.4px; font-weight:600; }
+  .chip {
+    background:var(--panel2); color:var(--text-dim); border:1px solid var(--border-soft);
+    padding:4px 10px; border-radius:999px; font-size:11px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:all .12s var(--ease);
+  }
+  .chip:hover { background:var(--panel3); }
+  .chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  /* Cards */
+  .cards-wrap {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:10px;
+  }
+  .cards-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:10px;
+  }
+  .stl-card {
+    background:var(--panel2); border:1px solid var(--border); border-left:4px solid var(--accent);
+    border-radius:var(--radius-sm); padding:10px 12px;
+    transition:transform .15s var(--ease), border-color .15s var(--ease);
+  }
+  .stl-card:hover { transform:translateY(-2px); }
+  .stl-card.v-ready { border-left-color:var(--ready); background:linear-gradient(135deg,rgba(34,197,94,.06),var(--panel2)); }
+  .stl-card.v-ok    { border-left-color:var(--ok); }
+  .stl-card.v-mixt  { border-left-color:var(--mixt); }
+  .stl-card.v-no    { border-left-color:var(--no); opacity:.85; }
+  .stl-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .stl-sym { font-weight:800; font-size:14px; }
+  .stl-price { font-size:11px; color:var(--text-dim); font-variant-numeric:tabular-nums; margin-left:6px; font-weight:500; }
+  .stl-verdict {
+    font-size:10px; font-weight:800; padding:3px 8px; border-radius:4px;
+    letter-spacing:.3px;
+  }
+  .v-ready .stl-verdict { background:rgba(34,197,94,.20); color:var(--ready); border:1px solid rgba(34,197,94,.45); }
+  .v-ok    .stl-verdict { background:rgba(6,182,212,.20); color:var(--ok); border:1px solid rgba(6,182,212,.45); }
+  .v-mixt  .stl-verdict { background:rgba(250,204,21,.20); color:var(--mixt); border:1px solid rgba(250,204,21,.45); }
+  .v-no    .stl-verdict { background:rgba(239,68,68,.18); color:var(--no); border:1px solid rgba(239,68,68,.40); }
+  .stl-score {
+    font-weight:800; font-size:13px; font-variant-numeric:tabular-nums;
+  }
+  .v-ready .stl-score { color:var(--ready); }
+  .v-ok    .stl-score { color:var(--ok); }
+  .v-mixt  .stl-score { color:var(--mixt); }
+  .v-no    .stl-score { color:var(--no); }
+  .filter-grid {
+    display:grid; grid-template-columns:repeat(5, 1fr); gap:4px; margin-bottom:7px;
+    font-size:10px;
+  }
+  .filter-cell {
+    background:var(--panel3); border:1px solid var(--border-soft); border-radius:3px;
+    padding:4px 6px; text-align:center;
+  }
+  .filter-cell.ok { background:rgba(34,197,94,.15); color:var(--ready); border-color:rgba(34,197,94,.35); }
+  .filter-cell.bad { background:rgba(239,68,68,.10); color:var(--no); border-color:rgba(239,68,68,.30); }
+  .filter-lbl { display:block; color:var(--muted); font-size:9px; font-weight:600; text-transform:uppercase; }
+  .filter-val { display:block; font-weight:800; font-size:11px; font-variant-numeric:tabular-nums; }
+
+  .mtf-row { display:flex; gap:5px; margin-bottom:7px; font-size:10px; flex-wrap:wrap; }
+  .mtf-pill {
+    background:var(--panel3); border:1px solid var(--border-soft); border-radius:3px;
+    padding:3px 7px; font-variant-numeric:tabular-nums; font-weight:600;
+  }
+  .mtf-pill.pos { color:var(--bull-s); border-color:rgba(34,197,94,.35); }
+  .mtf-pill.neg { color:var(--bear-s); border-color:rgba(239,68,68,.35); }
+  .mtf-pill .mtf-tf { color:var(--muted); margin-right:3px; font-weight:500; }
+
+  .setup-box {
+    background:var(--panel3); border:1px solid var(--border-soft); border-radius:6px;
+    padding:7px 10px; margin-bottom:7px; font-size:11px;
+  }
+  .setup-row { display:flex; justify-content:space-between; gap:6px; padding:2px 0; }
+  .setup-lbl { color:var(--text-dim); font-weight:500; }
+  .setup-val { font-weight:700; font-variant-numeric:tabular-nums; }
+  .setup-row .pos { color:var(--bull-s); }
+  .setup-row .neg { color:var(--bear-s); }
+
+  .actions { display:flex; gap:5px; flex-wrap:wrap; }
+  .actions a, .actions button {
+    background:var(--panel3); color:var(--text-dim); border:1px solid var(--border);
+    padding:4px 8px; border-radius:4px; font-size:10.5px; font-weight:600;
+    text-decoration:none; cursor:pointer; font-family:inherit;
+    transition:all .12s;
+  }
+  .actions a:hover, .actions button:hover { color:var(--text); border-color:var(--accent); }
+  .actions .pionex { background:rgba(249,115,22,.15); color:var(--accent); border-color:rgba(249,115,22,.40); }
+  .actions .pionex:hover { background:rgba(249,115,22,.25); }
+  .actions .watch { background:rgba(34,197,94,.12); color:var(--bull-s); border-color:rgba(34,197,94,.35); }
+
+  .empty {
+    padding:50px 20px; text-align:center; color:var(--muted); font-size:13px;
+  }
+  .empty .empty-icon { font-size:36px; margin-bottom:12px; opacity:.6; }
+  .empty .empty-hint { font-size:11px; margin-top:8px; color:var(--text-dim); }
+
+  /* Legend */
+  .legend {
+    display:flex; gap:10px; flex-wrap:wrap; padding:8px 10px;
+    background:var(--panel2); border:1px solid var(--border-soft); border-radius:var(--radius-sm);
+    margin-bottom:8px; font-size:11px;
+  }
+  .legend-item { display:inline-flex; align-items:center; gap:5px; }
+  .legend-pill {
+    font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px;
+  }
+
+  .foot { text-align:center; color:var(--muted); font-size:10px; padding:14px 0 6px; }
+  .foot a { color:var(--accent); text-decoration:none; }
+
+  .toast {
+    position:fixed; bottom:20px; right:20px; z-index:10000;
+    background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent);
+    border-radius:8px; padding:10px 14px; font-size:12px; color:var(--text);
+    box-shadow:0 6px 20px rgba(0,0,0,.4);
+    animation:toastIn .3s var(--ease);
+    max-width:340px;
+  }
+  .toast.ok { border-left-color:#22c55e; }
+  .toast.err { border-left-color:#ef4444; }
+  @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+
+  @media (max-width:700px) {
+    .cards-grid { grid-template-columns:1fr; }
+    .filter-grid { grid-template-columns:repeat(3, 1fr); }
+    .settings-grid { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v23</span></h1>
+  <a class="nav-link" href="scanner-hub.html">🏠 Hub</a>
+  <a class="nav-link" href="scanner-crypto.html">🪙 Scanner</a>
+  <a class="nav-link" href="watchlist.html">👁️ Watchlist</a>
+  <a class="nav-link" href="pump-radar.html" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#ef4444">🚨 Pump</a>
+  <span class="status-pill" id="statusPill"><span class="dot"></span><span id="statusText">idle</span></span>
+  <button class="btn primary" id="scanBtn">↻ Scanează</button>
+</header>
+
+<!-- LEGEND -->
+<div class="legend">
+  <span class="legend-item"><span class="legend-pill" style="background:rgba(34,197,94,.20);color:var(--ready);border:1px solid rgba(34,197,94,.45)">🚀 LONG READY</span><span style="color:var(--muted)">≥75 — toate filtrele aliniate (A+)</span></span>
+  <span class="legend-item"><span class="legend-pill" style="background:rgba(6,182,212,.20);color:var(--ok);border:1px solid rgba(6,182,212,.45)">🟢 LONG OK</span><span style="color:var(--muted)">≥60 — MTF + R:R bun</span></span>
+  <span class="legend-item"><span class="legend-pill" style="background:rgba(250,204,21,.20);color:var(--mixt);border:1px solid rgba(250,204,21,.45)">🟡 MIXT</span><span style="color:var(--muted)">45-59 — filtre incomplete</span></span>
+  <span class="legend-item"><span class="legend-pill" style="background:rgba(239,68,68,.18);color:var(--no);border:1px solid rgba(239,68,68,.40)">🔴 NU LONG</span><span style="color:var(--muted)">&lt;45 — nu confirmă</span></span>
+</div>
+
+<!-- SETTINGS -->
+<details class="settings-panel" id="settingsPanel">
+  <summary>⚙️ Cont &amp; Risk Management</summary>
+  <div class="settings-grid">
+    <div class="cfg-field">
+      <label>💼 Cont total (USDT)</label>
+      <input type="number" id="accSize" value="1000" min="100" step="100">
+      <div class="hint">Folosit pentru a calcula automat poziția</div>
+    </div>
+    <div class="cfg-field">
+      <label>⚠ Risc per trade (%)</label>
+      <input type="number" id="riskPct" value="1" min="0.1" max="5" step="0.1">
+      <div class="hint">% din cont riscat per trade. Determină Position size pe baza SL.</div>
+    </div>
+    <div class="cfg-field">
+      <label>📦 Universul scanat</label>
+      <input type="number" id="universeSize" value="50" min="20" max="100" step="10">
+      <div class="hint">Câte perechi USDT futures (top by volume) + ⭐ Watchlist</div>
+    </div>
+    <div class="cfg-field">
+      <label>Filtre suplimentare</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer">
+        <input type="checkbox" id="watchOnly" style="accent-color:var(--accent)"> <span style="font-size:11.5px">Doar coin-urile din ⭐ Watchlist</span>
+      </label>
+    </div>
+  </div>
+</details>
+
+<!-- STATS -->
+<div class="stats-strip" id="statsStrip">
+  <span class="stat-pill"><span class="stat-lbl">Scanate:</span><span class="stat-val" id="statTotal">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(34,197,94,.4)"><span class="stat-lbl">🚀 READY:</span><span class="stat-val" id="statReady" style="color:var(--ready)">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(6,182,212,.4)"><span class="stat-lbl">🟢 OK:</span><span class="stat-val" id="statOK" style="color:var(--ok)">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(250,204,21,.4)"><span class="stat-lbl">🟡 MIXT:</span><span class="stat-val" id="statMixt" style="color:var(--mixt)">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(239,68,68,.4)"><span class="stat-lbl">🔴 NU:</span><span class="stat-val" id="statNo" style="color:var(--no)">0</span></span>
+  <span class="stat-pill" style="margin-left:auto"><span class="stat-lbl">Last scan:</span><span class="stat-val" id="statLastScan">—</span></span>
+</div>
+
+<!-- FILTER -->
+<div class="filter-bar">
+  <label>Afișez:</label>
+  <button class="chip active" data-filter="all">Toate</button>
+  <button class="chip" data-filter="actionable">🚀 READY + 🟢 OK</button>
+  <button class="chip" data-filter="ready">🚀 doar READY</button>
+  <button class="chip" data-filter="top5">Top 5 score</button>
+  <span style="width:1px;height:18px;background:var(--border);margin:0 6px"></span>
+  <label>Sortare:</label>
+  <select id="sortSelect" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit;cursor:pointer">
+    <option value="score-desc" selected>Score (mare → mic)</option>
+    <option value="rr-desc">R:R (mare → mic)</option>
+    <option value="name">Nume (A-Z)</option>
+  </select>
+</div>
+
+<!-- CARDS -->
+<div class="cards-wrap">
+  <div id="cardsContainer"></div>
+</div>
+
+<div class="foot">
+  Smart Trade Long v22 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
+  <a href="scanner-hub.html">Înapoi la Hub</a>
+</div>
+
+<script>
+"use strict";
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+const VERSION = "v23";
+const CFG_KEY = "stl_cfg_v1";
+const FILTER_KEY = "stl_filter_v1";
+const SORT_KEY = "stl_sort_v1";
+const RESULTS_KEY = "stl_results_v1";
+const RESULTS_TS_KEY = "stl_results_ts_v1";
+const RESULTS_TTL = 5 * 60 * 1000;  // re-folosim rezultatele dacă <5 min
+const TICKER_CACHE_KEY = "stl_ticker_cache_v1";
+const TICKER_CACHE_TTL = 60_000;     // 1 min — universul e relativ stabil
+const WATCHLIST_KEY = "scanner_watchlist";  // ⭐ scanner ca filtru
+const BATCH_SIZE = 4;                // batch parallel
+const BATCH_DELAY_MS = 600;          // pauză anti rate-limit
+
+// Ponderare 5 filtri (max 100)
+const W_MTF = 35;        // MTF (15m + 1h + 4h)
+const W_VOL = 15;        // Volume 1h vs SMA20
+const W_ADX = 15;        // ADX 1h
+const W_STR = 20;        // Structure break (close > highest 20)
+const W_RR  = 10;        // R:R (TP2/SL ratio)
+const W_RSI = 5;         // RSI sanity 1h
+
+const DEFAULT_CFG = { accountSize: 1000, riskPct: 1.0, universeSize: 50, watchOnly: false };
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+const STATE = {
+  cfg: { ...DEFAULT_CFG },
+  results: [],          // [{ sym, price, score, verdict, filters, mtf, setup, ... }]
+  filter: "all",
+  sort: "score-desc",
+  isScanning: false,
+  lastScan: null,
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  PERSISTENCE
+// ═══════════════════════════════════════════════════════════════
+function loadCfg() {
+  try {
+    const raw = localStorage.getItem(CFG_KEY);
+    if (raw) STATE.cfg = { ...DEFAULT_CFG, ...JSON.parse(raw) };
+  } catch (e) { /* noop */ }
+}
+function saveCfg() { localStorage.setItem(CFG_KEY, JSON.stringify(STATE.cfg)); }
+
+function loadResults() {
+  try {
+    const ts = parseInt(localStorage.getItem(RESULTS_TS_KEY) || "0", 10);
+    if (ts && (Date.now() - ts < RESULTS_TTL)) {
+      const raw = localStorage.getItem(RESULTS_KEY);
+      if (raw) {
+        STATE.results = JSON.parse(raw);
+        STATE.lastScan = ts;
+      }
+    }
+  } catch (e) { STATE.results = []; }
+}
+function saveResults() {
+  localStorage.setItem(RESULTS_KEY, JSON.stringify(STATE.results));
+  localStorage.setItem(RESULTS_TS_KEY, String(STATE.lastScan || Date.now()));
+}
+
+function getWatchlist() {
+  try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]"); }
+  catch (e) { return []; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INDICATORS — RSI / EMA / ADX / ATR
+// ═══════════════════════════════════════════════════════════════
+function rsiArr(closes, len = 14) {
+  const out = new Array(closes.length);
+  if (closes.length < len + 1) return out;
+  let gain = 0, loss = 0;
+  for (let i = 1; i <= len; i++) {
+    const d = closes[i] - closes[i-1];
+    if (d >= 0) gain += d; else loss -= d;
+  }
+  let avgG = gain / len, avgL = loss / len;
+  out[len] = avgL === 0 ? 100 : 100 - 100 / (1 + avgG / avgL);
+  for (let i = len + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i-1];
+    const g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
+    avgG = (avgG * (len-1) + g) / len;
+    avgL = (avgL * (len-1) + l) / len;
+    out[i] = avgL === 0 ? 100 : 100 - 100 / (1 + avgG / avgL);
+  }
+  return out;
+}
+function rsiLast(closes, len = 14) {
+  const arr = rsiArr(closes, len);
+  return arr[arr.length - 1];
+}
+function emaArr(closes, len) {
+  const out = [];
+  if (closes.length < len) return out;
+  const k = 2 / (len + 1);
+  let e = closes.slice(0, len).reduce((a, b) => a + b, 0) / len;
+  out[len - 1] = e;
+  for (let i = len; i < closes.length; i++) { e = closes[i] * k + e * (1-k); out[i] = e; }
+  return out;
+}
+function emaLast(closes, len) {
+  const arr = emaArr(closes, len);
+  return arr[arr.length - 1];
+}
+function smaLast(arr, len) {
+  if (arr.length < len) return NaN;
+  return arr.slice(-len).reduce((a, b) => a + b, 0) / len;
+}
+function atrLast(highs, lows, closes, len = 14) {
+  if (highs.length < len + 1) return NaN;
+  const trs = [];
+  for (let i = 1; i < highs.length; i++) {
+    trs.push(Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1])));
+  }
+  let a = trs.slice(0, len).reduce((x,y) => x+y, 0) / len;
+  for (let i = len; i < trs.length; i++) a = (a * (len-1) + trs[i]) / len;
+  return a;
+}
+function adxLast(highs, lows, closes, len = 14) {
+  if (highs.length < len * 2 + 1) return NaN;
+  const pDM = [], mDM = [], trs = [];
+  for (let i = 1; i < highs.length; i++) {
+    const up = highs[i] - highs[i-1], dn = lows[i-1] - lows[i];
+    pDM.push(up > dn && up > 0 ? up : 0);
+    mDM.push(dn > up && dn > 0 ? dn : 0);
+    trs.push(Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1])));
+  }
+  const wilder = (arr, n) => {
+    let v = arr.slice(0, n).reduce((a,b) => a+b, 0);
+    const o = [v];
+    for (let i = n; i < arr.length; i++) { v = v - v/n + arr[i]; o.push(v); }
+    return o;
+  };
+  const sp = wilder(pDM, len), sm = wilder(mDM, len), st = wilder(trs, len);
+  const dx = [];
+  for (let i = 0; i < sp.length; i++) {
+    if (st[i] === 0) { dx.push(0); continue; }
+    const pDI = (sp[i] / st[i]) * 100, mDI = (sm[i] / st[i]) * 100;
+    const denom = pDI + mDI;
+    dx.push(denom === 0 ? 0 : Math.abs(pDI - mDI) / denom * 100);
+  }
+  if (dx.length < len) return NaN;
+  let a = dx.slice(0, len).reduce((x,y) => x+y, 0) / len;
+  for (let i = len; i < dx.length; i++) a = (a * (len-1) + dx[i]) / len;
+  return a;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FETCHERS — Binance Futures
+// ═══════════════════════════════════════════════════════════════
+async function fetchTicker24hr() {
+  try {
+    const raw = localStorage.getItem(TICKER_CACHE_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj.ts && (Date.now() - obj.ts < TICKER_CACHE_TTL)) return obj.data;
+    }
+  } catch (e) { /* noop */ }
+  const r = await fetch("https://fapi.binance.com/fapi/v1/ticker/24hr");
+  if (!r.ok) throw new Error("ticker24hr " + r.status);
+  const data = await r.json();
+  try { localStorage.setItem(TICKER_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch (e) {}
+  return data;
+}
+async function fetchKlines(symbol, interval, limit) {
+  const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`klines ${interval} ${r.status} pentru ${symbol}`);
+  const data = await r.json();
+  return {
+    highs:   data.map(k => parseFloat(k[2])),
+    lows:    data.map(k => parseFloat(k[3])),
+    closes:  data.map(k => parseFloat(k[4])),
+    volumes: data.map(k => parseFloat(k[5])),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MTF SCORE — pe TF dat, returnează score normalizat -100..+100
+// ═══════════════════════════════════════════════════════════════
+function calcMTFScore(bars) {
+  const c = bars.closes, h = bars.highs, l = bars.lows;
+  if (c.length < 50) return 0;
+  const last = c[c.length - 1];
+  const ema20 = emaLast(c, 20);
+  const ema50 = emaLast(c, 50);
+  // Trend (-3..+3)
+  let trend = 0;
+  if (last > ema20) trend++;
+  if (ema20 > ema50) trend++;
+  if (last > ema50) trend++;
+  if (last < ema20) trend--;
+  if (ema20 < ema50) trend--;
+  if (last < ema50) trend--;
+  // Momentum: tiered RSI
+  const rsi = rsiLast(c, 14);
+  let mom = 0;
+  if (rsi >= 65) mom = 3;
+  else if (rsi >= 55) mom = 1.5;
+  else if (rsi >= 45) mom = 0;
+  else if (rsi >= 35) mom = -1.5;
+  else mom = -3;
+  // Structure: ultimele 10 bare vs cele 11-20
+  const recentHi = Math.max(...h.slice(-10));
+  const refHi = Math.max(...h.slice(-20, -10));
+  const recentLo = Math.min(...l.slice(-10));
+  const refLo = Math.min(...l.slice(-20, -10));
+  let struct = 0;
+  if (recentHi > refHi) struct += 2;
+  if (recentLo < refLo) struct -= 2;
+  // Suma & normalizare la -100..+100 (max raw = +8, min = -8)
+  const raw = trend + mom + struct;
+  return Math.max(-100, Math.min(100, Math.round(raw * 12.5)));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SCAN UN SIMBOL — fetch 1h + 15m + 4h, calculează 5 filtri, scor, setup
+// ═══════════════════════════════════════════════════════════════
+async function scanSymbol(symbol) {
+  try {
+    const [bars1h, bars15m, bars4h] = await Promise.all([
+      fetchKlines(symbol, "1h", 100),
+      fetchKlines(symbol, "15m", 60),
+      fetchKlines(symbol, "4h", 60),
+    ]);
+    if (bars1h.closes.length < 50) return null;
+
+    const c = bars1h.closes;
+    const price = c[c.length - 1];
+
+    // ── Indicatori 1h
+    const adx = adxLast(bars1h.highs, bars1h.lows, c, 14);
+    const rsi = rsiLast(c, 14);
+    const atr = atrLast(bars1h.highs, bars1h.lows, c, 14);
+
+    // ── Volume relativ (last vs SMA20 ANTE)
+    const vSlice = bars1h.volumes.slice(-21, -1);
+    const avgV = vSlice.length ? vSlice.reduce((a,b) => a+b, 0) / vSlice.length : 0;
+    const lastV = bars1h.volumes[bars1h.volumes.length - 1];
+    const volRel = avgV > 0 ? lastV / avgV : 0;
+
+    // ── Structure break: close > highest(20) — verificăm pe ultima bar inclusă
+    const high20 = Math.max(...bars1h.highs.slice(-21, -1));
+    const structBreak = price > high20;
+    const structNear = !structBreak && price >= high20 * 0.995;
+
+    // ── MTF scores pe 15m / 1h / 4h
+    const mtf15 = calcMTFScore(bars15m);
+    const mtf1h = calcMTFScore(bars1h);
+    const mtf4h = calcMTFScore(bars4h);
+
+    // ── Setup: Entry = price; SL = price - 1.5*ATR; TP1/TP2/TP3 din ATR
+    const sl  = price - atr * 1.5;
+    const tp1 = price + atr * 1.5;
+    const tp2 = price + atr * 2.5;
+    const tp3 = price + atr * 4.0;
+    const slDelta = ((sl - price) / price) * 100;  // negativ
+    const rr2 = (tp2 - price) / (price - sl);
+
+    // ── Position sizing din risc fix
+    const riskUSDT = STATE.cfg.accountSize * (STATE.cfg.riskPct / 100);
+    const riskPerUnit = price - sl;
+    const positionSize = riskPerUnit > 0 ? riskUSDT / riskPerUnit : 0; // unități
+    const positionUSDT = positionSize * price;
+
+    // ── 5 FILTRE PONDERATE → SCORE 0-100
+    let score = 0;
+    const filters = {};
+
+    // F1: MTF (35 pts)
+    const mtfArr = [mtf15, mtf1h, mtf4h];
+    const allMedium = mtfArr.every(s => s >= 40);
+    const strongCount = mtfArr.filter(s => s >= 60).length;
+    const mediumCount = mtfArr.filter(s => s >= 40).length;
+    let mtfPts;
+    if (allMedium) mtfPts = W_MTF;
+    else if (strongCount >= 2 && mediumCount >= 3) mtfPts = W_MTF;
+    else if (strongCount >= 2) mtfPts = W_MTF * 0.85;
+    else if (mediumCount >= 2) mtfPts = W_MTF * 0.65;
+    else if (mediumCount >= 1) mtfPts = W_MTF * 0.4;
+    else mtfPts = 0;
+    score += mtfPts;
+    filters.mtf = { pts: mtfPts, max: W_MTF, ok: allMedium, val: `${mtf15}/${mtf1h}/${mtf4h}` };
+
+    // F2: Volume (15 pts)
+    let volPts;
+    if (volRel >= 1.5) volPts = W_VOL;
+    else if (volRel >= 1.2) volPts = W_VOL * 0.8;
+    else if (volRel >= 1.0) volPts = W_VOL * 0.4;
+    else volPts = 0;
+    score += volPts;
+    filters.vol = { pts: volPts, max: W_VOL, ok: volRel >= 1.2, val: volRel.toFixed(2) + "x" };
+
+    // F3: ADX (15 pts)
+    let adxPts;
+    if (adx >= 25 && adx <= 45) adxPts = W_ADX;
+    else if (adx >= 20 && adx <= 55) adxPts = W_ADX * 0.8;
+    else if (adx >= 15) adxPts = W_ADX * 0.4;
+    else adxPts = 0;
+    score += adxPts;
+    filters.adx = { pts: adxPts, max: W_ADX, ok: adx >= 25 && adx <= 45, val: adx.toFixed(0) };
+
+    // F4: Structure break (20 pts)
+    let strPts;
+    if (structBreak) strPts = W_STR;
+    else if (structNear) strPts = W_STR * 0.5;
+    else strPts = 0;
+    score += strPts;
+    filters.str = { pts: strPts, max: W_STR, ok: structBreak, val: structBreak ? "✓ Break" : structNear ? "≈ Aprope" : "—" };
+
+    // F5: R:R (10 pts) — TP2 ratio
+    let rrPts;
+    if (rr2 >= 2.0) rrPts = W_RR;
+    else if (rr2 >= 1.5) rrPts = W_RR * 0.7;
+    else if (rr2 >= 1.0) rrPts = W_RR * 0.4;
+    else rrPts = 0;
+    score += rrPts;
+    filters.rr = { pts: rrPts, max: W_RR, ok: rr2 >= 2.0, val: rr2.toFixed(2) };
+
+    // F6: RSI sanity (5 pts) — bonus dacă în 50-70
+    let rsiPts = 0;
+    if (rsi >= 50 && rsi <= 70) rsiPts = W_RSI;
+    else if (rsi >= 45 && rsi <= 75) rsiPts = W_RSI * 0.6;
+    score += rsiPts;
+    filters.rsi = { pts: rsiPts, max: W_RSI, ok: rsi >= 50 && rsi <= 70, val: rsi.toFixed(0) };
+
+    score = Math.round(Math.max(0, Math.min(100, score)));
+
+    // ── Verdict
+    let verdict, vClass;
+    if (score >= 75) { verdict = "🚀 LONG READY"; vClass = "ready"; }
+    else if (score >= 60) { verdict = "🟢 LONG OK"; vClass = "ok"; }
+    else if (score >= 45) { verdict = "🟡 SETUP MIXT"; vClass = "mixt"; }
+    else { verdict = "🔴 NU LONG"; vClass = "no"; }
+
+    return {
+      sym: symbol,
+      price,
+      score,
+      verdict, vClass,
+      filters,
+      mtf: { tf15: mtf15, tf1h: mtf1h, tf4h: mtf4h },
+      setup: { entry: price, sl, tp1, tp2, tp3, slDelta, rr2, atr, positionSize, positionUSDT, riskUSDT },
+      indicators: { adx, rsi, atr, volRel },
+    };
+  } catch (e) {
+    return { sym: symbol, error: e.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GET UNIVERSE — watchlist + top N USDT (excl BTC/ETH)
+// ═══════════════════════════════════════════════════════════════
+async function getUniverse() {
+  const list = new Set();
+  // Watchlist (formatare ⭐): "BINANCE:BTCUSDT" → "BTCUSDT"
+  const wl = getWatchlist().map(s => s.includes(":") ? s.split(":")[1] : s).filter(s => s.endsWith("USDT"));
+  if (STATE.cfg.watchOnly) {
+    if (!wl.length) {
+      throw new Error("Watchlist gol — adaugă coin-uri în Crypto Scanner sau Watchlist Monitor");
+    }
+    return wl.slice(0, STATE.cfg.universeSize);
+  }
+  // Top by volume (excl BTC/ETH ca să nu domine)
+  const tickers = await fetchTicker24hr();
+  const top = tickers
+    .filter(t => t.symbol.endsWith("USDT") && t.symbol !== "BTCUSDT" && t.symbol !== "ETHUSDT")
+    .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+    .slice(0, STATE.cfg.universeSize)
+    .map(t => t.symbol);
+  // Watchlist + Top, dedup
+  for (const s of wl) list.add(s);
+  for (const s of top) list.add(s);
+  return [...list].slice(0, STATE.cfg.universeSize);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RUN SCAN
+// ═══════════════════════════════════════════════════════════════
+async function runScan() {
+  if (STATE.isScanning) return;
+  STATE.isScanning = true;
+  document.getElementById("scanBtn").disabled = true;
+  setStatus("scanning", "obținere universul...");
+  try {
+    const universe = await getUniverse();
+    setStatus("scanning", `0/${universe.length}`);
+    const results = [];
+    for (let i = 0; i < universe.length; i += BATCH_SIZE) {
+      const batch = universe.slice(i, i + BATCH_SIZE);
+      const promises = batch.map(s => scanSymbol(s));
+      const batchResults = await Promise.all(promises);
+      for (const r of batchResults) {
+        if (r && !r.error) results.push(r);
+      }
+      // Update progres + render parțial
+      setStatus("scanning", `${i + batch.length}/${universe.length}`);
+      results.sort((a, b) => b.score - a.score);
+      STATE.results = results.slice();
+      render();
+      if (i + BATCH_SIZE < universe.length) await sleep(BATCH_DELAY_MS);
+    }
+    STATE.lastScan = Date.now();
+    saveResults();
+    setStatus("ready", `gata — ${results.length} coin-uri analizate`);
+    toast("ok", `Scan complet: ${results.length} coin-uri analizate`);
+  } catch (e) {
+    setStatus("ready", "eroare: " + e.message);
+    toast("err", "Eroare la scan: " + e.message);
+  } finally {
+    STATE.isScanning = false;
+    document.getElementById("scanBtn").disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════════
+function setStatus(cls, txt) {
+  const pill = document.getElementById("statusPill");
+  const text = document.getElementById("statusText");
+  pill.className = "status-pill " + (cls || "");
+  text.textContent = txt;
+}
+
+function shortName(sym) { return sym.replace(/USDT$/, ""); }
+function tvUrl(sym) { return "https://www.tradingview.com/chart/?symbol=BINANCE:" + encodeURIComponent(sym + ".P") + "&interval=60"; }
+function pionexUrl(sym) {
+  const base = sym.replace(/USDT$/, "");
+  return `https://www.pionex.com/en/futures-trade/${base}_USDT.PERP`;
+}
+function fmtPrice(p) {
+  if (p >= 1000) return p.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (p >= 1) return p.toFixed(4);
+  if (p >= 0.01) return p.toFixed(5);
+  return p.toFixed(7);
+}
+function fmtUSD(v) {
+  return "$" + v.toLocaleString("en-US", { maximumFractionDigits: v < 100 ? 2 : 0 });
+}
+
+function applyFilter(rows) {
+  if (STATE.filter === "all") return rows;
+  if (STATE.filter === "actionable") return rows.filter(r => r.vClass === "ready" || r.vClass === "ok");
+  if (STATE.filter === "ready") return rows.filter(r => r.vClass === "ready");
+  if (STATE.filter === "top5") return rows.slice(0, 5);
+  return rows;
+}
+function applySort(rows) {
+  const cp = rows.slice();
+  switch (STATE.sort) {
+    case "score-desc": cp.sort((a, b) => b.score - a.score); break;
+    case "rr-desc":    cp.sort((a, b) => b.setup.rr2 - a.setup.rr2); break;
+    case "name":       cp.sort((a, b) => shortName(a.sym).localeCompare(shortName(b.sym))); break;
+  }
+  return cp;
+}
+
+function render() {
+  // Stats
+  const buckets = { ready: 0, ok: 0, mixt: 0, no: 0 };
+  for (const r of STATE.results) {
+    if (buckets[r.vClass] !== undefined) buckets[r.vClass]++;
+  }
+  document.getElementById("statTotal").textContent = STATE.results.length;
+  document.getElementById("statReady").textContent = buckets.ready;
+  document.getElementById("statOK").textContent = buckets.ok;
+  document.getElementById("statMixt").textContent = buckets.mixt;
+  document.getElementById("statNo").textContent = buckets.no;
+  document.getElementById("statLastScan").textContent = STATE.lastScan
+    ? new Date(STATE.lastScan).toLocaleTimeString("ro-RO")
+    : "—";
+
+  const container = document.getElementById("cardsContainer");
+  const filtered = applySort(applyFilter(STATE.results));
+  if (!filtered.length) {
+    if (!STATE.results.length) {
+      container.innerHTML = `<div class="empty">
+        <div class="empty-icon">🎯</div>
+        <div>Niciun rezultat încă.</div>
+        <div class="empty-hint">Apasă <b>↻ Scanează</b> pentru a analiza universul (top USDT futures + watchlist).</div>
+      </div>`;
+    } else {
+      container.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div>Niciun coin nu corespunde filtrului.</div></div>`;
+    }
+    return;
+  }
+
+  let html = `<div class="cards-grid">`;
+  for (const r of filtered) {
+    const f = r.filters;
+    const m = r.mtf;
+    const s = r.setup;
+    const i = r.indicators;
+    const mtfPill = (label, val) => {
+      const cls = val >= 40 ? "pos" : val <= -40 ? "neg" : "";
+      return `<span class="mtf-pill ${cls}"><span class="mtf-tf">${label}</span>${val >= 0 ? "+" : ""}${val}</span>`;
+    };
+    const fc = (filt) => `<div class="filter-cell ${filt.ok ? 'ok' : (filt.pts > 0 ? '' : 'bad')}">
+      <span class="filter-lbl">${filt.lbl}</span>
+      <span class="filter-val">${filt.val}</span>
+    </div>`;
+    html += `<div class="stl-card v-${r.vClass}" onclick="event.target.closest('a,button')||window.open('${tvUrl(r.sym)}','_blank')">
+      <div class="stl-head">
+        <div>
+          <span class="stl-sym">${shortName(r.sym)}</span>
+          <span class="stl-price">${fmtPrice(r.price)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="stl-score">${r.score}/100</span>
+          <span class="stl-verdict">${r.verdict}</span>
+        </div>
+      </div>
+      <div class="filter-grid">
+        ${fc({ lbl: "MTF", val: f.mtf.val, ok: f.mtf.ok, pts: f.mtf.pts })}
+        ${fc({ lbl: "Vol", val: f.vol.val, ok: f.vol.ok, pts: f.vol.pts })}
+        ${fc({ lbl: "ADX", val: f.adx.val, ok: f.adx.ok, pts: f.adx.pts })}
+        ${fc({ lbl: "Struct", val: f.str.val, ok: f.str.ok, pts: f.str.pts })}
+        ${fc({ lbl: "R:R", val: f.rr.val, ok: f.rr.ok, pts: f.rr.pts })}
+      </div>
+      <div class="mtf-row">
+        ${mtfPill("15m", m.tf15)}
+        ${mtfPill("1h", m.tf1h)}
+        ${mtfPill("4h", m.tf4h)}
+        <span class="mtf-pill"><span class="mtf-tf">RSI</span>${i.rsi.toFixed(0)}</span>
+        <span class="mtf-pill"><span class="mtf-tf">ATR%</span>${(i.atr/r.price*100).toFixed(2)}</span>
+      </div>
+      <div class="setup-box">
+        <div class="setup-row"><span class="setup-lbl">Entry</span><span class="setup-val">${fmtPrice(s.entry)}</span></div>
+        <div class="setup-row"><span class="setup-lbl">SL (-1.5×ATR)</span><span class="setup-val neg">${fmtPrice(s.sl)} <span style="color:var(--muted);font-weight:400">(${s.slDelta.toFixed(2)}%)</span></span></div>
+        <div class="setup-row"><span class="setup-lbl">TP1 / TP2 / TP3</span><span class="setup-val pos">${fmtPrice(s.tp1)} / <b>${fmtPrice(s.tp2)}</b> / ${fmtPrice(s.tp3)}</span></div>
+        <div class="setup-row"><span class="setup-lbl">R:R (la TP2)</span><span class="setup-val">${s.rr2.toFixed(2)}</span></div>
+        <div class="setup-row"><span class="setup-lbl">Position size</span><span class="setup-val">${fmtUSD(s.positionUSDT)} <span style="color:var(--muted);font-weight:400">(risc ${fmtUSD(s.riskUSDT)})</span></span></div>
+      </div>
+      <div class="actions" onclick="event.stopPropagation()">
+        <a href="${tvUrl(r.sym)}" target="_blank" rel="noopener">📈 TradingView</a>
+        <a href="${pionexUrl(r.sym)}" target="_blank" rel="noopener" class="pionex">🤖 Pionex Futures</a>
+        <button class="watch" onclick="window.addToWatchlist('${encodeURIComponent(r.sym)}')">⭐ Watchlist</button>
+      </div>
+    </div>`;
+  }
+  html += "</div>";
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ACȚIUNI: adaugă în watchlist (ambele liste — same convenție ca scanner)
+// ═══════════════════════════════════════════════════════════════
+window.addToWatchlist = function(symRaw) {
+  const sym = decodeURIComponent(symRaw);
+  const fullSym = "BINANCE:" + sym;
+  // Adaugă în scanner_watchlist (compat ★)
+  let wl;
+  try { wl = JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]"); }
+  catch (e) { wl = []; }
+  if (!Array.isArray(wl)) wl = [];
+  let added = false;
+  if (!wl.includes(fullSym)) { wl.push(fullSym); localStorage.setItem(WATCHLIST_KEY, JSON.stringify(wl)); added = true; }
+  // Adaugă și în wl_master_v1 (Watchlist Monitor)
+  let master;
+  try { master = JSON.parse(localStorage.getItem("wl_master_v1") || "[]"); }
+  catch (e) { master = []; }
+  if (!Array.isArray(master)) master = [];
+  if (!master.includes(fullSym)) { master.push(fullSym); localStorage.setItem("wl_master_v1", JSON.stringify(master)); added = true; }
+  toast(added ? "ok" : "err", added ? `${shortName(sym)} adăugat în watchlist (scanner + monitor)` : `${shortName(sym)} e deja în watchlist`);
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  TOAST + HELPERS
+// ═══════════════════════════════════════════════════════════════
+function toast(cls, html, ms = 3500) {
+  const el = document.createElement("div");
+  el.className = "toast " + (cls || "");
+  el.innerHTML = html;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .25s"; setTimeout(() => el.remove(), 250); }, ms);
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG UI WIRING
+// ═══════════════════════════════════════════════════════════════
+function wireSettings() {
+  const acc = document.getElementById("accSize");
+  const risk = document.getElementById("riskPct");
+  const uni = document.getElementById("universeSize");
+  const watch = document.getElementById("watchOnly");
+  acc.value = STATE.cfg.accountSize;
+  risk.value = STATE.cfg.riskPct;
+  uni.value = STATE.cfg.universeSize;
+  watch.checked = !!STATE.cfg.watchOnly;
+  acc.addEventListener("change", () => { STATE.cfg.accountSize = Math.max(100, parseFloat(acc.value) || 1000); saveCfg(); });
+  risk.addEventListener("change", () => { STATE.cfg.riskPct = Math.max(0.1, Math.min(5, parseFloat(risk.value) || 1)); saveCfg(); });
+  uni.addEventListener("change", () => { STATE.cfg.universeSize = Math.max(20, Math.min(100, parseInt(uni.value, 10) || 50)); saveCfg(); });
+  watch.addEventListener("change", () => { STATE.cfg.watchOnly = watch.checked; saveCfg(); });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+function init() {
+  loadCfg();
+  loadResults();
+  STATE.filter = localStorage.getItem(FILTER_KEY) || "all";
+  STATE.sort = localStorage.getItem(SORT_KEY) || "score-desc";
+
+  wireSettings();
+
+  document.querySelectorAll('.filter-bar [data-filter]').forEach(b => {
+    b.classList.toggle("active", b.dataset.filter === STATE.filter);
+    b.addEventListener("click", () => {
+      STATE.filter = b.dataset.filter;
+      localStorage.setItem(FILTER_KEY, STATE.filter);
+      document.querySelectorAll('.filter-bar [data-filter]').forEach(x => x.classList.toggle("active", x === b));
+      render();
+    });
+  });
+  const sortSel = document.getElementById("sortSelect");
+  sortSel.value = STATE.sort;
+  sortSel.addEventListener("change", () => {
+    STATE.sort = sortSel.value;
+    localStorage.setItem(SORT_KEY, STATE.sort);
+    render();
+  });
+
+  document.getElementById("scanBtn").addEventListener("click", runScan);
+
+  setStatus(STATE.results.length ? "ready" : "", STATE.results.length ? `cached ${STATE.results.length} (apasă scan pentru refresh)` : "idle");
+  render();
+}
+
+init();
+</script>
+
+</body>
+</html>

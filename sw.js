@@ -2,7 +2,7 @@
 // Strategy: cache the app shell (HTML files) for offline access + faster launches.
 // API data (Yahoo, Binance, etc.) is NEVER cached — we always want fresh prices.
 
-const CACHE_VERSION = "scanner-pro-v22";
+const CACHE_VERSION = "scanner-pro-v23";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const APP_SHELL = [
   "./crypto-events.html",
   "./watchlist.html",
   "./pump-radar.html",
+  "./smart-trade-long.html",
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png"
