@@ -1176,7 +1176,33 @@ function init() {
 }
 
 init();
+
+// ═══════════════════════════════════════════════════════════════
+//  AI Bubble (modul shared) — context din alerte recente pump/dump
+// ═══════════════════════════════════════════════════════════════
+window._buildPumpContext = function() {
+  if (!STATE.alerts || !STATE.alerts.length) return "(Niciun alert încă — pornește scan-ul cu ▶ Pornește.)";
+  const recent = STATE.alerts.slice(0, 20).map(a => {
+    const d = a.details || {};
+    const time = a.time ? new Date(a.time).toLocaleTimeString("ro-RO") : "—";
+    const chg5m = d.chg5m != null ? `${d.chg5m >= 0 ? "+" : ""}${d.chg5m.toFixed(2)}%` : "—";
+    const vol = d.volRatio ? `${d.volRatio.toFixed(2)}x` : "—";
+    const rsi = d.rsi ? d.rsi.toFixed(0) : "—";
+    return `- [${time}] ${alertTypeEmoji(a.type)} ${shortName(a.sym)} | ${a.type.toUpperCase()} | score ${a.score} | Δ5m ${chg5m} | vol ${vol} | RSI ${rsi}`;
+  }).join("\n");
+  return `🚨 PUMP RADAR — ultimele ${Math.min(20, STATE.alerts.length)} din ${STATE.alerts.length} alerte:\n${recent}\n\nScan #${STATE.scansCount || 0} · status: ${STATE.running ? "RUNNING" : "OPRIT"}`;
+};
+window.addEventListener("load", () => {
+  if (typeof setupAiBubble === "function") {
+    setupAiBubble({
+      page: "Pump Radar",
+      getContext: window._buildPumpContext,
+      systemHint: "User-ul vede alerte pump/dump pe 5m din top 80 USDT futures. Tipuri: 🚀 PUMP / 💥 DUMP / ⚡ VOL / 📈 MOM. Score 0-100. Întrebări tipice: care pump e legit?, ce să fac cu X?, e bubble pe coin Y?",
+    });
+  }
+});
 </script>
+<script defer src="ai-bubble.js"></script>
 
 </body>
 </html>

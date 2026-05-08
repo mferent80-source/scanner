@@ -738,6 +738,34 @@ setInterval(() => {
 
 // Initial load
 loadAll();
+
+// ═══════════════════════════════════════════════════════════════
+//  AI Bubble (modul shared) — context din ultimele știri vizibile
+// ═══════════════════════════════════════════════════════════════
+window._buildNewsContext = function() {
+  const fmtItem = (n) => {
+    const time = n.ts ? new Date(n.ts).toLocaleString("ro-RO", { dateStyle: "short", timeStyle: "short" }) : "—";
+    return `- [${n.source || "?"} · ${time}] ${n.title}${n.ticker ? " (" + n.ticker + ")" : ""}`;
+  };
+  const top = (arr, n) => arr.slice(0, n).map(fmtItem).join("\n");
+  let parts = [];
+  if (cryptoNews.length) parts.push(`🪙 CRYPTO NEWS (top ${Math.min(15, cryptoNews.length)} din ${cryptoNews.length}):\n${top(cryptoNews, 15)}`);
+  if (stocksNews.length) parts.push(`📈 STOCKS NEWS (top ${Math.min(15, stocksNews.length)} din ${stocksNews.length}):\n${top(stocksNews, 15)}`);
+  if (!parts.length) parts.push("(Niciun feed încărcat încă — apasă ↻ Refresh.)");
+  return parts.join("\n\n");
+};
+</script>
+<script defer src="ai-bubble.js"></script>
+<script>
+window.addEventListener("load", () => {
+  if (typeof setupAiBubble === "function") {
+    setupAiBubble({
+      page: "Market News",
+      getContext: window._buildNewsContext,
+      systemHint: "User-ul vede un feed de știri crypto + stocks. Întrebări tipice: rezumat sentiment, identifică narrative trends, ce coin-uri sunt în trending, semnalează catalyste majore.",
+    });
+  }
+});
 </script>
 
 <script>

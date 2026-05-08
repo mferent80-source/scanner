@@ -4259,7 +4259,47 @@ function showInstallBanner() {
     localStorage.setItem("pwa_install_dismissed", Date.now().toString());
   };
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  AI Bubble (modul shared) — context din semnalele scanner-ului crypto
+// ═══════════════════════════════════════════════════════════════
+window._buildCryptoContext = function() {
+  if (!rows || !rows.length) return "(Niciun scan încă — apasă ↻ SCAN ca să am date.)";
+  const valid = rows.filter(r => !r.error);
+  if (!valid.length) return "(Toate scan-urile au eșuat — verifică conectarea la Binance.)";
+  // Sortează după scor sau RSI ca să dau top 20 relevante
+  const sorted = [...valid].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const lines = sorted.slice(0, 20).map(r => {
+    const sym = (r.symbol || r.sym || "?").replace(/USDT$/, "");
+    const score = r.score != null ? r.score : "—";
+    const rsi = r.rsi != null ? r.rsi.toFixed(0) : "—";
+    const verdict = r.verdict || r.signal || "—";
+    const mtf = r.mtfScore != null ? r.mtfScore : "—";
+    const adx = r.adx != null ? r.adx.toFixed(0) : "—";
+    const change = r.changePct != null ? `${r.changePct >= 0 ? "+" : ""}${r.changePct.toFixed(2)}%` : "—";
+    const accum = r.accumScore != null ? `accum ${r.accumScore}/5` : "";
+    const stage2 = r.stage2 ? "✅Stage2" : "";
+    const spring = r.spring ? "💎Spring" : "";
+    const tags = [accum, stage2, spring].filter(Boolean).join(" ");
+    return `- ${sym} | score ${score} | ${verdict} | RSI ${rsi} | MTF ${mtf} | ADX ${adx} | 24h ${change}${tags ? " | " + tags : ""}`;
+  }).join("\n");
+  // Macro bar context (dacă disponibil)
+  const fng = document.querySelector(".macro-fng .macro-val")?.textContent || "";
+  const btcD = document.querySelector(".macro-btcd .macro-val")?.textContent || "";
+  const macro = (fng || btcD) ? `\n📊 MACRO: F&G ${fng} · BTC.D ${btcD}` : "";
+  return `🪙 CRYPTO SCANNER — top ${Math.min(20, sorted.length)} din ${valid.length} simboluri scanate:\n${lines}${macro}`;
+};
+window.addEventListener("load", () => {
+  if (typeof setupAiBubble === "function") {
+    setupAiBubble({
+      page: "Crypto Scanner",
+      getContext: window._buildCryptoContext,
+      systemHint: "User-ul vede scanner-ul principal cu MTF confluence, RSI/MACD divergențe, Acumulare/Distribuție, Stage 2, Wyckoff Spring. Întrebări tipice: ce e cel mai bun setup acum?, de ce X are score mic?, explică Wyckoff Spring, ce ai face cu Y?",
+    });
+  }
+});
 </script>
+<script defer src="ai-bubble.js"></script>
 
 </body>
 </html>

@@ -1783,7 +1783,29 @@ async function init() {
 }
 
 init();
+
+// ═══════════════════════════════════════════════════════════════
+//  AI Bubble (modul shared) — context din coin-uri în watchlist
+// ═══════════════════════════════════════════════════════════════
+window._buildWatchlistContext = function() {
+  if (!STATE.rows || !STATE.rows.length) return "(Watchlist gol — adaugă coin-uri ca să am ce analiza.)";
+  const lines = STATE.rows.slice(0, 25).map(r => {
+    const reasons = (r.reasons || []).slice(0, 2).join(", ");
+    return `- ${shortName(r.sym)} | status ${r.status || "?"} | LONG_SCORE ${r.longScore || 0} | ${reasons || "—"}`;
+  }).join("\n");
+  return `👁️ WATCHLIST (${STATE.rows.length} coin-uri scanate la ${STATE.lastUpdate ? new Date(STATE.lastUpdate).toLocaleTimeString("ro-RO") : "—"}):\n${lines}`;
+};
+window.addEventListener("load", () => {
+  if (typeof setupAiBubble === "function") {
+    setupAiBubble({
+      page: "Watchlist Monitor",
+      getContext: window._buildWatchlistContext,
+      systemHint: "User-ul are o watchlist personală cu coin-uri auto-scan 60s. Status posibile: STRONG/WAIT/NEUTRAL/WEAK/AVOID. LONG_SCORE 0-100. Întrebări tipice: care din watchlist e cel mai bun LONG acum?, de ce X e WAIT?, ar trebui să cumpăr Y?",
+    });
+  }
+});
 </script>
+<script defer src="ai-bubble.js"></script>
 
 </body>
 </html>

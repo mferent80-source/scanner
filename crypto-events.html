@@ -1443,6 +1443,58 @@ document.querySelectorAll('.heatmap-tab').forEach(tab => {
   scheduleRefresh();
 })();
 
+// ═══════════════════════════════════════════════════════════════
+//  AI Bubble (modul shared) — context din heatmap + movers + funding
+// ═══════════════════════════════════════════════════════════════
+window._buildEventsContext = function() {
+  let parts = [];
+  // Heatmap categorii
+  if (heatmapData) {
+    const buckets = calcHeatmap(heatmapData, heatmapPeriod);
+    const lines = buckets.map(b => `- ${b.name}: ${b.avg >= 0 ? "+" : ""}${b.avg.toFixed(2)}% avg (${b.count} coin-uri, top: ${b.top.slice(0,3).join(", ")})`).join("\n");
+    parts.push(`🔥 HEATMAP CATEGORII (${heatmapPeriod}):\n${lines}`);
+  }
+  // Top movers din cachedMarkets
+  if (cachedMarkets && cachedMarkets.length) {
+    const sortedBy = (key) => [...cachedMarkets].filter(c => c[key] != null).sort((a,b) => b[key] - a[key]);
+    const fmt = (c, key) => `${(c.symbol||"").toUpperCase()} ${c[key] >= 0 ? "+" : ""}${c[key].toFixed(2)}%`;
+    const top1h = sortedBy("chg_1h").slice(0, 5).map(c => fmt(c, "chg_1h")).join(" · ");
+    const bot1h = sortedBy("chg_1h").slice(-5).reverse().map(c => fmt(c, "chg_1h")).join(" · ");
+    const top24h = sortedBy("chg_24h").slice(0, 5).map(c => fmt(c, "chg_24h")).join(" · ");
+    parts.push(`📊 MOVERS:\n- Top 5 gainers 1h: ${top1h}\n- Top 5 losers 1h: ${bot1h}\n- Top 5 gainers 24h: ${top24h}`);
+  }
+  // Sentiment
+  const fng = document.getElementById("fng-value")?.textContent;
+  const btcD = document.getElementById("btc-d")?.textContent;
+  const ethD = document.getElementById("eth-d")?.textContent;
+  if (fng && fng !== "—") parts.push(`📈 SENTIMENT: F&G ${fng} · BTC.D ${btcD} · ETH.D ${ethD}`);
+  // Funding extreme + OI delta + L/S — citesc direct din DOM rendered (mai simplu decât a stoca)
+  const dumpRows = (tbodyId, max=5) => {
+    const rows = document.querySelectorAll(`#${tbodyId} tr`);
+    if (!rows.length || rows[0].classList.contains("skeleton-row")) return null;
+    return Array.from(rows).slice(0, max).map(r => r.innerText.replace(/\s+/g, " ").trim()).join(" | ");
+  };
+  const funding = dumpRows("funding-body");
+  const oiDelta = dumpRows("oi-delta-body");
+  const lsr = dumpRows("lsr-body");
+  if (funding) parts.push(`💸 FUNDING extreme: ${funding}`);
+  if (oiDelta) parts.push(`🐋 OI Δ 1h: ${oiDelta}`);
+  if (lsr) parts.push(`⚖️ L/S RATIO: ${lsr}`);
+  if (!parts.length) parts.push("(Nu sunt încă date — așteaptă să se încarce.)");
+  return parts.join("\n\n");
+};
+</script>
+<script defer src="ai-bubble.js"></script>
+<script>
+window.addEventListener("load", () => {
+  if (typeof setupAiBubble === "function") {
+    setupAiBubble({
+      page: "Crypto Events",
+      getContext: window._buildEventsContext,
+      systemHint: "User-ul vede dashboard cu heatmap categorii (Layer1/DeFi/Meme/AI etc.), movers 1h/24h, OI Δ whale flow, L/S ratio extreme, funding rates. Întrebări tipice: ce sectoare pumpează?, e bubble pe meme?, OI surge ce înseamnă?",
+    });
+  }
+});
 </script>
 </body>
 </html>
