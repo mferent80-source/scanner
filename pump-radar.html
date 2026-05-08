@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🚨 Pump Radar — Multi-Symbol Scanner Pro</title>
+<meta name="theme-color" content="#0a0d13">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ef4444'/><stop offset='1' stop-color='%23facc15'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='%230f1419'/><path d='M32 12 L42 36 L26 30 L36 52' fill='none' stroke='url(%23g)' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0a0d13; --bg-grad:radial-gradient(1400px 700px at 50% -200px, #1a1320 0%, #0a0d13 60%);
+    --panel:#121826; --panel2:#1a2032; --panel3:#1f2638;
+    --border:#242b3e; --border-soft:#1b2133;
+    --text:#d6dde8; --text-dim:#aab3c2; --muted:#6b7487;
+    --bull-s:#1eb862; --bear-s:#e65757;
+    --pump:#22c55e; --dump:#ef4444; --vol:#a855f7; --mom:#f59e0b;
+    --accent:#ef4444; --accent2:#f59e0b; --gold:#facc15;
+    --header-bg:linear-gradient(180deg,rgba(38,22,30,.92),rgba(18,24,38,.95));
+    --row-hover:rgba(239,68,68,.06);
+    --radius:10px; --radius-sm:6px;
+    --ease:cubic-bezier(.4,0,.2,1);
+    color-scheme:dark;
+  }
+  html, body { height:100%; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+    background:var(--bg); background-image:var(--bg-grad); background-attachment:fixed;
+    color:var(--text); padding:10px; font-size:12px; min-height:100vh;
+    -webkit-font-smoothing:antialiased; line-height:1.4;
+    font-feature-settings:"cv11","ss01","tnum";
+  }
+
+  /* Sticky header */
+  header {
+    display:flex; flex-wrap:wrap; align-items:center; gap:7px;
+    background:var(--header-bg);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    padding:7px 12px; border-radius:var(--radius);
+    border:1px solid var(--border); margin-bottom:8px;
+    position:sticky; top:6px; z-index:50;
+  }
+  header h1 {
+    font-size:13px; font-weight:700; letter-spacing:-.2px;
+    background:linear-gradient(90deg,#ef4444,#facc15);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    margin-right:auto; white-space:nowrap;
+  }
+  .ver-badge {
+    display:inline-block; padding:2px 7px; margin-left:6px; border-radius:4px;
+    background:rgba(239,68,68,.15); color:#ef4444; border:1px solid rgba(239,68,68,.4);
+    font-size:10px; font-weight:700; font-variant-numeric:tabular-nums;
+    vertical-align:middle; letter-spacing:.3px;
+    -webkit-text-fill-color:initial;
+  }
+  .nav-link {
+    display:inline-flex; align-items:center; gap:3px;
+    background:var(--panel2); border:1px solid var(--border);
+    padding:3px 8px; border-radius:var(--radius-sm);
+    color:var(--text-dim); text-decoration:none; font-size:11px; font-weight:600;
+    transition:all .12s var(--ease);
+  }
+  .nav-link:hover { background:var(--panel3); border-color:var(--accent); color:var(--text); }
+
+  .status-pill {
+    font-size:10px; padding:3px 9px; border-radius:999px;
+    background:var(--panel2); border:1px solid var(--border-soft);
+    color:var(--text-dim); font-variant-numeric:tabular-nums;
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .status-pill .dot {
+    width:7px; height:7px; border-radius:50%; background:var(--muted);
+  }
+  .status-pill.running { background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.35); color:#22c55e; }
+  .status-pill.running .dot { background:#22c55e; box-shadow:0 0 6px #22c55e; animation:pulse 1.4s infinite; }
+  .status-pill.stopped { background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.35); color:#ef4444; }
+  .status-pill.stopped .dot { background:#ef4444; }
+  @keyframes pulse { 50% { opacity:.4; } }
+
+  button.btn {
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    padding:6px 12px; border-radius:var(--radius-sm); font-size:12px; font-weight:600;
+    cursor:pointer; font-family:inherit;
+    transition:all .12s var(--ease);
+  }
+  button.btn:hover { background:var(--panel3); border-color:var(--accent); }
+  button.btn.primary {
+    background:linear-gradient(135deg,#ef4444,#f97316); color:#fff; border-color:transparent;
+  }
+  button.btn.primary:hover { filter:brightness(1.1); }
+  button.btn.run {
+    background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; border-color:transparent;
+  }
+  button.btn.run:hover { filter:brightness(1.1); }
+  button.btn:disabled { opacity:.5; cursor:not-allowed; }
+  button.btn.icon { padding:6px 10px; }
+
+  /* Config panel */
+  .config-panel {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    margin-bottom:8px; overflow:hidden;
+  }
+  .config-panel summary {
+    padding:9px 12px; cursor:pointer; font-weight:600; user-select:none; font-size:11.5px;
+    display:flex; align-items:center; gap:6px; transition:background .12s var(--ease);
+    list-style:none;
+  }
+  .config-panel summary::-webkit-details-marker { display:none; }
+  .config-panel summary::before {
+    content:"▶"; font-size:8px; color:var(--muted); transition:transform .15s var(--ease); display:inline-block; width:10px;
+  }
+  .config-panel[open] summary::before { transform:rotate(90deg); }
+  .config-panel summary:hover { background:var(--panel2); }
+  .config-grid {
+    padding:10px 12px 14px; border-top:1px solid var(--border-soft);
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;
+  }
+  .cfg-field { display:flex; flex-direction:column; gap:5px; }
+  .cfg-field label { font-size:10.5px; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+  .cfg-field .row { display:flex; align-items:center; gap:8px; }
+  .cfg-field input[type=range] { flex:1; }
+  .cfg-field .val { font-size:12px; font-variant-numeric:tabular-nums; font-weight:700; color:var(--accent); min-width:50px; text-align:right; }
+  .cfg-field input[type=number] {
+    width:90px; padding:5px 8px; background:var(--panel2); color:var(--text);
+    border:1px solid var(--border); border-radius:var(--radius-sm); font-size:11px; font-family:inherit;
+    font-variant-numeric:tabular-nums;
+  }
+  .cfg-field input[type=number]:focus { outline:none; border-color:var(--accent); }
+  .cfg-field .hint { font-size:10px; color:var(--muted); line-height:1.3; }
+  .cfg-toggle { display:flex; align-items:center; gap:8px; padding:5px 0; cursor:pointer; }
+  .cfg-toggle input { width:16px; height:16px; cursor:pointer; accent-color:var(--accent); }
+
+  /* Stats strip */
+  .stats-strip {
+    display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;
+  }
+  .stat-pill {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:5px 10px; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums;
+    display:inline-flex; gap:4px; align-items:center;
+  }
+  .stat-pill .stat-val { font-weight:800; }
+  .stat-pill .stat-lbl { color:var(--muted); font-weight:500; }
+
+  /* Filter chips */
+  .filter-bar {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:6px 10px; margin-bottom:8px; display:flex; gap:5px; flex-wrap:wrap; align-items:center;
+  }
+  .filter-bar label { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.4px; font-weight:600; }
+  .chip {
+    background:var(--panel2); color:var(--text-dim); border:1px solid var(--border-soft);
+    padding:4px 10px; border-radius:999px; font-size:11px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:all .12s var(--ease);
+  }
+  .chip:hover { background:var(--panel3); }
+  .chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  /* Alert grid */
+  .alert-wrap {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:10px;
+  }
+  .alert-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:8px;
+  }
+  .alert-card {
+    background:var(--panel2); border:1px solid var(--border); border-left:3px solid var(--accent);
+    border-radius:var(--radius-sm); padding:9px 11px;
+    transition:transform .15s var(--ease), border-color .15s var(--ease);
+    cursor:pointer;
+  }
+  .alert-card:hover { transform:translateY(-2px); border-color:var(--accent); }
+  .alert-card.t-pump { border-left-color:var(--pump); }
+  .alert-card.t-dump { border-left-color:var(--dump); }
+  .alert-card.t-vol  { border-left-color:var(--vol); }
+  .alert-card.t-mom  { border-left-color:var(--mom); }
+  .alert-card.fresh { animation:flashIn .8s var(--ease); }
+  @keyframes flashIn {
+    0% { background:rgba(239,68,68,.18); transform:scale(1.02); }
+    100% { background:var(--panel2); transform:scale(1); }
+  }
+  .alert-head { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:5px; }
+  .alert-sym { font-weight:800; font-size:13px; }
+  .alert-type { font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; letter-spacing:.3px; }
+  .alert-type.t-pump { background:rgba(34,197,94,.18); color:var(--pump); }
+  .alert-type.t-dump { background:rgba(239,68,68,.18); color:var(--dump); }
+  .alert-type.t-vol  { background:rgba(168,85,247,.18); color:var(--vol); }
+  .alert-type.t-mom  { background:rgba(245,158,11,.18); color:var(--mom); }
+  .alert-meta { font-size:10px; color:var(--muted); display:flex; gap:8px; flex-wrap:wrap; margin-bottom:5px; font-variant-numeric:tabular-nums; }
+  .alert-meta .pos { color:var(--bull-s); }
+  .alert-meta .neg { color:var(--bear-s); }
+  .score-bar { height:5px; background:var(--panel3); border-radius:3px; overflow:hidden; margin-bottom:5px; }
+  .score-bar-fill { height:100%; transition:width .25s var(--ease); }
+  .alert-foot { display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:10px; color:var(--muted); }
+  .alert-foot a {
+    color:var(--text-dim); text-decoration:none; padding:2px 6px;
+    border:1px solid var(--border); border-radius:3px; transition:all .12s;
+  }
+  .alert-foot a:hover { color:var(--text); border-color:var(--accent); }
+  .alert-time { font-variant-numeric:tabular-nums; }
+
+  .empty {
+    padding:50px 20px; text-align:center; color:var(--muted); font-size:13px;
+  }
+  .empty .empty-icon { font-size:36px; margin-bottom:12px; opacity:.6; }
+  .empty .empty-hint { font-size:11px; margin-top:8px; color:var(--text-dim); }
+
+  /* Legend */
+  .legend {
+    display:flex; gap:10px; flex-wrap:wrap; padding:8px 10px;
+    background:var(--panel2); border:1px solid var(--border-soft); border-radius:var(--radius-sm);
+    margin-bottom:8px; font-size:11px;
+  }
+  .legend-item { display:inline-flex; align-items:center; gap:5px; }
+  .legend-dot { width:10px; height:10px; border-radius:50%; }
+  .legend-item.t-pump .legend-dot { background:var(--pump); }
+  .legend-item.t-dump .legend-dot { background:var(--dump); }
+  .legend-item.t-vol  .legend-dot { background:var(--vol); }
+  .legend-item.t-mom  .legend-dot { background:var(--mom); }
+
+  /* Footer */
+  .foot { text-align:center; color:var(--muted); font-size:10px; padding:14px 0 6px; }
+  .foot a { color:var(--accent); text-decoration:none; }
+  .foot a:hover { text-decoration:underline; }
+
+  /* Toast */
+  .toast {
+    position:fixed; bottom:20px; right:20px; z-index:10000;
+    background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent);
+    border-radius:8px; padding:10px 14px; font-size:12px; color:var(--text);
+    box-shadow:0 6px 20px rgba(0,0,0,.4);
+    animation:toastIn .3s var(--ease);
+    max-width:340px;
+  }
+  .toast.ok { border-left-color:#22c55e; }
+  .toast.err { border-left-color:#ef4444; }
+  .toast.alert { border-left-color:var(--accent); background:linear-gradient(135deg,rgba(239,68,68,.15),var(--panel)); }
+  @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+
+  @media (max-width: 700px) {
+    header h1 { font-size:11.5px; }
+    .alert-grid { grid-template-columns:1fr; }
+    .config-grid { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🚨 Pump Radar <span class="ver-badge" id="verBadge">v20</span></h1>
+  <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
+  <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Scanner</a>
+  <a class="nav-link" href="watchlist.html" title="Watchlist Monitor">👁️ Watchlist</a>
+  <span class="status-pill stopped" id="statusPill"><span class="dot"></span><span id="statusText">OPRIT</span></span>
+  <button class="btn run" id="toggleBtn">▶ Pornește</button>
+  <button class="btn icon" id="notifBtn" title="Activează notificări desktop">🔔</button>
+  <button class="btn icon" id="muteBtn" title="Mute alerte sonore">🔊</button>
+</header>
+
+<!-- LEGEND -->
+<div class="legend">
+  <span class="legend-item t-pump"><span class="legend-dot"></span>🚀 PUMP — preț ↑ rapid + volum spike</span>
+  <span class="legend-item t-dump"><span class="legend-dot"></span>💥 DUMP — preț ↓ rapid + volum spike</span>
+  <span class="legend-item t-vol"><span class="legend-dot"></span>⚡ VOLATILITY — ATR expansion + BB breakout</span>
+  <span class="legend-item t-mom"><span class="legend-dot"></span>📈 MOMENTUM — RSI 65+ + accelerare 15m</span>
+</div>
+
+<!-- CONFIG PANEL -->
+<details class="config-panel" id="configPanel">
+  <summary>⚙️ Configurare detecție</summary>
+  <div class="config-grid">
+    <div class="cfg-field">
+      <label>Price Threshold (5m)</label>
+      <div class="row">
+        <input type="range" id="priceTh" min="0.5" max="10" step="0.1" value="2.0">
+        <span class="val" id="priceThV">2.0%</span>
+      </div>
+      <div class="hint">% mișcare minimă în 5m pentru alertă PUMP/DUMP</div>
+    </div>
+    <div class="cfg-field">
+      <label>Volume Multiplier</label>
+      <div class="row">
+        <input type="range" id="volMul" min="1.5" max="10" step="0.1" value="3.0">
+        <span class="val" id="volMulV">3.0×</span>
+      </div>
+      <div class="hint">Volum spike vs media ultimelor 20 bare</div>
+    </div>
+    <div class="cfg-field">
+      <label>RSI Threshold</label>
+      <div class="row">
+        <input type="range" id="rsiTh" min="50" max="85" step="1" value="65">
+        <span class="val" id="rsiThV">65</span>
+      </div>
+      <div class="hint">RSI minim pentru MOMENTUM (overbought zone)</div>
+    </div>
+    <div class="cfg-field">
+      <label>ATR Multiplier</label>
+      <div class="row">
+        <input type="range" id="atrMul" min="1.0" max="4" step="0.1" value="1.5">
+        <span class="val" id="atrMulV">1.5×</span>
+      </div>
+      <div class="hint">ATR expansion pentru VOLATILITY (vs media 14)</div>
+    </div>
+    <div class="cfg-field">
+      <label>Cooldown (sec)</label>
+      <div class="row">
+        <input type="range" id="cooldown" min="60" max="900" step="30" value="300">
+        <span class="val" id="cooldownV">300s</span>
+      </div>
+      <div class="hint">Anti-spam: nu repeta alerta pe același coin</div>
+    </div>
+    <div class="cfg-field">
+      <label>Scan Interval (sec)</label>
+      <div class="row">
+        <input type="range" id="scanInt" min="15" max="300" step="5" value="30">
+        <span class="val" id="scanIntV">30s</span>
+      </div>
+      <div class="hint">Cât de des rulează scanarea (ATENȚIE rate-limit Binance)</div>
+    </div>
+    <div class="cfg-field">
+      <label>Top N coins</label>
+      <div class="row">
+        <input type="range" id="topN" min="20" max="200" step="10" value="80">
+        <span class="val" id="topNV">80</span>
+      </div>
+      <div class="hint">Câte perechi scanezi (sortat după volum 24h)</div>
+    </div>
+    <div class="cfg-field">
+      <label>Filtre suplimentare</label>
+      <label class="cfg-toggle"><input type="checkbox" id="watchOnly"> <span>Doar coin-urile din ⭐ Watchlist</span></label>
+      <label class="cfg-toggle"><input type="checkbox" id="excludeBTC" checked> <span>Exclude BTC/ETH din rezultate</span></label>
+    </div>
+  </div>
+</details>
+
+<!-- STATS -->
+<div class="stats-strip" id="statsStrip">
+  <span class="stat-pill"><span class="stat-lbl">Scanări:</span><span class="stat-val" id="statScans">0</span></span>
+  <span class="stat-pill"><span class="stat-lbl">Coin-uri analizate:</span><span class="stat-val" id="statAnalyzed">0</span></span>
+  <span class="stat-pill"><span class="stat-lbl">Alerte total:</span><span class="stat-val" id="statTotal">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(34,197,94,.4)"><span class="stat-lbl">🚀 PUMP:</span><span class="stat-val" id="statPump" style="color:var(--pump)">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(239,68,68,.4)"><span class="stat-lbl">💥 DUMP:</span><span class="stat-val" id="statDump" style="color:var(--dump)">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(168,85,247,.4)"><span class="stat-lbl">⚡ VOL:</span><span class="stat-val" id="statVol" style="color:var(--vol)">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(245,158,11,.4)"><span class="stat-lbl">📈 MOM:</span><span class="stat-val" id="statMom" style="color:var(--mom)">0</span></span>
+  <span class="stat-pill" style="margin-left:auto"><span class="stat-lbl">Next scan:</span><span class="stat-val" id="statCountdown">—</span></span>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <label>Filtru:</label>
+  <button class="chip active" data-filter="all">Toate</button>
+  <button class="chip" data-filter="pump">🚀 PUMP</button>
+  <button class="chip" data-filter="dump">💥 DUMP</button>
+  <button class="chip" data-filter="vol">⚡ VOL</button>
+  <button class="chip" data-filter="mom">📈 MOM</button>
+  <span style="width:1px;height:18px;background:var(--border);margin:0 6px"></span>
+  <button class="btn icon" id="clearBtn" title="Șterge istoria de alerte" style="background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.35);color:var(--bear-s);padding:4px 10px;font-size:10.5px;margin-left:auto">🗑️ Curăță istoric</button>
+</div>
+
+<!-- ALERT HISTORY -->
+<div class="alert-wrap">
+  <div id="alertContainer"></div>
+</div>
+
+<div class="foot">
+  Pump Radar v20 · scan Binance Futures · auto-pause când tab inactiv ·
+  <a href="scanner-hub.html">Înapoi la Hub</a>
+</div>
+
+<script>
+"use strict";
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+const VERSION = "v20";
+const CFG_KEY = "pump_radar_cfg_v1";
+const HISTORY_KEY = "pump_radar_history_v1";
+const RUNNING_KEY = "pump_radar_running_v1";
+const MUTED_KEY = "pump_radar_muted_v1";
+const FILTER_KEY = "pump_radar_filter_v1";
+const COOLDOWN_KEY = "pump_radar_cooldown_v1";  // map sym → ts
+const TICKER_CACHE_KEY = "pump_radar_ticker_cache_v1";
+const TICKER_CACHE_TTL = 20_000;                 // 20s cache pentru ticker24hr
+const HISTORY_MAX = 50;                          // ultimele 50 alerte stocate
+const VISIBLE_MAX = 50;                          // afișate
+const BATCH_SIZE = 5;                            // câte symbol în paralel
+const BATCH_DELAY_MS = 800;                      // pauză între batch-uri
+const WATCHLIST_KEY = "scanner_watchlist";       // ⭐ scanner (pentru filtru "watchlist only")
+
+// Default config
+const DEFAULT_CFG = {
+  priceThreshold: 2.0,    // %
+  volumeMultiplier: 3.0,  // x
+  rsiThreshold: 65,
+  atrMultiplier: 1.5,     // x
+  cooldownSec: 300,       // 5 min
+  scanIntervalSec: 30,
+  topN: 80,
+  watchlistOnly: false,
+  excludeBTC: true,
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+const STATE = {
+  cfg: { ...DEFAULT_CFG },
+  running: false,
+  muted: false,
+  filter: "all",
+  alerts: [],          // [{type, sym, score, price, chg5m, chg15m, volRatio, rsi, atrRatio, time}]
+  cooldowns: {},       // { sym: timestamp }
+  scanTimer: null,
+  countdownTimer: null,
+  nextScanAt: null,
+  scansCount: 0,
+  analyzedCount: 0,
+  notifEnabled: false,
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  PERSISTENCE
+// ═══════════════════════════════════════════════════════════════
+function loadCfg() {
+  try {
+    const raw = localStorage.getItem(CFG_KEY);
+    if (raw) STATE.cfg = { ...DEFAULT_CFG, ...JSON.parse(raw) };
+  } catch (e) { /* noop */ }
+}
+function saveCfg() { localStorage.setItem(CFG_KEY, JSON.stringify(STATE.cfg)); }
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (raw) STATE.alerts = JSON.parse(raw);
+    if (!Array.isArray(STATE.alerts)) STATE.alerts = [];
+  } catch (e) { STATE.alerts = []; }
+}
+function saveHistory() {
+  if (STATE.alerts.length > HISTORY_MAX) STATE.alerts = STATE.alerts.slice(0, HISTORY_MAX);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(STATE.alerts));
+}
+
+function loadCooldowns() {
+  try {
+    const raw = localStorage.getItem(COOLDOWN_KEY);
+    if (raw) STATE.cooldowns = JSON.parse(raw);
+    if (!STATE.cooldowns || typeof STATE.cooldowns !== "object") STATE.cooldowns = {};
+  } catch (e) { STATE.cooldowns = {}; }
+}
+function saveCooldowns() {
+  // curățăm cooldown-urile expirate
+  const now = Date.now();
+  for (const k of Object.keys(STATE.cooldowns)) {
+    if (now - STATE.cooldowns[k] > STATE.cfg.cooldownSec * 1000) delete STATE.cooldowns[k];
+  }
+  localStorage.setItem(COOLDOWN_KEY, JSON.stringify(STATE.cooldowns));
+}
+
+function getWatchlist() {
+  try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]"); }
+  catch (e) { return []; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INDICATORS — RSI + ATR + Bollinger Bands (compact)
+// ═══════════════════════════════════════════════════════════════
+function rsi14(closes) {
+  if (closes.length < 15) return NaN;
+  let gain = 0, loss = 0;
+  for (let i = 1; i <= 14; i++) {
+    const d = closes[i] - closes[i-1];
+    if (d >= 0) gain += d; else loss -= d;
+  }
+  let avgG = gain / 14, avgL = loss / 14;
+  for (let i = 15; i < closes.length; i++) {
+    const d = closes[i] - closes[i-1];
+    const g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
+    avgG = (avgG * 13 + g) / 14;
+    avgL = (avgL * 13 + l) / 14;
+  }
+  if (avgL === 0) return 100;
+  return 100 - 100 / (1 + avgG / avgL);
+}
+
+function atr14(highs, lows, closes) {
+  if (highs.length < 15) return NaN;
+  const trs = [];
+  for (let i = 1; i < highs.length; i++) {
+    trs.push(Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1])));
+  }
+  let a = trs.slice(0, 14).reduce((x,y) => x+y, 0) / 14;
+  for (let i = 14; i < trs.length; i++) a = (a * 13 + trs[i]) / 14;
+  return a;
+}
+// ATR avg pentru ultimele N bare ca "baseline" (folosim 14-bar avg al ATR-urilor istorice)
+function atrAvg(highs, lows, closes, n = 14) {
+  // Simplificare: folosim diferențele high-low ca proxy pentru ATR mediu
+  if (closes.length < n) return NaN;
+  let sum = 0;
+  for (let i = closes.length - n; i < closes.length; i++) {
+    sum += Math.abs(highs[i] - lows[i]);
+  }
+  return sum / n;
+}
+
+function bbands(closes, period = 20, mult = 2) {
+  if (closes.length < period) return null;
+  const slice = closes.slice(-period);
+  const m = slice.reduce((a,b) => a+b, 0) / period;
+  const v = slice.reduce((a,b) => a + (b-m)*(b-m), 0) / period;
+  const sd = Math.sqrt(v);
+  return { mid: m, upper: m + mult*sd, lower: m - mult*sd, width: 2*mult*sd };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FETCHERS — Binance Futures
+// ═══════════════════════════════════════════════════════════════
+async function fetchTicker24hr() {
+  // cache 20s — apelat și de coin-uri și de countdown
+  try {
+    const raw = localStorage.getItem(TICKER_CACHE_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj.ts && (Date.now() - obj.ts < TICKER_CACHE_TTL)) return obj.data;
+    }
+  } catch (e) { /* noop */ }
+  const r = await fetch("https://fapi.binance.com/fapi/v1/ticker/24hr");
+  if (!r.ok) throw new Error("Binance fapi ticker " + r.status);
+  const data = await r.json();
+  try { localStorage.setItem(TICKER_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch (e) { /* quota? */ }
+  return data;
+}
+
+async function fetchKlines5m(symbol, limit = 30) {
+  const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=5m&limit=${limit}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Binance fapi klines ${r.status} pentru ${symbol}`);
+  const data = await r.json();
+  return {
+    highs:   data.map(k => parseFloat(k[2])),
+    lows:    data.map(k => parseFloat(k[3])),
+    closes:  data.map(k => parseFloat(k[4])),
+    volumes: data.map(k => parseFloat(k[5])),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ANALYSIS — analizează un simbol și returnează alerta dacă scoruri > threshold
+// ═══════════════════════════════════════════════════════════════
+function classifyAlert(metrics, cfg) {
+  const { chg5m, chg15m, volRatio, atrRatio, rsi, bbBreakout } = metrics;
+  const types = [];
+  // PUMP
+  if (chg5m >= cfg.priceThreshold && volRatio >= cfg.volumeMultiplier) types.push("pump");
+  // DUMP
+  if (chg5m <= -cfg.priceThreshold && volRatio >= cfg.volumeMultiplier) types.push("dump");
+  // VOLATILITY
+  if (atrRatio >= cfg.atrMultiplier && bbBreakout) types.push("vol");
+  // MOMENTUM
+  if (rsi >= cfg.rsiThreshold && chg15m >= 1.5 && volRatio >= 1.5) types.push("mom");
+  // Prioritate: PUMP/DUMP > VOLATILITY > MOMENTUM
+  if (types.includes("pump")) return "pump";
+  if (types.includes("dump")) return "dump";
+  if (types.includes("vol")) return "vol";
+  if (types.includes("mom")) return "mom";
+  return null;
+}
+
+function computeScore(metrics) {
+  const { chg5m, chg15m, volRatio, atrRatio, rsi } = metrics;
+  // Scor 0-100: combinație ponderată
+  let s = 0;
+  s += Math.min(40, Math.abs(chg5m) * 10);         // 0-40 din chg5m
+  s += Math.min(20, (volRatio - 1) * 5);           // 0-20 din volume spike (cu volRatio>1)
+  s += Math.min(20, Math.max(0, atrRatio - 1) * 13); // 0-20 din ATR ratio
+  s += Math.min(10, Math.abs(rsi - 50) / 5);       // 0-10 din distanța RSI vs 50
+  s += Math.min(10, Math.abs(chg15m) * 3);         // 0-10 din chg15m
+  return Math.min(100, Math.max(0, Math.round(s)));
+}
+
+async function analyzeOne(symbol, currentPrice, vol24h) {
+  try {
+    const bars = await fetchKlines5m(symbol, 30);
+    if (bars.closes.length < 20) return null;
+    const n = bars.closes.length;
+    const c = bars.closes[n-1];
+    const c5  = bars.closes[n-2] || c;        // close acum 5 min
+    const c15 = bars.closes[n-4] || c;        // close acum 15 min (3 bare)
+    const chg5m  = ((c - c5) / c5) * 100;
+    const chg15m = ((c - c15) / c15) * 100;
+
+    const lastVol = bars.volumes[n-1];
+    const vSlice = bars.volumes.slice(-21, -1);  // ultimele 20 bare ANTE
+    const avgVol = vSlice.length ? vSlice.reduce((a,b) => a+b, 0) / vSlice.length : 0;
+    const volRatio = avgVol > 0 ? lastVol / avgVol : 0;
+
+    const atrCur = atr14(bars.highs, bars.lows, bars.closes);
+    const atrBase = atrAvg(bars.highs, bars.lows, bars.closes, 14);
+    const atrRatio = atrBase > 0 ? atrCur / atrBase : 0;
+
+    const rsi = rsi14(bars.closes);
+    const bb = bbands(bars.closes, 20, 2);
+    const bbBreakout = bb ? (c > bb.upper || c < bb.lower) : false;
+
+    const metrics = { chg5m, chg15m, volRatio, atrRatio, rsi, bbBreakout, price: c, vol24h };
+    const type = classifyAlert(metrics, STATE.cfg);
+    if (!type) return null;
+    const score = computeScore(metrics);
+    return { sym: symbol, type, score, price: c, chg5m, chg15m, volRatio, atrRatio, rsi, bbBreakout, vol24h, time: Date.now() };
+  } catch (e) {
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SCAN LOOP
+// ═══════════════════════════════════════════════════════════════
+function isInCooldown(sym) {
+  const last = STATE.cooldowns[sym];
+  if (!last) return false;
+  return (Date.now() - last) < STATE.cfg.cooldownSec * 1000;
+}
+
+async function runScan() {
+  if (!STATE.running) return;
+  STATE.scansCount++;
+  setStatus("running", "scanare în curs...");
+
+  let candidates = [];
+  try {
+    const tickers = await fetchTicker24hr();
+    candidates = tickers
+      .filter(t => t.symbol.endsWith("USDT") && parseFloat(t.quoteVolume) > 0)
+      .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume));
+  } catch (e) {
+    setStatus("running", "eroare ticker: " + e.message);
+    return;
+  }
+
+  // Filtru watchlist only
+  if (STATE.cfg.watchlistOnly) {
+    const wl = getWatchlist().map(s => s.includes(":") ? s.split(":")[1] : s);
+    candidates = candidates.filter(t => wl.includes(t.symbol));
+  }
+  // Exclude BTC/ETH
+  if (STATE.cfg.excludeBTC) {
+    candidates = candidates.filter(t => t.symbol !== "BTCUSDT" && t.symbol !== "ETHUSDT");
+  }
+  // Top N
+  candidates = candidates.slice(0, STATE.cfg.topN);
+
+  // Skip cei în cooldown
+  candidates = candidates.filter(t => !isInCooldown(t.symbol));
+
+  // Batch scan
+  const newAlerts = [];
+  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+    if (!STATE.running) break;
+    const batch = candidates.slice(i, i + BATCH_SIZE);
+    const promises = batch.map(t => analyzeOne(t.symbol, parseFloat(t.lastPrice), parseFloat(t.quoteVolume)));
+    const results = await Promise.all(promises);
+    STATE.analyzedCount += batch.length;
+    for (const r of results) {
+      if (r) {
+        newAlerts.push(r);
+        STATE.cooldowns[r.sym] = Date.now();
+      }
+    }
+    if (i + BATCH_SIZE < candidates.length) await sleep(BATCH_DELAY_MS);
+  }
+
+  if (newAlerts.length) {
+    // sortează nou alertele după score desc
+    newAlerts.sort((a, b) => b.score - a.score);
+    // adaugă fresh=true pentru animație
+    newAlerts.forEach(a => a._fresh = true);
+    STATE.alerts = [...newAlerts, ...STATE.alerts];
+    saveHistory();
+    saveCooldowns();
+    // Sound + Notification + Toast
+    playPumpSound();
+    if (STATE.notifEnabled && newAlerts.length) {
+      const first = newAlerts[0];
+      fireNotification(`🚨 ${alertTypeEmoji(first.type)} ${shortName(first.sym)} (score ${first.score})`,
+        formatAlertSubtitle(first));
+    }
+    if (newAlerts.length === 1) {
+      const a = newAlerts[0];
+      toast("alert", `${alertTypeEmoji(a.type)} <b>${shortName(a.sym)}</b> · ${a.type.toUpperCase()} · score ${a.score}`, 5000);
+    } else {
+      toast("alert", `🚨 ${newAlerts.length} alerte noi · top: <b>${shortName(newAlerts[0].sym)}</b> (score ${newAlerts[0].score})`, 5000);
+    }
+  }
+
+  setStatus("running", `scan #${STATE.scansCount} · ${newAlerts.length} alerte noi`);
+  render();
+  // Schedulează next scan
+  STATE.nextScanAt = Date.now() + STATE.cfg.scanIntervalSec * 1000;
+}
+
+function startScan() {
+  if (STATE.running) return;
+  STATE.running = true;
+  localStorage.setItem(RUNNING_KEY, "1");
+  document.getElementById("toggleBtn").textContent = "⏸ Oprește";
+  document.getElementById("toggleBtn").classList.remove("run");
+  document.getElementById("toggleBtn").classList.add("primary");
+  setStatus("running", "pornire...");
+  // Run imediat
+  runScan();
+  // Schedule loop
+  STATE.scanTimer = setInterval(() => {
+    if (document.visibilityState === "visible" && STATE.running) runScan();
+  }, STATE.cfg.scanIntervalSec * 1000);
+  // Countdown UI 1s
+  STATE.countdownTimer = setInterval(updateCountdown, 1000);
+}
+
+function stopScan() {
+  STATE.running = false;
+  localStorage.setItem(RUNNING_KEY, "0");
+  if (STATE.scanTimer) { clearInterval(STATE.scanTimer); STATE.scanTimer = null; }
+  if (STATE.countdownTimer) { clearInterval(STATE.countdownTimer); STATE.countdownTimer = null; }
+  document.getElementById("toggleBtn").textContent = "▶ Pornește";
+  document.getElementById("toggleBtn").classList.remove("primary");
+  document.getElementById("toggleBtn").classList.add("run");
+  setStatus("stopped", "OPRIT");
+  document.getElementById("statCountdown").textContent = "—";
+}
+
+function toggleScan() {
+  if (STATE.running) stopScan(); else startScan();
+}
+
+function updateCountdown() {
+  const el = document.getElementById("statCountdown");
+  if (!STATE.running || !STATE.nextScanAt) { el.textContent = "—"; return; }
+  const ms = STATE.nextScanAt - Date.now();
+  if (ms <= 0) { el.textContent = "acum..."; return; }
+  el.textContent = Math.ceil(ms / 1000) + "s";
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && STATE.running) {
+    // Forțează scan dacă a trecut prea mult
+    if (!STATE.nextScanAt || Date.now() > STATE.nextScanAt) runScan();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  AUDIO + NOTIFICATION
+// ═══════════════════════════════════════════════════════════════
+let _audioCtx = null;
+function playPumpSound() {
+  if (STATE.muted) return;
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    const beepOnce = (freq, dur, when) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq; osc.type = "sine";
+      gain.gain.setValueAtTime(0, ctx.currentTime + when);
+      gain.gain.linearRampToValueAtTime(0.20, ctx.currentTime + when + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + when + dur);
+      osc.start(ctx.currentTime + when); osc.stop(ctx.currentTime + when + dur);
+    };
+    // 3 tonuri ascendente
+    beepOnce(880, 0.15, 0);
+    beepOnce(1108, 0.15, 0.18);
+    beepOnce(1318, 0.20, 0.36);
+  } catch (e) { /* noop */ }
+}
+
+async function ensureNotifPermission() {
+  if (!("Notification" in window)) { toast("err", "Browser-ul nu suportă notificări"); return false; }
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") { toast("err", "Notificări blocate. Resetează din browser settings."); return false; }
+  const p = await Notification.requestPermission();
+  return p === "granted";
+}
+function fireNotification(title, body) {
+  if (!STATE.notifEnabled) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const n = new Notification(title, { body, icon: "icon-192.png", tag: "pump-radar", renotify: true });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch (e) { /* noop */ }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════════
+function setStatus(cls, txt) {
+  const pill = document.getElementById("statusPill");
+  const text = document.getElementById("statusText");
+  pill.className = "status-pill " + (cls || "stopped");
+  text.textContent = txt || "OPRIT";
+}
+
+function shortName(sym) {
+  return sym.replace(/USDT$/, "");
+}
+function tvUrl(sym) {
+  return "https://tradingview.com/chart/?symbol=BINANCE:" + encodeURIComponent(sym + ".P");
+}
+function pionexUrl(sym) {
+  // Pionex futures URL: https://www.pionex.com/en/trade/{SYMBOL}.PERP
+  const base = sym.replace(/USDT$/, "");
+  return `https://www.pionex.com/en/trade/${base}_USDT.PERP`;
+}
+function alertTypeEmoji(t) {
+  return { pump: "🚀", dump: "💥", vol: "⚡", mom: "📈" }[t] || "•";
+}
+function alertTypeLabel(t) {
+  return { pump: "PUMP", dump: "DUMP", vol: "VOL", mom: "MOM" }[t] || t.toUpperCase();
+}
+function fmtPrice(p) {
+  if (p >= 1000) return p.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (p >= 1) return p.toFixed(4);
+  if (p >= 0.01) return p.toFixed(5);
+  return p.toFixed(7);
+}
+function fmtVolM(v) {
+  if (v >= 1e9) return (v / 1e9).toFixed(2) + "B";
+  if (v >= 1e6) return (v / 1e6).toFixed(2) + "M";
+  if (v >= 1e3) return (v / 1e3).toFixed(2) + "K";
+  return v.toFixed(0);
+}
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return s + "s";
+  if (s < 3600) return Math.floor(s / 60) + "m";
+  if (s < 86400) return Math.floor(s / 3600) + "h";
+  return Math.floor(s / 86400) + "d";
+}
+function formatAlertSubtitle(a) {
+  return `${a.chg5m >= 0 ? "+" : ""}${a.chg5m.toFixed(2)}% (5m) · vol ${a.volRatio.toFixed(1)}x · RSI ${a.rsi.toFixed(0)}`;
+}
+
+function alertColor(type) {
+  return { pump: "var(--pump)", dump: "var(--dump)", vol: "var(--vol)", mom: "var(--mom)" }[type] || "var(--accent)";
+}
+
+function applyFilter(alerts) {
+  if (STATE.filter === "all") return alerts;
+  return alerts.filter(a => a.type === STATE.filter);
+}
+
+function render() {
+  // Stats
+  const buckets = { pump: 0, dump: 0, vol: 0, mom: 0 };
+  for (const a of STATE.alerts) {
+    if (buckets[a.type] !== undefined) buckets[a.type]++;
+  }
+  document.getElementById("statTotal").textContent = STATE.alerts.length;
+  document.getElementById("statPump").textContent = buckets.pump;
+  document.getElementById("statDump").textContent = buckets.dump;
+  document.getElementById("statVol").textContent = buckets.vol;
+  document.getElementById("statMom").textContent = buckets.mom;
+  document.getElementById("statScans").textContent = STATE.scansCount;
+  document.getElementById("statAnalyzed").textContent = STATE.analyzedCount;
+
+  // Alert grid
+  const container = document.getElementById("alertContainer");
+  const filtered = applyFilter(STATE.alerts).slice(0, VISIBLE_MAX);
+  if (!filtered.length) {
+    if (!STATE.alerts.length) {
+      container.innerHTML = `<div class="empty">
+        <div class="empty-icon">🚨</div>
+        <div>Niciun alert încă.</div>
+        <div class="empty-hint">${STATE.running ? "Scanarea rulează — alertele apar aici când criteriile sunt îndeplinite." : "Apasă <b>▶ Pornește</b> pentru a începe scanarea Binance Futures."}</div>
+      </div>`;
+    } else {
+      container.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div>Niciun alert nu corespunde filtrului <b>${STATE.filter.toUpperCase()}</b>.</div></div>`;
+    }
+    return;
+  }
+  let html = `<div class="alert-grid">`;
+  for (const a of filtered) {
+    const fresh = a._fresh ? " fresh" : "";
+    delete a._fresh;
+    const tCls = "t-" + a.type;
+    const color = alertColor(a.type);
+    const chg5Cls = a.chg5m >= 0 ? "pos" : "neg";
+    const chg15Cls = a.chg15m >= 0 ? "pos" : "neg";
+    html += `<div class="alert-card ${tCls}${fresh}" onclick="window.open('${tvUrl(a.sym)}','_blank')">
+      <div class="alert-head">
+        <span class="alert-sym">${alertTypeEmoji(a.type)} ${shortName(a.sym)}</span>
+        <span class="alert-type ${tCls}">${alertTypeLabel(a.type)}</span>
+      </div>
+      <div class="alert-meta">
+        <span><b>${fmtPrice(a.price)}</b></span>
+        <span class="${chg5Cls}">${a.chg5m >= 0 ? "+" : ""}${a.chg5m.toFixed(2)}% 5m</span>
+        <span class="${chg15Cls}">${a.chg15m >= 0 ? "+" : ""}${a.chg15m.toFixed(2)}% 15m</span>
+      </div>
+      <div class="alert-meta">
+        <span>vol <b>${a.volRatio.toFixed(1)}x</b></span>
+        <span>RSI <b>${a.rsi.toFixed(0)}</b></span>
+        <span>ATR <b>${a.atrRatio.toFixed(1)}x</b></span>
+        <span>24h <b>${fmtVolM(a.vol24h)}</b></span>
+      </div>
+      <div class="score-bar"><div class="score-bar-fill" style="width:${a.score}%;background:${color}"></div></div>
+      <div class="alert-foot">
+        <span class="alert-time">${timeAgo(a.time)} ago · score <b style="color:${color}">${a.score}</b></span>
+        <span onclick="event.stopPropagation()">
+          <a href="${tvUrl(a.sym)}" target="_blank" rel="noopener">TV</a>
+          <a href="${pionexUrl(a.sym)}" target="_blank" rel="noopener">Pionex</a>
+        </span>
+      </div>
+    </div>`;
+  }
+  html += "</div>";
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════════════
+function toast(cls, html, ms = 3500) {
+  const el = document.createElement("div");
+  el.className = "toast " + (cls || "");
+  el.innerHTML = html;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .25s"; setTimeout(() => el.remove(), 250); }, ms);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG UI WIRING
+// ═══════════════════════════════════════════════════════════════
+function wireConfigUI() {
+  const fields = [
+    { id: "priceTh",  cfg: "priceThreshold",   suffix: "%",  parser: parseFloat, formatter: v => v.toFixed(1) },
+    { id: "volMul",   cfg: "volumeMultiplier", suffix: "×",  parser: parseFloat, formatter: v => v.toFixed(1) },
+    { id: "rsiTh",    cfg: "rsiThreshold",     suffix: "",   parser: parseInt,   formatter: v => v.toFixed(0) },
+    { id: "atrMul",   cfg: "atrMultiplier",    suffix: "×",  parser: parseFloat, formatter: v => v.toFixed(1) },
+    { id: "cooldown", cfg: "cooldownSec",      suffix: "s",  parser: parseInt,   formatter: v => v.toFixed(0) },
+    { id: "scanInt",  cfg: "scanIntervalSec",  suffix: "s",  parser: parseInt,   formatter: v => v.toFixed(0) },
+    { id: "topN",     cfg: "topN",             suffix: "",   parser: parseInt,   formatter: v => v.toFixed(0) },
+  ];
+  for (const f of fields) {
+    const inp = document.getElementById(f.id);
+    const valSpan = document.getElementById(f.id + "V");
+    const updateVal = () => {
+      const v = f.parser(inp.value);
+      STATE.cfg[f.cfg] = v;
+      valSpan.textContent = f.formatter(v) + f.suffix;
+      saveCfg();
+      // Re-schedule loop dacă scanIntervalSec s-a schimbat
+      if (f.cfg === "scanIntervalSec" && STATE.running) {
+        stopScan();
+        startScan();
+      }
+    };
+    // Setează valoarea inițială
+    inp.value = STATE.cfg[f.cfg];
+    valSpan.textContent = f.formatter(STATE.cfg[f.cfg]) + f.suffix;
+    inp.addEventListener("input", updateVal);
+  }
+  // Checkboxuri
+  const watchOnly = document.getElementById("watchOnly");
+  watchOnly.checked = !!STATE.cfg.watchlistOnly;
+  watchOnly.addEventListener("change", () => { STATE.cfg.watchlistOnly = watchOnly.checked; saveCfg(); });
+  const excludeBTC = document.getElementById("excludeBTC");
+  excludeBTC.checked = !!STATE.cfg.excludeBTC;
+  excludeBTC.addEventListener("change", () => { STATE.cfg.excludeBTC = excludeBTC.checked; saveCfg(); });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+function init() {
+  loadCfg();
+  loadHistory();
+  loadCooldowns();
+  STATE.muted = localStorage.getItem(MUTED_KEY) === "1";
+  STATE.filter = localStorage.getItem(FILTER_KEY) || "all";
+  STATE.notifEnabled = ("Notification" in window) && Notification.permission === "granted";
+
+  wireConfigUI();
+
+  // Filter chips
+  document.querySelectorAll('.filter-bar [data-filter]').forEach(b => {
+    b.classList.toggle("active", b.dataset.filter === STATE.filter);
+    b.addEventListener("click", () => {
+      STATE.filter = b.dataset.filter;
+      localStorage.setItem(FILTER_KEY, STATE.filter);
+      document.querySelectorAll('.filter-bar [data-filter]').forEach(x => x.classList.toggle("active", x === b));
+      render();
+    });
+  });
+
+  // Mute btn
+  const muteBtn = document.getElementById("muteBtn");
+  muteBtn.textContent = STATE.muted ? "🔇" : "🔊";
+  muteBtn.addEventListener("click", () => {
+    STATE.muted = !STATE.muted;
+    localStorage.setItem(MUTED_KEY, STATE.muted ? "1" : "0");
+    muteBtn.textContent = STATE.muted ? "🔇" : "🔊";
+    toast("ok", STATE.muted ? "Audio dezactivat" : "Audio activat");
+  });
+
+  // Notif btn
+  document.getElementById("notifBtn").addEventListener("click", async () => {
+    const ok = await ensureNotifPermission();
+    STATE.notifEnabled = ok;
+    toast(ok ? "ok" : "err", ok ? "Notificări desktop activate" : "Notificări refuzate");
+  });
+
+  // Toggle
+  document.getElementById("toggleBtn").addEventListener("click", toggleScan);
+
+  // Clear history
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    if (!STATE.alerts.length) { toast("ok", "Istoria e deja goală"); return; }
+    if (!confirm(`Șterg toate cele ${STATE.alerts.length} alerte?`)) return;
+    STATE.alerts = [];
+    saveHistory();
+    render();
+    toast("ok", "Istoric șters");
+  });
+
+  render();
+
+  // Auto-resume dacă era running
+  if (localStorage.getItem(RUNNING_KEY) === "1") {
+    setTimeout(() => startScan(), 500);
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>

@@ -16,6 +16,7 @@
     --news-1:#22d66b; --news-2:#5bdcb0;
     --events-1:#8b6fff; --events-2:#c89bff;
     --watch-1:#22c55e; --watch-2:#facc15;
+    --pump-1:#ef4444; --pump-2:#facc15;
     --ease: cubic-bezier(.4,0,.2,1);
   }
   html, body { height: 100%; }
@@ -79,6 +80,7 @@
   .card.news   { --bar: linear-gradient(90deg, var(--news-1), var(--news-2));     --glow: rgba(34,214,107,.2); }
   .card.events { --bar: linear-gradient(90deg, var(--events-1), var(--events-2)); --glow: rgba(139,111,255,.2); }
   .card.watch  { --bar: linear-gradient(90deg, var(--watch-1), var(--watch-2));   --glow: rgba(34,197,94,.2); }
+  .card.pump   { --bar: linear-gradient(90deg, var(--pump-1), var(--pump-2));     --glow: rgba(239,68,68,.2); }
 
   .card-icon {
     width: 56px; height: 56px; border-radius: 14px;
@@ -91,6 +93,7 @@
   .card.news   .card-icon { background: linear-gradient(135deg, var(--news-1), var(--news-2));     box-shadow: 0 6px 20px rgba(34,214,107,.3); }
   .card.events .card-icon { background: linear-gradient(135deg, var(--events-1), var(--events-2)); box-shadow: 0 6px 20px rgba(139,111,255,.3); }
   .card.watch  .card-icon { background: linear-gradient(135deg, var(--watch-1), var(--watch-2));   box-shadow: 0 6px 20px rgba(34,197,94,.3); }
+  .card.pump   .card-icon { background: linear-gradient(135deg, var(--pump-1), var(--pump-2));     box-shadow: 0 6px 20px rgba(239,68,68,.3); }
 
   .card h2 {
     font-size: 22px; font-weight: 700; letter-spacing: -.3px;
@@ -206,6 +209,20 @@
           <li>Notificări desktop + beep când apare un STRONG LONG nou</li>
         </ul>
         <span class="card-cta">Deschide Watchlist</span>
+      </a>
+
+      <a class="card pump" href="pump-radar.html" target="_blank" rel="noopener">
+        <div class="card-icon">🚨</div>
+        <h2>Pump Radar</h2>
+        <div class="card-sub">Top 80 USDT futures • Auto-scan 30s • 4 tipuri de alerte</div>
+        <ul>
+          <li>Detectează 🚀 PUMP / 💥 DUMP / ⚡ VOL / 📈 MOM pe 5m</li>
+          <li>Score 0-100 ponderat pe % move + volum + RSI + ATR</li>
+          <li>Cooldown per coin (anti-spam) + filtru watchlist-only</li>
+          <li>Pragurile sunt configurabile (sliders): preț, vol, RSI, ATR</li>
+          <li>Notificări desktop + 3-tone beep + linkuri Pionex/TV</li>
+        </ul>
+        <span class="card-cta">Deschide Pump Radar</span>
       </a>
     </div>
 
