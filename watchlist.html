@@ -352,6 +352,9 @@
   <a href="scanner-hub.html">Înapoi la Hub</a>
 </div>
 
+<!-- Module shared (sincron, înaintea scriptului main pentru ca window.setupTelegramAlerts să fie disponibil) -->
+<script src="tg-alerts.js"></script>
+
 <script>
 "use strict";
 
@@ -1227,117 +1230,7 @@ function fireNotification(title, body, sym) {
   } catch (e) { /* noop */ }
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  TELEGRAM ALERTS — config shared cross-page (`tg_cfg_v1` + `tg_pages_v1`)
-// ═══════════════════════════════════════════════════════════════
-const TG_CFG_KEY = "tg_cfg_v1";
-const TG_PAGES_KEY = "tg_pages_v1";
-const TG_PAGE_ID = "watchlist";
-let tgCfg = { token: "", chatId: "" };
-let tgPageEnabled = false;
-
-function loadTgCfg() {
-  try { const raw = localStorage.getItem(TG_CFG_KEY); if (raw) tgCfg = { ...tgCfg, ...JSON.parse(raw) }; } catch (e) {}
-  try { const pages = JSON.parse(localStorage.getItem(TG_PAGES_KEY) || "{}"); tgPageEnabled = !!pages[TG_PAGE_ID]; } catch (e) {}
-}
-function saveTgCfg() { localStorage.setItem(TG_CFG_KEY, JSON.stringify(tgCfg)); }
-function setTgPageEnabled(on) {
-  let pages = {};
-  try { pages = JSON.parse(localStorage.getItem(TG_PAGES_KEY) || "{}"); } catch (e) {}
-  pages[TG_PAGE_ID] = !!on;
-  localStorage.setItem(TG_PAGES_KEY, JSON.stringify(pages));
-  tgPageEnabled = !!on;
-}
-async function sendTelegram(text) {
-  if (!tgPageEnabled || !tgCfg.token || !tgCfg.chatId) return false;
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${tgCfg.token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: tgCfg.chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
-    });
-    return r.ok;
-  } catch (e) { return false; }
-}
-function updateTgBtnUI() {
-  const b = document.getElementById("tgBtn");
-  if (!b) return;
-  const configured = !!(tgCfg.token && tgCfg.chatId);
-  if (!configured) { b.textContent = "📱 TG"; b.classList.remove("primary"); return; }
-  b.textContent = tgPageEnabled ? "📱 ON" : "📱 OFF";
-  b.classList.toggle("primary", tgPageEnabled);
-}
-function escTgAttr(s) { return String(s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
-
-window.openTelegramModal = function() {
-  const existing = document.getElementById("tgModalOverlay");
-  if (existing) existing.remove();
-  const ov = document.createElement("div");
-  ov.id = "tgModalOverlay";
-  ov.style.cssText = "position:fixed;inset:0;background:rgba(5,8,15,.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s ease";
-  ov.addEventListener("click", (e) => { if (e.target === ov) ov.remove(); });
-  ov.innerHTML = `
-    <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.6);color:var(--text);font-size:12px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px">
-        <div>
-          <h3 style="font-size:15px;font-weight:800;background:linear-gradient(90deg,#0088cc,#33c2ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent">📱 Telegram Alerts</h3>
-          <div style="font-size:10.5px;color:var(--muted);margin-top:3px">Config bot · alerte STRONG LONG pe phone</div>
-        </div>
-        <button onclick="document.getElementById('tgModalOverlay').remove()" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1">×</button>
-      </div>
-      <div style="background:var(--panel2);border:1px solid var(--border-soft);border-radius:8px;padding:10px 12px;margin-bottom:8px">
-        <div style="font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">⚙️ Config bot (shared cu Smart Trade + Pump Radar)</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div>
-            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;font-weight:600">Bot token</label>
-            <input type="password" id="tgTokenInput" value="${escTgAttr(tgCfg.token)}" placeholder="123456:ABC-DEF..." style="width:100%;padding:7px 10px;background:var(--panel3);color:var(--text);border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit">
-          </div>
-          <div>
-            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;font-weight:600">Chat ID</label>
-            <input type="text" id="tgChatInput" value="${escTgAttr(tgCfg.chatId)}" placeholder="123456789 sau -100..." style="width:100%;padding:7px 10px;background:var(--panel3);color:var(--text);border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit">
-          </div>
-          <div style="font-size:10.5px;color:var(--muted);line-height:1.5">
-            <b style="color:var(--text-dim)">Cum:</b> @BotFather → /newbot → token. Trimite-i botului „start" → <code style="background:var(--panel3);padding:1px 4px;border-radius:3px">api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> → chat.id
-          </div>
-        </div>
-      </div>
-      <div style="background:var(--panel2);border:1px solid var(--border-soft);border-radius:8px;padding:10px 12px;margin-bottom:8px">
-        <div style="font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">📍 Pe această pagină (Watchlist Monitor)</div>
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 0">
-          <input type="checkbox" id="tgEnableInput" ${tgPageEnabled ? "checked" : ""} style="accent-color:#0088cc;width:18px;height:18px">
-          <span style="font-size:12.5px">Trimite alertă Telegram la <b>🟢 STRONG LONG nou</b></span>
-        </label>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button onclick="window.testTelegram()" style="flex:1;padding:9px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--panel3);color:var(--text)">📤 Test</button>
-        <button onclick="window.saveTelegramCfg()" style="flex:1;padding:9px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid transparent;background:linear-gradient(135deg,#0088cc,#33c2ff);color:#fff">💾 Salvează</button>
-      </div>
-    </div>`;
-  document.body.appendChild(ov);
-};
-window.testTelegram = async function() {
-  const token = document.getElementById("tgTokenInput").value.trim();
-  const chatId = document.getElementById("tgChatInput").value.trim();
-  if (!token || !chatId) { toast("err", "Completează token + chatId"); return; }
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: "✅ <b>Watchlist Monitor</b> — test alert\n\nDacă vezi mesajul, integrarea funcționează 👁️", parse_mode: "HTML" }),
-    });
-    if (r.ok) toast("ok", "📤 Test trimis cu succes");
-    else { const j = await r.json().catch(() => ({})); toast("err", `Test eșuat: ${j.description || r.status}`); }
-  } catch (e) { toast("err", "Test eșuat: " + e.message); }
-};
-window.saveTelegramCfg = function() {
-  tgCfg.token = document.getElementById("tgTokenInput").value.trim();
-  tgCfg.chatId = document.getElementById("tgChatInput").value.trim();
-  saveTgCfg();
-  setTgPageEnabled(document.getElementById("tgEnableInput").checked);
-  updateTgBtnUI();
-  document.getElementById("tgModalOverlay").remove();
-  toast("ok", tgPageEnabled ? "📱 Telegram ON pe Watchlist" : "📱 Telegram OFF pe Watchlist");
-};
+// Telegram alerts — modul shared `tg-alerts.js`. Wire-up în init().
 
 // ═══════════════════════════════════════════════════════════════
 //  SCAN LOOP — fetch klines pentru toate coin-urile + recalc + render
@@ -1385,10 +1278,10 @@ async function runScan() {
       playBeep(true);
       fireNotification(`🟢 STRONG LONG — ${shortName(r.sym)}`, `Score ${r.longScore} · ${r.reasons[0] || ""}`, r.sym);
       toast("alert", `🟢 STRONG LONG nou: <b>${shortName(r.sym)}</b> · score ${r.longScore}`, 8000);
-      // Telegram (dacă e configurat + pagina enabled)
-      if (tgPageEnabled && tgCfg.token && tgCfg.chatId) {
+      // Telegram (modul shared decide dacă trimite — bazat pe `tg_pages_v1.watchlist`)
+      if (typeof window.sendTelegram === "function") {
         const reasons = (r.reasons || []).slice(0, 3).map(x => "• " + x).join("\n");
-        sendTelegram(`👁️ <b>Watchlist STRONG LONG</b>\n\n🟢 <b>${shortName(r.sym)}</b> · score <b>${r.longScore}/100</b>\n\n${reasons}\n\nhttps://www.tradingview.com/chart/?symbol=BINANCE:${r.sym}.P&interval=240`);
+        window.sendTelegram(`👁️ <b>Watchlist STRONG LONG</b>\n\n🟢 <b>${shortName(r.sym)}</b> · score <b>${r.longScore}/100</b>\n\n${reasons}\n\nhttps://www.tradingview.com/chart/?symbol=BINANCE:${r.sym}.P&interval=240`);
       }
     }
   }
@@ -1764,10 +1657,15 @@ async function init() {
     STATE.notifEnabled = ok;
     toast(ok ? "ok" : "err", ok ? "Notificări desktop activate" : "Notificări refuzate");
   });
-  // Telegram alerts
-  loadTgCfg();
-  updateTgBtnUI();
-  document.getElementById("tgBtn").addEventListener("click", window.openTelegramModal);
+  // Telegram alerts — modul shared (tg-alerts.js)
+  if (typeof window.setupTelegramAlerts === "function") {
+    window.setupTelegramAlerts({
+      pageId: "watchlist",
+      pageLabel: "Watchlist Monitor",
+      btnId: "tgBtn",
+      alertLabel: "la 🟢 STRONG LONG nou",
+    });
+  }
 
   setupAutocomplete();
 
