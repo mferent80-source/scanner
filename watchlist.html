@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>👁️ Watchlist Monitor — Multi-Symbol Scanner Pro</title>
+<meta name="theme-color" content="#0a0d13">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%2322c55e'/><stop offset='1' stop-color='%23facc15'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='%230f1419'/><circle cx='32' cy='32' r='18' fill='none' stroke='url(%23g)' stroke-width='4'/><circle cx='32' cy='32' r='6' fill='%2322c55e'/></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0a0d13; --bg-grad:radial-gradient(1400px 700px at 50% -200px, #11182a 0%, #0a0d13 60%);
+    --panel:#121826; --panel2:#1a2032; --panel3:#1f2638;
+    --border:#242b3e; --border-soft:#1b2133;
+    --text:#d6dde8; --text-dim:#aab3c2; --muted:#6b7487;
+    --bull-s:#1eb862; --bull:#2e8f54; --neut:#525c72;
+    --bear:#d64545; --bear-s:#e65757; --hot:#e87a2e; --warn:#b8802a;
+    --accent:#6a9ac9; --accent2:#8871c7; --gold:#d9b85a;
+    --focus:rgba(106,154,201,.25);
+    --header-bg:linear-gradient(180deg,rgba(26,32,50,.92),rgba(18,24,38,.95));
+    --row-hover:rgba(106,154,201,.06);
+    --row-zebra:rgba(255,255,255,.012);
+    --radius:10px; --radius-sm:6px;
+    --ease:cubic-bezier(.4,0,.2,1);
+    color-scheme:dark;
+  }
+  html, body { height:100%; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+    background:var(--bg); background-image:var(--bg-grad); background-attachment:fixed;
+    color:var(--text); padding:10px; font-size:12px; min-height:100vh;
+    -webkit-font-smoothing:antialiased; line-height:1.4;
+    font-feature-settings:"cv11","ss01","tnum";
+  }
+
+  /* Sticky header */
+  header {
+    display:flex; flex-wrap:wrap; align-items:center; gap:7px;
+    background:var(--header-bg);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    padding:7px 12px; border-radius:var(--radius);
+    border:1px solid var(--border); margin-bottom:8px;
+    position:sticky; top:6px; z-index:50;
+  }
+  header h1 {
+    font-size:13px; font-weight:700; letter-spacing:-.2px;
+    background:linear-gradient(90deg,#22c55e,#facc15);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    margin-right:auto; white-space:nowrap;
+  }
+  .ver-badge {
+    display:inline-block; padding:2px 7px; margin-left:6px; border-radius:4px;
+    background:rgba(34,197,94,.15); color:#22c55e; border:1px solid rgba(34,197,94,.4);
+    font-size:10px; font-weight:700; font-variant-numeric:tabular-nums;
+    vertical-align:middle; letter-spacing:.3px;
+    -webkit-text-fill-color:initial;
+  }
+  .nav-link {
+    display:inline-flex; align-items:center; gap:3px;
+    background:var(--panel2); border:1px solid var(--border);
+    padding:3px 8px; border-radius:var(--radius-sm);
+    color:var(--text-dim); text-decoration:none; font-size:11px; font-weight:600;
+    transition:all .12s var(--ease);
+  }
+  .nav-link:hover { background:var(--panel3); border-color:var(--accent); color:var(--text); }
+  .status-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--muted); margin-right:5px; }
+  .status-dot.ok { background:var(--bull-s); box-shadow:0 0 5px var(--bull-s); }
+  .status-dot.load { background:var(--warn); animation:pulse 1s infinite; }
+  .status-dot.err { background:var(--bear-s); }
+  @keyframes pulse { 50% { opacity:.3; } }
+  .status-pill {
+    font-size:10px; padding:3px 8px; border-radius:999px;
+    background:var(--panel2); border:1px solid var(--border-soft);
+    color:var(--text-dim); font-variant-numeric:tabular-nums;
+  }
+
+  /* Add bar */
+  .add-bar {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:10px 12px; margin-bottom:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+  }
+  .add-bar input[type=text] {
+    flex:1; min-width:200px;
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    padding:7px 10px; border-radius:var(--radius-sm); font-size:12px; font-family:inherit;
+  }
+  .add-bar input[type=text]:focus { outline:none; border-color:#22c55e; box-shadow:0 0 0 2px rgba(34,197,94,.2); }
+  .add-bar button {
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    padding:7px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:600;
+    cursor:pointer; font-family:inherit;
+    transition:all .12s var(--ease);
+  }
+  .add-bar button:hover { background:var(--panel3); border-color:var(--accent); }
+  .add-bar button.primary {
+    background:linear-gradient(135deg,#22c55e,#16a34a); border-color:transparent; color:#fff;
+  }
+  .add-bar button.primary:hover { filter:brightness(1.1); }
+  .add-bar button:disabled { opacity:.5; cursor:not-allowed; }
+  .autocomplete-wrap { position:relative; flex:1; min-width:200px; }
+  .autocomplete-list {
+    position:absolute; top:100%; left:0; right:0; z-index:100;
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-sm);
+    margin-top:2px; max-height:240px; overflow-y:auto; display:none;
+    box-shadow:0 6px 20px rgba(0,0,0,.45);
+  }
+  .autocomplete-list.show { display:block; }
+  .autocomplete-item {
+    padding:7px 10px; cursor:pointer; font-size:11px;
+    border-bottom:1px solid var(--border-soft);
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+  }
+  .autocomplete-item:last-child { border-bottom:none; }
+  .autocomplete-item:hover, .autocomplete-item.active { background:var(--panel2); }
+  .autocomplete-item .ac-vol { color:var(--muted); font-size:10px; font-variant-numeric:tabular-nums; }
+
+  /* Stats strip */
+  .stats-strip {
+    display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;
+  }
+  .stat-pill {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:5px 10px; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums;
+    display:inline-flex; gap:4px; align-items:center;
+  }
+  .stat-pill .stat-val { color:var(--text); font-weight:800; }
+  .stat-pill .stat-lbl { color:var(--muted); font-weight:500; }
+
+  /* Filter / sort bar */
+  .filter-bar {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:6px 10px; margin-bottom:8px; display:flex; gap:5px; flex-wrap:wrap; align-items:center;
+  }
+  .filter-bar label { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.4px; font-weight:600; }
+  .chip {
+    background:var(--panel2); color:var(--text-dim); border:1px solid var(--border-soft);
+    padding:4px 9px; border-radius:999px; font-size:11px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:all .12s var(--ease);
+  }
+  .chip:hover { background:var(--panel3); }
+  .chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .filter-bar select {
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    padding:4px 8px; border-radius:var(--radius-sm); font-size:11px; font-family:inherit; cursor:pointer;
+  }
+
+  /* List / cards */
+  .list-wrap {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .empty {
+    padding:50px 20px; text-align:center; color:var(--muted); font-size:13px;
+  }
+  .empty .empty-icon { font-size:36px; margin-bottom:12px; opacity:.6; }
+  .empty .empty-hint { font-size:11px; margin-top:8px; color:var(--text-dim); }
+
+  table.wl {
+    width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums;
+  }
+  table.wl thead th {
+    text-align:left; padding:7px 9px; font-size:10px; font-weight:700;
+    color:var(--muted); text-transform:uppercase; letter-spacing:.3px;
+    border-bottom:1px solid var(--border); background:var(--panel2);
+    position:sticky; top:0; z-index:5;
+  }
+  table.wl tbody td {
+    padding:9px; border-bottom:1px solid var(--border-soft); vertical-align:middle;
+  }
+  table.wl tbody tr { transition:background .12s var(--ease); }
+  table.wl tbody tr:hover { background:var(--row-hover); }
+  table.wl tbody tr.has-strong { background:rgba(34,197,94,.05); }
+  table.wl tbody tr.has-strong:hover { background:rgba(34,197,94,.10); }
+  .sym-cell { display:flex; flex-direction:column; gap:1px; }
+  .sym-name { font-weight:700; font-size:12px; }
+  .sym-price { font-size:10.5px; color:var(--text-dim); }
+  .chg-pos { color:var(--bull-s); font-weight:600; }
+  .chg-neg { color:var(--bear-s); font-weight:600; }
+  .mtf-strip { display:inline-flex; gap:2px; align-items:center; }
+  .mtf-dot {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:18px; height:14px; font-size:9px; font-weight:800; color:#000;
+    border-radius:3px; font-variant-numeric:tabular-nums;
+  }
+  .mtf-dot.bull-s { background:#1eb862; }
+  .mtf-dot.bull   { background:#71c79c; }
+  .mtf-dot.neut   { background:#5a6378; color:#fff; }
+  .mtf-dot.bear   { background:#d68080; color:#fff; }
+  .mtf-dot.bear-s { background:#d64545; color:#fff; }
+  .mtf-lbl { font-size:9px; color:var(--muted); margin-right:3px; font-weight:600; }
+
+  .status-badge {
+    display:inline-block; padding:3px 8px; border-radius:4px;
+    font-size:11px; font-weight:800; letter-spacing:.3px;
+    border:1px solid;
+  }
+  .score-bar-wrap {
+    display:flex; align-items:center; gap:6px;
+  }
+  .score-bar {
+    width:50px; height:6px; background:var(--panel3); border-radius:3px; overflow:hidden;
+  }
+  .score-bar-fill { height:100%; transition:width .3s var(--ease); }
+  .score-num { font-weight:700; font-size:11px; min-width:24px; text-align:right; }
+
+  .reason-hover { cursor:help; }
+  .row-actions { display:flex; gap:4px; align-items:center; }
+  .row-btn {
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    padding:3px 7px; border-radius:var(--radius-sm); font-size:10px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:all .12s var(--ease);
+  }
+  .row-btn:hover { background:var(--panel3); border-color:var(--accent); }
+  .row-btn.danger:hover { border-color:var(--bear-s); color:var(--bear-s); }
+  .row-btn.plan {
+    background:rgba(34,197,94,.15); border-color:rgba(34,197,94,.5); color:#22c55e;
+  }
+  .row-btn.plan:hover { background:rgba(34,197,94,.25); }
+
+  /* Sparkline canvas */
+  .spark { display:block; }
+
+  /* Footer */
+  .foot {
+    text-align:center; color:var(--muted); font-size:10px; padding:14px 0 6px;
+  }
+  .foot a { color:var(--accent); text-decoration:none; }
+  .foot a:hover { text-decoration:underline; }
+
+  /* Mobile */
+  @media (max-width: 700px) {
+    .hide-mobile { display:none !important; }
+    table.wl thead th { padding:6px 5px; font-size:9px; }
+    table.wl tbody td { padding:7px 5px; }
+    .sym-name { font-size:11px; }
+    .add-bar input[type=text] { min-width:140px; font-size:11px; }
+    header h1 { font-size:11.5px; }
+  }
+
+  /* Trade plan modal */
+  #tradePlanModal {
+    position:fixed; inset:0; background:rgba(0,0,0,.78); backdrop-filter:blur(4px);
+    z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px;
+  }
+  #tradePlanModal .tp-card {
+    background:var(--panel); border:1px solid var(--border); border-left:4px solid #22c55e;
+    border-radius:12px; max-width:480px; width:100%;
+  }
+  #tradePlanModal .tp-head {
+    padding:14px 16px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    font-weight:800; font-size:14px;
+  }
+  #tradePlanModal .tp-body { padding:16px; font-size:13px; line-height:1.7; }
+  #tradePlanModal table.tp-table { width:100%; border-collapse:collapse; }
+  #tradePlanModal table.tp-table td { padding:6px 0; }
+  #tradePlanModal table.tp-table .lbl { color:var(--muted); }
+  #tradePlanModal table.tp-table .val { text-align:right; font-weight:700; }
+  #tradePlanModal .tp-actions { display:flex; gap:8px; margin-top:14px; }
+  #tradePlanModal .tp-actions button {
+    flex:1; padding:10px; border-radius:6px; font-weight:700; font-size:12px;
+    cursor:pointer; font-family:inherit; border:1px solid var(--border);
+  }
+  #tradePlanModal .tp-actions .copy-btn {
+    background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; border-color:transparent;
+  }
+  #tradePlanModal .tp-actions .tv-btn { background:transparent; color:var(--text); }
+
+  /* Toast */
+  .toast {
+    position:fixed; bottom:20px; right:20px; z-index:10000;
+    background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent);
+    border-radius:8px; padding:10px 14px; font-size:12px; color:var(--text);
+    box-shadow:0 6px 20px rgba(0,0,0,.4);
+    animation:toastIn .3s var(--ease);
+    max-width:340px;
+  }
+  .toast.ok { border-left-color:var(--bull-s); }
+  .toast.err { border-left-color:var(--bear-s); }
+  .toast.alert { border-left-color:#22c55e; background:linear-gradient(135deg,rgba(34,197,94,.15),var(--panel)); }
+  @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>👁️ Watchlist Monitor <span class="ver-badge" id="verBadge">v16</span></h1>
+  <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
+  <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Crypto</a>
+  <a class="nav-link" href="scanner-stocks.html" title="Stocks Scanner">📈 Stocks</a>
+  <a class="nav-link" href="crypto-events.html" title="Crypto Events">⚡ Events</a>
+  <span class="status-pill" id="statusPill"><span class="status-dot" id="statusDot"></span><span id="statusText">idle</span></span>
+  <button class="row-btn" id="notifBtn" title="Activează notificări desktop pentru semnale STRONG LONG">🔔 Notif</button>
+  <button class="row-btn" id="muteBtn" title="Pornește/oprește beep audio la semnal nou">🔊</button>
+</header>
+
+<!-- ADD BAR -->
+<div class="add-bar">
+  <div class="autocomplete-wrap">
+    <input type="text" id="addInput" placeholder="Adaugă coin (ex: BTC, ETH, SOL)..." autocomplete="off" spellcheck="false">
+    <div class="autocomplete-list" id="autocompleteList"></div>
+  </div>
+  <button class="primary" id="addBtn">➕ Adaugă</button>
+  <button id="importBtn" title="Importă coin-uri din ★ Watchlist din scanner-crypto.html (același localStorage)">⬇ Import din Scanner</button>
+  <button id="refreshBtn" title="Forțează refresh imediat (altfel auto la 60s)">↻ Refresh</button>
+  <button id="clearBtn" class="danger" title="Șterge toate coin-urile din watchlist" style="margin-left:auto;background:rgba(214,69,69,.1);border-color:rgba(214,69,69,.4);color:#e65757">🗑️ Clear</button>
+</div>
+
+<!-- STATS STRIP -->
+<div class="stats-strip" id="statsStrip">
+  <span class="stat-pill"><span class="stat-lbl">Watching:</span><span class="stat-val" id="statTotal">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(34,197,94,.4)"><span class="stat-lbl">🟢 STRONG:</span><span class="stat-val" id="statStrong" style="color:#22c55e">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(251,191,36,.4)"><span class="stat-lbl">🟡 WAIT:</span><span class="stat-val" id="statWait" style="color:#fbbf24">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(59,130,246,.4)"><span class="stat-lbl">🔵 NEUTRAL:</span><span class="stat-val" id="statNeut" style="color:#3b82f6">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(249,115,22,.4)"><span class="stat-lbl">🟠 WEAK:</span><span class="stat-val" id="statWeak" style="color:#f97316">0</span></span>
+  <span class="stat-pill" style="border-color:rgba(239,68,68,.4)"><span class="stat-lbl">🔴 AVOID:</span><span class="stat-val" id="statAvoid" style="color:#ef4444">0</span></span>
+  <span class="stat-pill" style="margin-left:auto"><span class="stat-lbl">Last update:</span><span class="stat-val" id="statLastUpdate">—</span></span>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <label>Status:</label>
+  <button class="chip active" data-filter="all">All</button>
+  <button class="chip" data-filter="STRONG">🟢 STRONG</button>
+  <button class="chip" data-filter="WAIT">🟡 WAIT</button>
+  <button class="chip" data-filter="NEUTRAL">🔵 NEUTRAL</button>
+  <button class="chip" data-filter="WEAK">🟠 WEAK</button>
+  <button class="chip" data-filter="AVOID">🔴 AVOID</button>
+  <span style="width:1px;height:18px;background:var(--border);margin:0 6px"></span>
+  <label>Sort:</label>
+  <select id="sortSelect">
+    <option value="status">Status (STRONG → AVOID)</option>
+    <option value="score-desc" selected>Score (mare → mic)</option>
+    <option value="chg-desc">%24h (sus → jos)</option>
+    <option value="chg-asc">%24h (jos → sus)</option>
+    <option value="name">Nume (A-Z)</option>
+    <option value="added">Ordinea adăugării</option>
+  </select>
+</div>
+
+<!-- LIST -->
+<div class="list-wrap">
+  <div id="listContainer"></div>
+</div>
+
+<div class="foot">
+  Scanare automată la 60s · TF analiză: <b style="color:var(--text-dim)">1d (primar) + 4h (context)</b> · max 50 coin-uri ·
+  <a href="scanner-hub.html">Înapoi la Hub</a>
+</div>
+
+<script>
+"use strict";
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+const VERSION = "v16";
+const POLL_INTERVAL_MS = 60_000;       // refresh la 60 secunde când tab-ul e activ
+const STAGGER_MS = 200;                // delay între request-uri Binance ca să evităm rate-limit
+const MAX_COINS = 50;
+const WATCHLIST_KEY = "scanner_watchlist";        // SHARED cu scanner-crypto.html
+const FILTER_KEY = "wl_filter";
+const SORT_KEY = "wl_sort";
+const MUTED_KEY = "wl_muted";
+const PAIRS_CACHE_KEY = "wl_binance_pairs_v1";    // listă pairs Binance USDT, cache 24h
+const PAIRS_CACHE_TTL = 24 * 60 * 60 * 1000;
+const LAST_STATUS_KEY = "wl_last_status_v1";      // pentru detectare schimbări (STRONG fired)
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+const STATE = {
+  rows: [],          // [{ sym, displaySym, m1d, m4h, longScore, status, ... }]
+  filter: "all",
+  sort: "score-desc",
+  muted: false,
+  notifEnabled: false,
+  pollTimer: null,
+  binancePairs: [],  // ["BTCUSDT", "ETHUSDT", ...]
+  isScanning: false,
+  lastUpdate: null,
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  WATCHLIST persistence (key shared cu scanner-crypto.html)
+// ═══════════════════════════════════════════════════════════════
+function getWatchlist() {
+  try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]"); }
+  catch (e) { return []; }
+}
+function saveWatchlist(list) { localStorage.setItem(WATCHLIST_KEY, JSON.stringify(list)); }
+
+// Normalizare: input "BTC" → "BINANCE:BTCUSDT"; "BTCUSDT" → "BINANCE:BTCUSDT"; "BINANCE:BTCUSDT" → unchanged.
+function normalizeSymbol(raw) {
+  let s = (raw || "").trim().toUpperCase();
+  if (!s) return "";
+  if (s.includes(":")) return s;     // already prefixed
+  if (!s.endsWith("USDT")) s = s + "USDT";
+  return "BINANCE:" + s;
+}
+// "BINANCE:BTCUSDT" → "BTCUSDT" (pentru fetch Binance)
+function toBinancePair(fullSym) {
+  return fullSym.includes(":") ? fullSym.split(":")[1] : fullSym;
+}
+// "BINANCE:BTCUSDT" → "BTC" (display)
+function shortName(fullSym) {
+  const pair = toBinancePair(fullSym);
+  return pair.replace(/USDT$/, "");
+}
+function tvUrl(fullSym) {
+  return "https://tradingview.com/chart/?symbol=" + encodeURIComponent(fullSym);
+}
+
+function addToWatchlist(rawInput) {
+  const sym = normalizeSymbol(rawInput);
+  if (!sym) return { ok: false, msg: "Simbol invalid" };
+  const pair = toBinancePair(sym);
+  // Validare: trebuie să existe pe Binance (dacă lista pairs e cached)
+  if (STATE.binancePairs.length && !STATE.binancePairs.includes(pair)) {
+    return { ok: false, msg: `${pair} nu există pe Binance USDT pairs` };
+  }
+  const list = getWatchlist();
+  if (list.includes(sym)) return { ok: false, msg: `${shortName(sym)} e deja în watchlist` };
+  if (list.length >= MAX_COINS) return { ok: false, msg: `Limit ${MAX_COINS} atins. Șterge ceva înainte.` };
+  list.push(sym);
+  saveWatchlist(list);
+  return { ok: true, sym };
+}
+function removeFromWatchlist(sym) {
+  const list = getWatchlist().filter(s => s !== sym);
+  saveWatchlist(list);
+  STATE.rows = STATE.rows.filter(r => r.sym !== sym);
+  // Curăță și last-status snapshot
+  const snap = loadLastStatus();
+  delete snap[sym];
+  saveLastStatus(snap);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INDICATORI (RSI/EMA/SMA/ATR/ADX/MACD/MTF) — port din scanner-crypto.html
+// ═══════════════════════════════════════════════════════════════
+function rsi(closes, len = 14) {
+  if (closes.length < len + 1) return NaN;
+  let gain = 0, loss = 0;
+  for (let i = 1; i <= len; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d >= 0) gain += d; else loss -= d;
+  }
+  let avgG = gain / len, avgL = loss / len;
+  for (let i = len + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    const g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
+    avgG = (avgG * (len - 1) + g) / len;
+    avgL = (avgL * (len - 1) + l) / len;
+  }
+  if (avgL === 0) return 100;
+  return 100 - 100 / (1 + avgG / avgL);
+}
+function rsiArr(closes, len = 14) {
+  const out = new Array(closes.length);
+  if (closes.length < len + 1) return out;
+  let gain = 0, loss = 0;
+  for (let i = 1; i <= len; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d >= 0) gain += d; else loss -= d;
+  }
+  let avgG = gain / len, avgL = loss / len;
+  out[len] = avgL === 0 ? 100 : 100 - 100 / (1 + avgG / avgL);
+  for (let i = len + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    const g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
+    avgG = (avgG * (len - 1) + g) / len;
+    avgL = (avgL * (len - 1) + l) / len;
+    out[i] = avgL === 0 ? 100 : 100 - 100 / (1 + avgG / avgL);
+  }
+  return out;
+}
+function ema(values, len) {
+  if (values.length < len) return NaN;
+  const k = 2 / (len + 1);
+  let e = values.slice(0, len).reduce((a, b) => a + b, 0) / len;
+  for (let i = len; i < values.length; i++) e = values[i] * k + e * (1 - k);
+  return e;
+}
+function emaArr(values, len) {
+  const out = [];
+  if (values.length < len) return out;
+  const k = 2 / (len + 1);
+  let e = values.slice(0, len).reduce((a, b) => a + b, 0) / len;
+  out[len - 1] = e;
+  for (let i = len; i < values.length; i++) { e = values[i] * k + e * (1 - k); out[i] = e; }
+  return out;
+}
+function sma(arr, len) {
+  if (arr.length < len) return NaN;
+  return arr.slice(-len).reduce((a, b) => a + b, 0) / len;
+}
+function smaArrFull(arr, p) {
+  const out = [];
+  for (let i = 0; i < arr.length; i++) {
+    if (i < p - 1) { out.push(null); continue; }
+    let s = 0;
+    for (let j = i - p + 1; j <= i; j++) s += arr[j];
+    out.push(s / p);
+  }
+  return out;
+}
+function atr(highs, lows, closes, len = 14) {
+  if (highs.length < len + 1) return NaN;
+  const trs = [];
+  for (let i = 1; i < highs.length; i++) {
+    trs.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i-1]), Math.abs(lows[i] - closes[i-1])));
+  }
+  let a = trs.slice(0, len).reduce((x, y) => x + y, 0) / len;
+  for (let i = len; i < trs.length; i++) a = (a * (len - 1) + trs[i]) / len;
+  return a;
+}
+function adx(highs, lows, closes, len = 14) {
+  if (highs.length < len * 2 + 1) return NaN;
+  const pDM = [], mDM = [], trs = [];
+  for (let i = 1; i < highs.length; i++) {
+    const up = highs[i] - highs[i-1], dn = lows[i-1] - lows[i];
+    pDM.push(up > dn && up > 0 ? up : 0);
+    mDM.push(dn > up && dn > 0 ? dn : 0);
+    trs.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i-1]), Math.abs(lows[i] - closes[i-1])));
+  }
+  const wilder = (arr, n) => {
+    let v = arr.slice(0, n).reduce((a, b) => a + b, 0);
+    const o = [v];
+    for (let i = n; i < arr.length; i++) { v = v - v / n + arr[i]; o.push(v); }
+    return o;
+  };
+  const sp = wilder(pDM, len), sm = wilder(mDM, len), st = wilder(trs, len);
+  const dx = [];
+  for (let i = 0; i < sp.length; i++) {
+    if (st[i] === 0) { dx.push(0); continue; }
+    const pDI = (sp[i] / st[i]) * 100, mDI = (sm[i] / st[i]) * 100;
+    const denom = pDI + mDI;
+    dx.push(denom === 0 ? 0 : Math.abs(pDI - mDI) / denom * 100);
+  }
+  if (dx.length < len) return NaN;
+  let a = dx.slice(0, len).reduce((x, y) => x + y, 0) / len;
+  for (let i = len; i < dx.length; i++) a = (a * (len - 1) + dx[i]) / len;
+  return a;
+}
+function macd(closes, f = 12, s = 26, sig = 9) {
+  if (closes.length < s + sig) return { line: NaN, signal: NaN };
+  const eF = emaArr(closes, f), eS = emaArr(closes, s);
+  const macdLine = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (eF[i] !== undefined && eS[i] !== undefined) macdLine.push(eF[i] - eS[i]);
+  }
+  return { line: macdLine[macdLine.length - 1], signal: ema(macdLine, sig) };
+}
+function macdHistArr(closes, f = 12, s = 26, sig = 9) {
+  const out = new Array(closes.length);
+  if (closes.length < s + sig) return out;
+  const eF = emaArr(closes, f), eS = emaArr(closes, s);
+  const macdLineIdx = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (eF[i] !== undefined && eS[i] !== undefined) macdLineIdx.push({ i, v: eF[i] - eS[i] });
+  }
+  if (macdLineIdx.length < sig) return out;
+  const k = 2 / (sig + 1);
+  let sigVal = macdLineIdx.slice(0, sig).reduce((a, b) => a + b.v, 0) / sig;
+  for (let j = sig - 1; j < macdLineIdx.length; j++) {
+    if (j >= sig) sigVal = macdLineIdx[j].v * k + sigVal * (1 - k);
+    out[macdLineIdx[j].i] = macdLineIdx[j].v - sigVal;
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PIVOTS + DIVERGENCES (RSI / MACD vs price)
+// ═══════════════════════════════════════════════════════════════
+function findPivots(arr, strength = 3) {
+  const highs = [], lows = [];
+  for (let i = strength; i < arr.length - strength; i++) {
+    const v = arr[i];
+    if (v == null || isNaN(v)) continue;
+    let isHigh = true, isLow = true;
+    for (let j = 1; j <= strength; j++) {
+      const l = arr[i - j], r = arr[i + j];
+      if (l == null || r == null) { isHigh = false; isLow = false; break; }
+      if (v <= l || v <= r) isHigh = false;
+      if (v >= l || v >= r) isLow = false;
+      if (!isHigh && !isLow) break;
+    }
+    if (isHigh) highs.push(i);
+    if (isLow) lows.push(i);
+  }
+  return { highs, lows };
+}
+function detectOscDivergence(priceArr, oscArr, strength = 3, lookback = 40) {
+  const result = { bull: false, bear: false, bars: 0 };
+  if (!priceArr || !oscArr || priceArr.length < strength * 2 + 5) return result;
+  const n = priceArr.length;
+  const startIdx = Math.max(0, n - lookback);
+  const priceSlice = priceArr.slice(startIdx);
+  const oscSlice = oscArr.slice(startIdx);
+  const { highs, lows } = findPivots(priceSlice, strength);
+  if (highs.length >= 2) {
+    const h2 = highs[highs.length - 1], h1 = highs[highs.length - 2];
+    const p1 = priceSlice[h1], p2 = priceSlice[h2];
+    const o1 = oscSlice[h1], o2 = oscSlice[h2];
+    if (p1 != null && p2 != null && o1 != null && o2 != null && !isNaN(o1) && !isNaN(o2)) {
+      if (p2 > p1 && o2 < o1) { result.bear = true; result.bars = n - 1 - (startIdx + h2); }
+    }
+  }
+  if (lows.length >= 2) {
+    const l2 = lows[lows.length - 1], l1 = lows[lows.length - 2];
+    const p1 = priceSlice[l1], p2 = priceSlice[l2];
+    const o1 = oscSlice[l1], o2 = oscSlice[l2];
+    if (p1 != null && p2 != null && o1 != null && o2 != null && !isNaN(o1) && !isNaN(o2)) {
+      if (p2 < p1 && o2 > o1) { result.bull = true; result.bars = n - 1 - (startIdx + l2); }
+    }
+  }
+  return result;
+}
+function detectDivergences(closes, strength = 2, lookback = 40) {
+  const rsiS = rsiArr(closes, 14);
+  const macdS = macdHistArr(closes, 12, 26, 9);
+  const rDiv = detectOscDivergence(closes, rsiS, strength, lookback);
+  const mDiv = detectOscDivergence(closes, macdS, strength, lookback);
+  const sources = [];
+  let bull = false, bear = false, bars = 0;
+  if (rDiv.bull) { sources.push("RSI"); bull = true; bars = Math.max(bars, rDiv.bars); }
+  if (mDiv.bull) { sources.push("MACD"); bull = true; bars = Math.max(bars, mDiv.bars); }
+  if (!bull) {
+    if (rDiv.bear) { sources.push("RSI"); bear = true; bars = Math.max(bars, rDiv.bars); }
+    if (mDiv.bear) { sources.push("MACD"); bear = true; bars = Math.max(bars, mDiv.bars); }
+  }
+  return { dir: bull ? "bull" : bear ? "bear" : "none", sources, bars, strength: sources.length };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RESAMPLING + TREND
+// ═══════════════════════════════════════════════════════════════
+function resample(bars, mult) {
+  const n = bars.closes.length;
+  if (mult <= 1 || n < mult) return bars;
+  const out = { highs: [], lows: [], closes: [], volumes: [] };
+  const usable = Math.floor(n / mult) * mult;
+  const start = n - usable;
+  for (let i = start; i < n; i += mult) {
+    const gh = bars.highs.slice(i, i + mult);
+    const gl = bars.lows.slice(i, i + mult);
+    const gc = bars.closes.slice(i, i + mult);
+    const gv = bars.volumes.slice(i, i + mult);
+    out.highs.push(Math.max(...gh));
+    out.lows.push(Math.min(...gl));
+    out.closes.push(gc[gc.length - 1]);
+    out.volumes.push(gv.reduce((a, b) => a + b, 0));
+  }
+  return out;
+}
+function trendOf(bars) {
+  const c = bars.closes;
+  if (c.length < 50) return 0;
+  const ef = ema(c, 9), es = ema(c, 21), e50 = ema(c, 50);
+  if (isNaN(ef) || isNaN(es) || isNaN(e50)) return 0;
+  const last = c[c.length - 1];
+  if (ef > es && last > e50) return ef > es * 1.005 ? 2 : 1;
+  if (ef < es && last < e50) return ef < es * 0.995 ? -2 : -1;
+  return 0;
+}
+const MTF_CONFIG_1D = { htf1: { mult: 7, label: "1w" }, htf2: { mult: 30, label: "1M" } };
+const MTF_CONFIG_4H = { htf1: { mult: 6, label: "1d" }, htf2: { mult: 42, label: "1w" } };
+
+// ═══════════════════════════════════════════════════════════════
+//  SETUP DETECTORS — Accumulation / Stage 2 / Distribution (1d only)
+// ═══════════════════════════════════════════════════════════════
+function bbWidth(arr, period = 20, mult = 2) {
+  if (arr.length < period) return null;
+  const slice = arr.slice(-period);
+  const m = slice.reduce((a, b) => a + b, 0) / period;
+  const v = slice.reduce((a, b) => a + (b - m) * (b - m), 0) / period;
+  return 2 * mult * Math.sqrt(v);
+}
+function computeAccumulation(bars) {
+  const empty = { accum: false, trigger: false, score: 0, reasons: [], triggers: [], spring: false };
+  const { closes, highs, lows, volumes } = bars;
+  if (!closes || closes.length < 90) return empty;
+  const n = closes.length;
+  const c = closes[n - 1];
+
+  const rangeWindow = closes.slice(-43, -1);
+  const rangeHighs = highs.slice(-43, -1);
+  const rangeLows = lows.slice(-43, -1);
+  const rMax = Math.max(...rangeHighs);
+  const rMin = Math.min(...rangeLows);
+  const rAvg = rangeWindow.reduce((a, b) => a + b, 0) / rangeWindow.length;
+  const rangePct = rAvg > 0 ? (rMax - rMin) / rAvg : 999;
+  const c1 = rangePct < 0.30;
+
+  const bbCur = bbWidth(closes, 20, 2);
+  const bbHistory = [];
+  for (let i = n - 60; i < n; i++) {
+    if (i < 19) continue;
+    const w = bbWidth(closes.slice(0, i + 1), 20, 2);
+    if (w !== null && !isNaN(w)) bbHistory.push(w);
+  }
+  const bbAvg = bbHistory.length ? bbHistory.reduce((a, b) => a + b, 0) / bbHistory.length : null;
+  const c2 = bbCur !== null && bbAvg !== null && bbCur < 0.70 * bbAvg;
+
+  const ma50 = smaArrFull(closes, 50);
+  const ma50Now = ma50[n - 1], ma50Past = ma50[n - 21];
+  const ma50Slope = (ma50Now && ma50Past) ? Math.abs((ma50Now - ma50Past) / ma50Past) : 999;
+  const c3 = ma50Slope < 0.05;
+
+  const max90 = Math.max(...highs.slice(-90));
+  const discount = max90 > 0 ? c / max90 : 1;
+  const c4 = discount < 0.75;
+
+  const vol14 = volumes.slice(-14).reduce((a, b) => a + b, 0) / 14;
+  const vol42Slice = volumes.slice(-42, -14);
+  const vol42Avg = vol42Slice.length ? vol42Slice.reduce((a, b) => a + b, 0) / vol42Slice.length : 0;
+  const volRatio = vol42Avg > 0 ? vol14 / vol42Avg : 0;
+  const c5 = volRatio > 0.95;
+
+  const reasons = [];
+  if (c1) reasons.push(`Range strâns 6w (${(rangePct*100).toFixed(1)}%)`);
+  if (c2) reasons.push(`BB squeeze (${(bbCur/bbAvg*100).toFixed(0)}% din media 60d)`);
+  if (c3) reasons.push(`MA50 plat (slope ${(ma50Slope*100).toFixed(1)}%)`);
+  if (c4) reasons.push(`Discount ${((1-discount)*100).toFixed(0)}% din max 90d`);
+  if (c5) reasons.push(`Volum stabil (${volRatio.toFixed(2)}x)`);
+
+  const accum = c1 && c2 && c3 && c4 && c5;
+  const triggers = [];
+
+  const vol20Avg = volumes.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
+  const lastVol = volumes[n - 1];
+  if (c > rMax * 1.005 && vol20Avg > 0 && lastVol / vol20Avg > 1.3) {
+    triggers.push(`Breakout +${((c/rMax - 1)*100).toFixed(1)}% cu vol ${(lastVol/vol20Avg).toFixed(2)}x`);
+  }
+  const rsiNow = rsi(closes, 14);
+  const rsiPast = closes.length >= 19 ? rsi(closes.slice(0, n - 4), 14) : NaN;
+  if (rsiNow > 55 && !isNaN(rsiPast) && rsiPast >= 40 && rsiPast <= 50) {
+    triggers.push(`RSI cross 55 (${rsiPast.toFixed(1)} → ${rsiNow.toFixed(1)})`);
+  }
+  const ma20 = smaArrFull(closes, 20);
+  const ma20Now = ma20[n - 1];
+  if (ma20Now && ma50Now && ma20Now > ma50Now) {
+    triggers.push(`MA20 > MA50 (${ma20Now.toFixed(4)} > ${ma50Now.toFixed(4)})`);
+  }
+  const recentLows = lows.slice(-11, -1);
+  const minRecent = recentLows.length ? Math.min(...recentLows) : null;
+  const springTriggered = minRecent !== null && minRecent < rMin && c > rMin * 1.02;
+  if (springTriggered) {
+    const undershootPct = ((rMin - minRecent) / rMin * 100).toFixed(1);
+    const recoveryPct = ((c / rMin - 1) * 100).toFixed(1);
+    triggers.push(`💎 SPRING: undershoot -${undershootPct}% → recuperare +${recoveryPct}% peste rangeLow`);
+  }
+  const trigger = triggers.length > 0;
+  const score = [c1, c2, c3, c4, c5].filter(Boolean).length;
+  return { accum, trigger, score, reasons, triggers, spring: springTriggered };
+}
+function computeStage2(bars) {
+  const empty = { stage2: false, daysSince: null, reasons: [], breakoutPrice: null };
+  const { closes, highs } = bars;
+  if (!closes || closes.length < 90) return empty;
+  const n = closes.length;
+  let breakoutIdx = -1, rangeHighAtBreakout = null;
+  for (let i = n - 15; i <= n - 5; i++) {
+    if (i < 50) continue;
+    const histHighs = highs.slice(Math.max(0, i - 42), i);
+    if (histHighs.length < 30) continue;
+    const histRangeHigh = Math.max(...histHighs);
+    if (closes[i] > histRangeHigh * 1.005) {
+      breakoutIdx = i;
+      rangeHighAtBreakout = histRangeHigh;
+      break;
+    }
+  }
+  if (breakoutIdx === -1) return empty;
+  const heldAbove = closes.slice(breakoutIdx + 1).every(cl => cl > rangeHighAtBreakout * 0.98);
+  const rsiAll = rsiArr(closes, 14);
+  const last5RSI = rsiAll.slice(-5).filter(v => typeof v === "number");
+  const rsiOK = last5RSI.length === 5 && last5RSI.every(v => v > 50);
+  const ma20 = smaArrFull(closes, 20), ma50 = smaArrFull(closes, 50);
+  const maOK = ma20[n-1] && ma50[n-1] && ma20[n-1] > ma50[n-1];
+  const stage2 = heldAbove && rsiOK && maOK;
+  const daysSince = n - 1 - breakoutIdx;
+  const reasons = [];
+  if (heldAbove) reasons.push(`Menținut peste rangeHigh (${rangeHighAtBreakout.toFixed(4)}) de ${daysSince}z`);
+  if (rsiOK) reasons.push(`RSI > 50 stabil 5z (medie ${(last5RSI.reduce((a,b)=>a+b,0)/5).toFixed(1)})`);
+  if (maOK) reasons.push(`MA20 > MA50`);
+  return { stage2, daysSince, reasons, breakoutPrice: rangeHighAtBreakout };
+}
+function computeDistribution(bars) {
+  const empty = { dist: false, trigger: false, score: 0, reasons: [], triggers: [] };
+  const { closes, highs, lows, volumes } = bars;
+  if (!closes || closes.length < 90) return empty;
+  const n = closes.length;
+  const c = closes[n - 1];
+
+  const rangeWindow = closes.slice(-43, -1);
+  const rangeHighs = highs.slice(-43, -1);
+  const rangeLows = lows.slice(-43, -1);
+  const rMax = Math.max(...rangeHighs);
+  const rMin = Math.min(...rangeLows);
+  const rAvg = rangeWindow.reduce((a, b) => a + b, 0) / rangeWindow.length;
+  const rangePct = rAvg > 0 ? (rMax - rMin) / rAvg : 999;
+  const c1 = rangePct < 0.30;
+
+  const bbCur = bbWidth(closes, 20, 2);
+  const bbHistory = [];
+  for (let i = n - 60; i < n; i++) {
+    if (i < 19) continue;
+    const w = bbWidth(closes.slice(0, i + 1), 20, 2);
+    if (w !== null && !isNaN(w)) bbHistory.push(w);
+  }
+  const bbAvg = bbHistory.length ? bbHistory.reduce((a, b) => a + b, 0) / bbHistory.length : null;
+  const c2 = bbCur !== null && bbAvg !== null && bbCur < 0.70 * bbAvg;
+
+  const ma50 = smaArrFull(closes, 50);
+  const ma50Now = ma50[n - 1], ma50Past = ma50[n - 21];
+  const ma50Slope = (ma50Now && ma50Past) ? Math.abs((ma50Now - ma50Past) / ma50Past) : 999;
+  const c3 = ma50Slope < 0.05;
+
+  const min90 = Math.min(...lows.slice(-90));
+  const premium = min90 > 0 ? c / min90 : 0;
+  const c4 = premium > 1.30;
+
+  const vol14 = volumes.slice(-14).reduce((a, b) => a + b, 0) / 14;
+  const vol42Slice = volumes.slice(-42, -14);
+  const vol42Avg = vol42Slice.length ? vol42Slice.reduce((a, b) => a + b, 0) / vol42Slice.length : 0;
+  const volRatio = vol42Avg > 0 ? vol14 / vol42Avg : 0;
+  const c5 = volRatio > 0.95;
+
+  const reasons = [];
+  if (c1) reasons.push(`Range strâns 6w (${(rangePct*100).toFixed(1)}%)`);
+  if (c2) reasons.push(`BB squeeze (${(bbCur/bbAvg*100).toFixed(0)}% din media 60d)`);
+  if (c3) reasons.push(`MA50 plat`);
+  if (c4) reasons.push(`Premium ${((premium-1)*100).toFixed(0)}% peste min 90d`);
+  if (c5) reasons.push(`Volum stabil (${volRatio.toFixed(2)}x)`);
+
+  const dist = c1 && c2 && c3 && c4 && c5;
+  const triggers = [];
+  const vol20Avg = volumes.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
+  const lastVol = volumes[n - 1];
+  if (c < rMin * 0.995 && vol20Avg > 0 && lastVol / vol20Avg > 1.3) {
+    triggers.push(`Breakdown -${((1 - c/rMin)*100).toFixed(1)}% cu vol ${(lastVol/vol20Avg).toFixed(2)}x`);
+  }
+  const rsiNow = rsi(closes, 14);
+  const rsiPast = closes.length >= 19 ? rsi(closes.slice(0, n - 4), 14) : NaN;
+  if (rsiNow < 45 && !isNaN(rsiPast) && rsiPast >= 50 && rsiPast <= 60) {
+    triggers.push(`RSI cross 45 (${rsiPast.toFixed(1)} → ${rsiNow.toFixed(1)})`);
+  }
+  const ma20 = smaArrFull(closes, 20);
+  const ma20Now = ma20[n - 1];
+  if (ma20Now && ma50Now && ma20Now < ma50Now) {
+    triggers.push(`MA20 < MA50`);
+  }
+  const trigger = triggers.length > 0;
+  const score = [c1, c2, c3, c4, c5].filter(Boolean).length;
+  return { dist, trigger, score, reasons, triggers };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  COMPUTE METRICS — pe TF dat (1d sau 4h)
+// ═══════════════════════════════════════════════════════════════
+function computeMetrics(bars, tf) {
+  const { closes, highs, lows, volumes } = bars;
+  if (!closes || closes.length < 50) return null;
+  const c = closes[closes.length - 1];
+  const r = rsi(closes, 14);
+  const ef = ema(closes, 9), es = ema(closes, 21);
+  const e200 = closes.length >= 200 ? ema(closes, 200) : ema(closes, 50);
+  const vSMA = sma(volumes, 20);
+  const vr = vSMA > 0 ? volumes[volumes.length - 1] / vSMA : 0;
+
+  let tr = 0;
+  if (ef > es && c > e200) tr = ef > es * 1.005 ? 2 : 1;
+  else if (ef < es && c < e200) tr = ef < es * 0.995 ? -2 : -1;
+
+  const atrVal = atr(highs, lows, closes, 14);
+  const adxVal = adx(highs, lows, closes, 14);
+  const atrPct = (atrVal / c) * 100;
+
+  const cfg = tf === "1d" ? MTF_CONFIG_1D : MTF_CONFIG_4H;
+  const t_primary = trendOf(bars);
+  const t_htf1 = trendOf(resample(bars, cfg.htf1.mult));
+  const t_htf2 = trendOf(resample(bars, cfg.htf2.mult));
+
+  const divergence = detectDivergences(closes, 2, 40);
+
+  // Day change (relativ la TF — pentru 1d e schimbarea last bar; pentru 4h e cumul ~24h)
+  let dayChgPct = null;
+  const barsPer24h = tf === "1d" ? 1 : tf === "4h" ? 6 : 24;
+  const dayBack = Math.min(barsPer24h, closes.length - 1);
+  if (dayBack > 0) {
+    dayChgPct = ((c - closes[closes.length - 1 - dayBack]) / closes[closes.length - 1 - dayBack]) * 100;
+  }
+
+  // Setup-uri (rulează DOAR pe 1d — cele 6w/Wyckoff sunt definite în săptămâni)
+  const accumData = tf === "1d" ? computeAccumulation(bars) : { accum: false, trigger: false, score: 0, reasons: [], triggers: [], spring: false };
+  const distData  = tf === "1d" ? computeDistribution(bars) : { dist: false, trigger: false, score: 0, reasons: [], triggers: [] };
+  const stage2Data = tf === "1d" ? computeStage2(bars) : { stage2: false, daysSince: null, reasons: [], breakoutPrice: null };
+
+  return {
+    tf, price: c, rsi: r, trend: tr, vol: vr, mom: c > closes[closes.length - 6] ? 1 : c < closes[closes.length - 6] ? -1 : 0,
+    chgPct: dayChgPct, atr: atrVal, adx: adxVal, atrPct,
+    mtfP: t_primary, mtfH1: t_htf1, mtfH2: t_htf2,
+    mtfLabels: [tf.toUpperCase(), cfg.htf1.label, cfg.htf2.label],
+    divDir: divergence.dir, divSources: divergence.sources, divStrength: divergence.strength,
+    accum: accumData.accum, accumTrigger: accumData.trigger, accumScore: accumData.score,
+    accumReasons: accumData.reasons, accumTriggers: accumData.triggers, accumSpring: accumData.spring,
+    dist: distData.dist, distTrigger: distData.trigger, distScore: distData.score,
+    distReasons: distData.reasons, distTriggers: distData.triggers,
+    stage2: stage2Data.stage2, stage2Days: stage2Data.daysSince, stage2Reasons: stage2Data.reasons, stage2BreakoutPrice: stage2Data.breakoutPrice,
+    spark: closes.slice(-30),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LONG SCORE — algoritm dedicat watchlist
+// ═══════════════════════════════════════════════════════════════
+// Combină datele 1d (primar) + 4h (context). Range 0-100.
+// STRONG LONG = score >= 70 + are cel puțin un setup high-prob (Spring/Accum trig/Stage2).
+function computeLongScore(m1d, m4h) {
+  let score = 50; // baseline neutral
+  const reasons = [];
+  if (!m1d) return { score: 0, status: "AVOID", statusEmoji: "❓", statusColor: "#6b7487", reasons: ["Date 1d insuficiente"], hasHighProb: false };
+
+  // Setup-uri high-conviction (1d) — additive, prioritate descendentă
+  let hasHighProb = false;
+  if (m1d.accum && m1d.accumSpring) {
+    score += 30; hasHighProb = true;
+    reasons.push("💎 SPRING 1d (false breakdown + recuperare)");
+  } else if (m1d.accum && m1d.accumTrigger) {
+    score += 22; hasHighProb = true;
+    reasons.push("🏗️ Acumulare + trigger 1d");
+  } else if (m1d.stage2) {
+    score += 18; hasHighProb = true;
+    reasons.push(`✅ Stage 2 confirmat (${m1d.stage2Days}z)`);
+  } else if (m1d.accumScore >= 4) {
+    score += 8;
+    reasons.push(`🔶 Acumulare aproape (${m1d.accumScore}/5 criterii)`);
+  } else if (m1d.accumScore >= 3) {
+    score += 4;
+    reasons.push(`🔶 Acumulare parțială (${m1d.accumScore}/5)`);
+  }
+
+  // Multi-TF trend confluence (1d + 1w + 1M)
+  const trendSum1d = Math.sign(m1d.mtfP) + Math.sign(m1d.mtfH1) + Math.sign(m1d.mtfH2);
+  if (trendSum1d === 3)        { score += 12; reasons.push("MTF 1d+1w+1M aliniat ↑"); }
+  else if (trendSum1d === 2)   { score += 6;  reasons.push("MTF 1d ↑↑"); }
+  else if (trendSum1d === -2)  { score -= 10; reasons.push("MTF 1d ↓↓"); }
+  else if (trendSum1d === -3)  { score -= 18; reasons.push("MTF 1d+1w+1M aliniat ↓"); }
+
+  // 4h context (responsiveness)
+  if (m4h) {
+    if (Math.sign(m4h.mtfP) > 0) { score += 6; reasons.push("4h trend ↑"); }
+    else if (Math.sign(m4h.mtfP) < 0) { score -= 8; reasons.push("4h trend ↓"); }
+    if (m4h.rsi > 60 && m4h.mtfP > 0) { score += 4; reasons.push("4h RSI > 60 + trend ↑"); }
+    if (m4h.rsi < 30) { score += 4; reasons.push("4h RSI < 30 (oversold, posibil rebound)"); }
+  }
+
+  // Volum + RSI + divergențe
+  if (m1d.vol > 1.5 && m1d.mom > 0) { score += 8; reasons.push(`Vol spike ${m1d.vol.toFixed(2)}x + close ↑`); }
+  if (m1d.divDir === "bull")  { score += 8; reasons.push(`🐂 Bull div ${m1d.divSources.join("+")} 1d`); }
+  if (m1d.divDir === "bear")  { score -= 10; reasons.push(`🐻 Bear div ${m1d.divSources.join("+")} 1d`); }
+
+  if (m1d.rsi > 75)                       { score -= 8; reasons.push(`RSI 1d ${m1d.rsi.toFixed(0)} (overheated)`); }
+  else if (m1d.rsi >= 45 && m1d.rsi <= 65) { score += 4; reasons.push(`RSI 1d ${m1d.rsi.toFixed(0)} în zonă sănătoasă`); }
+  else if (m1d.rsi < 30 && m4h && m4h.rsi > 35) { score += 6; reasons.push(`RSI 1d exit oversold`); }
+
+  // Distribuție = penalizare grea
+  if (m1d.dist && m1d.distTrigger) { score -= 35; reasons.push(`📉 Distribuție + trigger SHORT ACTIV`); }
+  else if (m1d.dist) { score -= 15; reasons.push(`📉 Distribuție în formare`); }
+
+  // ATR low = piață moartă (nu refuz, dar penalizez ușor)
+  if (m1d.atrPct < 1.5) { score -= 4; reasons.push(`ATR scăzut (piață moartă, ${m1d.atrPct.toFixed(2)}%)`); }
+
+  score = Math.max(0, Math.min(100, score));
+
+  // Status
+  let status, statusEmoji, statusColor;
+  if (m1d.dist && m1d.distTrigger) {
+    status = "AVOID"; statusEmoji = "🔴"; statusColor = "#ef4444";
+  } else if (score >= 70 && hasHighProb) {
+    status = "STRONG"; statusEmoji = "🟢"; statusColor = "#22c55e";
+  } else if (score >= 55 || (m1d.accumScore >= 3)) {
+    status = "WAIT"; statusEmoji = "🟡"; statusColor = "#fbbf24";
+  } else if (score >= 40) {
+    status = "NEUTRAL"; statusEmoji = "🔵"; statusColor = "#3b82f6";
+  } else if (score >= 25) {
+    status = "WEAK"; statusEmoji = "🟠"; statusColor = "#f97316";
+  } else {
+    status = "AVOID"; statusEmoji = "🔴"; statusColor = "#ef4444";
+  }
+
+  return { score, status, statusEmoji, statusColor, reasons, hasHighProb };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TRADE PLAN — pentru rândurile cu trigger activ
+// ═══════════════════════════════════════════════════════════════
+function buildTradePlan(row) {
+  const m = row.m1d;
+  if (!m) return null;
+  const c = m.price;
+  const atrV = m.atr || (c * 0.02);
+  let dir = null, kind = null;
+  if (m.accum && m.accumSpring)       { dir = "LONG";  kind = "Spring (Wyckoff)"; }
+  else if (m.accum && m.accumTrigger) { dir = "LONG";  kind = "Acumulare + trigger"; }
+  else if (m.stage2)                  { dir = "LONG";  kind = `Stage 2 (${m.stage2Days}z)`; }
+  else if (m.dist && m.distTrigger)   { dir = "SHORT"; kind = "Distribuție + trigger"; }
+  else return null;
+
+  const rangeHeight = atrV * 6;
+  let entry = c, sl, tp1, tp2;
+  if (dir === "LONG") {
+    sl = c - atrV * 1.5;
+    tp1 = c + rangeHeight;
+    tp2 = c + rangeHeight * 2;
+  } else {
+    sl = c + atrV * 1.5;
+    tp1 = c - rangeHeight;
+    tp2 = c - rangeHeight * 2;
+  }
+  const risk = Math.abs(entry - sl);
+  const rr1 = risk > 0 ? Math.abs(tp1 - entry) / risk : 0;
+  const rr2 = risk > 0 ? Math.abs(tp2 - entry) / risk : 0;
+  return { sym: row.sym, dir, kind, entry, sl, tp1, tp2, rr1, rr2, atr: atrV, riskPct: (risk / c) * 100 };
+}
+
+window.openTradePlanModal = function(symRaw) {
+  const sym = decodeURIComponent(symRaw);
+  const row = STATE.rows.find(r => r.sym === sym);
+  if (!row) return;
+  const plan = buildTradePlan(row);
+  if (!plan) { toast("err", "Nu există setup cu trigger activ pentru " + shortName(sym)); return; }
+  let modal = document.getElementById("tradePlanModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "tradePlanModal";
+    document.body.appendChild(modal);
+  }
+  const dirColor = plan.dir === "LONG" ? "#22c55e" : "#ef4444";
+  const fmt = v => Number(v).toLocaleString("en-US", { maximumFractionDigits: v < 1 ? 6 : v < 100 ? 4 : 2 });
+  const planText = `📋 Trade Plan — ${shortName(plan.sym)}
+Setup: ${plan.kind} (${plan.dir})
+
+Entry:  ${fmt(plan.entry)}
+SL:     ${fmt(plan.sl)}    (${plan.riskPct.toFixed(2)}% risk)
+TP1:    ${fmt(plan.tp1)}   R:R = ${plan.rr1.toFixed(2)}
+TP2:    ${fmt(plan.tp2)}   R:R = ${plan.rr2.toFixed(2)}
+
+ATR(14): ${fmt(plan.atr)}`;
+
+  modal.innerHTML = `
+    <div class="tp-card" style="border-left-color:${dirColor}">
+      <div class="tp-head">
+        <span>📋 Trade Plan — ${shortName(plan.sym)}</span>
+        <button class="row-btn" onclick="document.getElementById('tradePlanModal').remove()">✕</button>
+      </div>
+      <div class="tp-body">
+        <div style="margin-bottom:14px">
+          <span style="background:${dirColor};color:white;padding:3px 10px;border-radius:4px;font-weight:800;font-size:11px;">${plan.dir}</span>
+          <span style="color:var(--muted);font-size:11px;margin-left:8px">${plan.kind}</span>
+        </div>
+        <table class="tp-table">
+          <tr><td class="lbl">Entry</td><td class="val">${fmt(plan.entry)}</td></tr>
+          <tr><td class="lbl">Stop Loss</td><td class="val" style="color:#ef4444">${fmt(plan.sl)} <span style="color:var(--muted);font-weight:400;font-size:11px">(${plan.riskPct.toFixed(2)}% risk)</span></td></tr>
+          <tr><td class="lbl">TP1</td><td class="val" style="color:#22c55e">${fmt(plan.tp1)} <span style="color:var(--muted);font-weight:400;font-size:11px">R:R ${plan.rr1.toFixed(2)}</span></td></tr>
+          <tr><td class="lbl">TP2</td><td class="val" style="color:#22c55e">${fmt(plan.tp2)} <span style="color:var(--muted);font-weight:400;font-size:11px">R:R ${plan.rr2.toFixed(2)}</span></td></tr>
+          <tr><td colspan="2" style="padding-top:10px;border-top:1px dashed var(--border)"></td></tr>
+          <tr><td class="lbl" style="font-size:11px">ATR(14)</td><td style="text-align:right;color:var(--muted);font-size:11px">${fmt(plan.atr)}</td></tr>
+        </table>
+        <div style="margin-top:14px;padding:10px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.5">
+          ℹ️ SL = entry ± 1.5×ATR · TP-uri = ±1× / ±2× rangeHeight (estimat ATR×6).
+          Ajustează după nivele tehnice reale (support/resist) pe chart.
+        </div>
+        <div class="tp-actions">
+          <button class="copy-btn" onclick="navigator.clipboard.writeText(${JSON.stringify(planText)}).then(()=>{this.textContent='✓ Copiat';setTimeout(()=>this.textContent='📋 Copiază plan',1500)})">📋 Copiază plan</button>
+          <button class="tv-btn" onclick="window.open('${tvUrl(plan.sym)}','_blank')">📊 TradingView</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  FETCHERS — Binance klines + exchangeInfo (autocomplete)
+// ═══════════════════════════════════════════════════════════════
+async function fetchKlines(pair, interval, limit = 500) {
+  const url = `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Binance ${r.status} pentru ${pair}`);
+  const data = await r.json();
+  return {
+    highs:   data.map(k => parseFloat(k[2])),
+    lows:    data.map(k => parseFloat(k[3])),
+    closes:  data.map(k => parseFloat(k[4])),
+    volumes: data.map(k => parseFloat(k[5])),
+  };
+}
+
+async function loadBinancePairs() {
+  // cache 24h în localStorage
+  try {
+    const raw = localStorage.getItem(PAIRS_CACHE_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj.ts && (Date.now() - obj.ts < PAIRS_CACHE_TTL) && Array.isArray(obj.pairs)) {
+        STATE.binancePairs = obj.pairs;
+        return obj.pairs;
+      }
+    }
+  } catch (e) { /* noop */ }
+
+  // ticker24h are atât symbol cât și quoteVolume — îl folosim ca să sortăm după volum
+  try {
+    const r = await fetch("https://api.binance.com/api/v3/ticker/24hr");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const data = await r.json();
+    const pairs = data
+      .filter(d => d.symbol.endsWith("USDT") && parseFloat(d.quoteVolume) > 100_000)
+      .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .map(d => ({ pair: d.symbol, vol: parseFloat(d.quoteVolume) }));
+    const pairList = pairs.map(p => p.pair);
+    STATE.binancePairs = pairList;
+    // salvăm și volume separat ca să le afișăm în autocomplete
+    localStorage.setItem(PAIRS_CACHE_KEY, JSON.stringify({ ts: Date.now(), pairs: pairList, withVol: pairs.slice(0, 300) }));
+    return pairList;
+  } catch (e) {
+    console.error("loadBinancePairs failed:", e);
+    return [];
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LAST-STATUS snapshot pentru detectare schimbări (alerte STRONG nouă)
+// ═══════════════════════════════════════════════════════════════
+function loadLastStatus() {
+  try { return JSON.parse(localStorage.getItem(LAST_STATUS_KEY) || "{}"); }
+  catch (e) { return {}; }
+}
+function saveLastStatus(snap) { localStorage.setItem(LAST_STATUS_KEY, JSON.stringify(snap)); }
+
+// ═══════════════════════════════════════════════════════════════
+//  AUDIO (beep) + NOTIFICATION API
+// ═══════════════════════════════════════════════════════════════
+let _audioCtx = null;
+function playBeep(priority = false) {
+  if (STATE.muted) return;
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    const beepOnce = (freq, dur, when) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq; osc.type = "sine";
+      gain.gain.setValueAtTime(0, ctx.currentTime + when);
+      gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + when + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + when + dur);
+      osc.start(ctx.currentTime + when); osc.stop(ctx.currentTime + when + dur);
+    };
+    // STRONG LONG = 2 beep-uri 1100Hz; alt status = 1 beep 800Hz
+    if (priority) { beepOnce(1100, 0.16, 0); beepOnce(1300, 0.16, 0.20); }
+    else { beepOnce(800, 0.14, 0); }
+  } catch (e) { /* audio not supported */ }
+}
+
+async function ensureNotifPermission() {
+  if (!("Notification" in window)) { toast("err", "Browser-ul tău nu suportă notificări"); return false; }
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") {
+    toast("err", "Notificări blocate. Resetează din setările browser-ului.");
+    return false;
+  }
+  const p = await Notification.requestPermission();
+  return p === "granted";
+}
+function fireNotification(title, body, sym) {
+  if (!STATE.notifEnabled) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const n = new Notification(title, {
+      body, icon: "icon-192.png", tag: "wl-" + sym, renotify: true, requireInteraction: false,
+    });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch (e) { /* noop */ }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SCAN LOOP — fetch klines pentru toate coin-urile + recalc + render
+// ═══════════════════════════════════════════════════════════════
+async function scanOne(sym) {
+  const pair = toBinancePair(sym);
+  try {
+    const bars1d = await fetchKlines(pair, "1d", 500);
+    await sleep(STAGGER_MS);
+    const bars4h = await fetchKlines(pair, "4h", 300);
+    const m1d = computeMetrics(bars1d, "1d");
+    const m4h = computeMetrics(bars4h, "4h");
+    const longSig = computeLongScore(m1d, m4h);
+    return { sym, pair, m1d, m4h, longScore: longSig.score, status: longSig.status, statusEmoji: longSig.statusEmoji, statusColor: longSig.statusColor, reasons: longSig.reasons, hasHighProb: longSig.hasHighProb, error: null };
+  } catch (e) {
+    return { sym, pair, m1d: null, m4h: null, longScore: 0, status: "ERR", statusEmoji: "⚠️", statusColor: "#6b7487", reasons: [e.message], error: e.message };
+  }
+}
+
+async function runScan() {
+  if (STATE.isScanning) return;
+  const list = getWatchlist();
+  if (!list.length) { STATE.rows = []; render(); setStatus("idle", "watchlist gol"); return; }
+
+  STATE.isScanning = true;
+  setStatus("load", `scanare ${list.length}/${MAX_COINS}...`);
+
+  const newRows = [];
+  for (let i = 0; i < list.length; i++) {
+    const sym = list[i];
+    setStatus("load", `${i+1}/${list.length} · ${shortName(sym)}`);
+    const row = await scanOne(sym);
+    newRows.push(row);
+    // stagger între simboluri ca să nu rate-limit
+    if (i < list.length - 1) await sleep(STAGGER_MS);
+  }
+  // Detectare STRONG-LONG nou (status schimbat de la non-STRONG la STRONG)
+  const lastSnap = loadLastStatus();
+  const newSnap = {};
+  for (const r of newRows) {
+    newSnap[r.sym] = r.status;
+    const prev = lastSnap[r.sym];
+    if (r.status === "STRONG" && prev && prev !== "STRONG") {
+      // Alertă!
+      playBeep(true);
+      fireNotification(`🟢 STRONG LONG — ${shortName(r.sym)}`, `Score ${r.longScore} · ${r.reasons[0] || ""}`, r.sym);
+      toast("alert", `🟢 STRONG LONG nou: <b>${shortName(r.sym)}</b> · score ${r.longScore}`, 8000);
+    }
+  }
+  saveLastStatus(newSnap);
+
+  STATE.rows = newRows;
+  STATE.lastUpdate = Date.now();
+  STATE.isScanning = false;
+  setStatus("ok", `actualizat ${newRows.length} coin-uri`);
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════════
+function setStatus(cls, txt) {
+  const dot = document.getElementById("statusDot");
+  const text = document.getElementById("statusText");
+  if (dot) dot.className = "status-dot " + (cls || "");
+  if (text) text.textContent = txt;
+}
+
+function fmtPrice(p) {
+  if (p >= 1000) return p.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (p >= 1) return p.toFixed(4);
+  if (p >= 0.01) return p.toFixed(5);
+  return p.toFixed(7);
+}
+function chgStr(p) {
+  if (p == null || isNaN(p)) return "—";
+  const sign = p >= 0 ? "+" : "";
+  return `${sign}${p.toFixed(2)}%`;
+}
+function trendBadgeClass(t) {
+  if (t >= 2) return "bull-s";
+  if (t === 1) return "bull";
+  if (t === 0) return "neut";
+  if (t === -1) return "bear";
+  return "bear-s";
+}
+function trendArrow(t) {
+  if (t >= 2) return "↑↑";
+  if (t === 1) return "↑";
+  if (t === 0) return "→";
+  if (t === -1) return "↓";
+  return "↓↓";
+}
+function mtfStrip(m) {
+  if (!m) return `<span style="color:var(--muted);font-size:10px">—</span>`;
+  const lbls = m.mtfLabels;
+  return `<span class="mtf-strip">
+    <span class="mtf-lbl">${lbls[0]}</span><span class="mtf-dot ${trendBadgeClass(m.mtfP)}">${trendArrow(m.mtfP)}</span>
+    <span class="mtf-lbl">${lbls[1]}</span><span class="mtf-dot ${trendBadgeClass(m.mtfH1)}">${trendArrow(m.mtfH1)}</span>
+    <span class="mtf-lbl">${lbls[2]}</span><span class="mtf-dot ${trendBadgeClass(m.mtfH2)}">${trendArrow(m.mtfH2)}</span>
+  </span>`;
+}
+function sparkSVG(data, isUp) {
+  if (!data || data.length < 2) return "";
+  const w = 60, h = 18;
+  const min = Math.min(...data), max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * h;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const color = isUp ? "#1eb862" : "#d64545";
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+}
+
+function applyFilters(rows) {
+  if (STATE.filter === "all") return rows;
+  return rows.filter(r => r.status === STATE.filter);
+}
+function applySort(rows) {
+  const cp = rows.slice();
+  const STATUS_ORDER = { "STRONG": 0, "WAIT": 1, "NEUTRAL": 2, "WEAK": 3, "AVOID": 4, "ERR": 5 };
+  switch (STATE.sort) {
+    case "status":     cp.sort((a, b) => (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]) || (b.longScore - a.longScore)); break;
+    case "score-desc": cp.sort((a, b) => b.longScore - a.longScore); break;
+    case "chg-desc":   cp.sort((a, b) => (b.m1d?.chgPct || -999) - (a.m1d?.chgPct || -999)); break;
+    case "chg-asc":    cp.sort((a, b) => (a.m1d?.chgPct || 999) - (b.m1d?.chgPct || 999)); break;
+    case "name":       cp.sort((a, b) => shortName(a.sym).localeCompare(shortName(b.sym))); break;
+    case "added":      /* păstrăm ordinea din watchlist */ {
+      const wl = getWatchlist();
+      cp.sort((a, b) => wl.indexOf(a.sym) - wl.indexOf(b.sym));
+      break;
+    }
+  }
+  return cp;
+}
+
+function render() {
+  // Stats
+  const tot = STATE.rows.length;
+  const bucket = { STRONG: 0, WAIT: 0, NEUTRAL: 0, WEAK: 0, AVOID: 0 };
+  for (const r of STATE.rows) {
+    if (bucket[r.status] !== undefined) bucket[r.status]++;
+  }
+  document.getElementById("statTotal").textContent = tot;
+  document.getElementById("statStrong").textContent = bucket.STRONG;
+  document.getElementById("statWait").textContent = bucket.WAIT;
+  document.getElementById("statNeut").textContent = bucket.NEUTRAL;
+  document.getElementById("statWeak").textContent = bucket.WEAK;
+  document.getElementById("statAvoid").textContent = bucket.AVOID;
+  document.getElementById("statLastUpdate").textContent = STATE.lastUpdate
+    ? new Date(STATE.lastUpdate).toLocaleTimeString("ro-RO")
+    : "—";
+
+  // List
+  const container = document.getElementById("listContainer");
+  if (!tot) {
+    container.innerHTML = `<div class="empty">
+      <div class="empty-icon">👁️</div>
+      <div>Watchlist gol.</div>
+      <div class="empty-hint">Tastează un simbol în bara de sus și apasă <b>Adaugă</b>, sau apasă <b>⬇ Import din Scanner</b> dacă ai stelat coin-uri în Crypto Scanner.</div>
+    </div>`;
+    return;
+  }
+  const filtered = applySort(applyFilters(STATE.rows));
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div>Niciun coin nu corespunde filtrului <b>${STATE.filter}</b>.</div></div>`;
+    return;
+  }
+
+  let html = `<table class="wl">
+    <thead><tr>
+      <th style="width:32px"></th>
+      <th>Simbol</th>
+      <th>%24h</th>
+      <th class="hide-mobile">MTF 1d</th>
+      <th class="hide-mobile">MTF 4h</th>
+      <th>Status</th>
+      <th>Score (LONG)</th>
+      <th class="hide-mobile">Setup</th>
+      <th style="width:130px">Acțiuni</th>
+    </tr></thead><tbody>`;
+  for (const r of filtered) {
+    const m1 = r.m1d, m4 = r.m4h;
+    const chg = m1?.chgPct;
+    const chgCls = chg == null ? "" : chg >= 0 ? "chg-pos" : "chg-neg";
+    const isUp = chg != null && chg >= 0;
+    const setupTxt = (() => {
+      if (!m1) return "—";
+      const parts = [];
+      if (m1.accum && m1.accumSpring) parts.push("💎 Spring");
+      else if (m1.accum && m1.accumTrigger) parts.push("🏗️ Accum trig");
+      else if (m1.stage2) parts.push(`✅ Stage2 ${m1.stage2Days}z`);
+      else if (m1.accumScore >= 3) parts.push(`🔶 ${m1.accumScore}/5`);
+      if (m1.dist && m1.distTrigger) parts.push("📉 Dist trig");
+      else if (m1.dist) parts.push("📉 Dist");
+      if (m1.divDir === "bull") parts.push("🐂 div");
+      if (m1.divDir === "bear") parts.push("🐻 div");
+      return parts.length ? parts.join(" · ") : "—";
+    })();
+    const reasonsTip = (r.reasons || []).slice(0, 8).join("\n").replace(/"/g, "&quot;");
+    const trClass = r.status === "STRONG" ? "has-strong" : "";
+    const hasPlan = m1 && ((m1.accum && (m1.accumSpring || m1.accumTrigger)) || m1.stage2 || (m1.dist && m1.distTrigger));
+    const planBtn = hasPlan
+      ? `<button class="row-btn plan" onclick="event.stopPropagation();window.openTradePlanModal('${encodeURIComponent(r.sym)}')" title="Trade Plan: Entry / SL / TP / R:R">📋</button>`
+      : "";
+    const scoreColor = r.statusColor;
+    html += `<tr class="${trClass}" onclick="window.open('${tvUrl(r.sym)}','_blank')">
+      <td>${sparkSVG(m1?.spark || [], isUp)}</td>
+      <td>
+        <div class="sym-cell">
+          <div class="sym-name">${shortName(r.sym)}</div>
+          <div class="sym-price">${m1 ? fmtPrice(m1.price) : "—"}</div>
+        </div>
+      </td>
+      <td><span class="${chgCls}">${chgStr(chg)}</span></td>
+      <td class="hide-mobile">${mtfStrip(m1)}</td>
+      <td class="hide-mobile">${mtfStrip(m4)}</td>
+      <td>
+        <span class="status-badge reason-hover" title="${reasonsTip}" style="background:${scoreColor}22;border-color:${scoreColor};color:${scoreColor}">${r.statusEmoji} ${r.status}</span>
+      </td>
+      <td>
+        <div class="score-bar-wrap">
+          <div class="score-bar"><div class="score-bar-fill" style="width:${r.longScore}%;background:${scoreColor}"></div></div>
+          <span class="score-num" style="color:${scoreColor}">${r.longScore}</span>
+        </div>
+      </td>
+      <td class="hide-mobile" style="font-size:10.5px;color:var(--text-dim)">${setupTxt}</td>
+      <td>
+        <div class="row-actions" onclick="event.stopPropagation()">
+          ${planBtn}
+          <button class="row-btn" onclick="window.open('${tvUrl(r.sym)}','_blank')" title="Deschide pe TradingView">TV</button>
+          <button class="row-btn danger" onclick="window.removeCoin('${encodeURIComponent(r.sym)}')" title="Scoate din watchlist">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+  html += "</tbody></table>";
+  container.innerHTML = html;
+}
+
+window.removeCoin = function(symRaw) {
+  const sym = decodeURIComponent(symRaw);
+  removeFromWatchlist(sym);
+  toast("ok", `${shortName(sym)} scos din watchlist`);
+  render();
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════════════
+function toast(cls, html, ms = 3500) {
+  const el = document.createElement("div");
+  el.className = "toast " + (cls || "");
+  el.innerHTML = html;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .25s"; setTimeout(() => el.remove(), 250); }, ms);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTOCOMPLETE
+// ═══════════════════════════════════════════════════════════════
+function setupAutocomplete() {
+  const input = document.getElementById("addInput");
+  const list = document.getElementById("autocompleteList");
+  let items = [];
+  let activeIdx = -1;
+
+  function close() { list.classList.remove("show"); items = []; activeIdx = -1; }
+  function open(matches) {
+    if (!matches.length) { close(); return; }
+    items = matches.slice(0, 12);
+    list.innerHTML = items.map((p, i) =>
+      `<div class="autocomplete-item${i === activeIdx ? ' active' : ''}" data-idx="${i}">
+         <span><b>${p.replace("USDT", "")}</b><span style="color:var(--muted);font-weight:400">USDT</span></span>
+         <span class="ac-vol">#${i+1}</span>
+       </div>`
+    ).join("");
+    list.classList.add("show");
+  }
+  function pick(pair) {
+    input.value = pair.replace("USDT", "");
+    close();
+    input.focus();
+  }
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!q || !STATE.binancePairs.length) { close(); return; }
+    const matches = STATE.binancePairs.filter(p => p.startsWith(q));
+    activeIdx = -1;
+    open(matches);
+  });
+  input.addEventListener("keydown", (e) => {
+    if (!list.classList.contains("show")) {
+      if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+      return;
+    }
+    if (e.key === "ArrowDown") { e.preventDefault(); activeIdx = Math.min(items.length - 1, activeIdx + 1); open(items); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); activeIdx = Math.max(0, activeIdx - 1); open(items); }
+    else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIdx >= 0 && items[activeIdx]) { pick(items[activeIdx]); }
+      else { doAdd(); }
+    } else if (e.key === "Escape") { close(); }
+  });
+  list.addEventListener("click", (e) => {
+    const it = e.target.closest(".autocomplete-item");
+    if (!it) return;
+    const idx = parseInt(it.dataset.idx, 10);
+    if (items[idx]) pick(items[idx]);
+  });
+  document.addEventListener("click", (e) => {
+    if (!input.contains(e.target) && !list.contains(e.target)) close();
+  });
+}
+
+function doAdd() {
+  const input = document.getElementById("addInput");
+  const v = input.value.trim();
+  if (!v) return;
+  const res = addToWatchlist(v);
+  if (!res.ok) { toast("err", res.msg); return; }
+  input.value = "";
+  toast("ok", `${shortName(res.sym)} adăugat în watchlist`);
+  // Scanare doar pentru noul coin (rapidă), nu rerulăm pe toate
+  scanOne(res.sym).then(row => {
+    STATE.rows.push(row);
+    render();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  POLLING (60s) cu pause când tab inactiv
+// ═══════════════════════════════════════════════════════════════
+function startPolling() {
+  stopPolling();
+  STATE.pollTimer = setInterval(() => {
+    if (document.visibilityState === "visible") runScan();
+  }, POLL_INTERVAL_MS);
+}
+function stopPolling() {
+  if (STATE.pollTimer) { clearInterval(STATE.pollTimer); STATE.pollTimer = null; }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    // dacă ultimul update e mai vechi de 30s, rerulăm imediat
+    if (!STATE.lastUpdate || (Date.now() - STATE.lastUpdate > 30_000)) runScan();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+async function init() {
+  // Restore prefs
+  STATE.filter = localStorage.getItem(FILTER_KEY) || "all";
+  STATE.sort = localStorage.getItem(SORT_KEY) || "score-desc";
+  STATE.muted = localStorage.getItem(MUTED_KEY) === "1";
+  STATE.notifEnabled = ("Notification" in window) && Notification.permission === "granted";
+
+  // UI sync
+  document.querySelectorAll('.filter-bar [data-filter]').forEach(b => {
+    b.classList.toggle("active", b.dataset.filter === STATE.filter);
+    b.addEventListener("click", () => {
+      STATE.filter = b.dataset.filter;
+      localStorage.setItem(FILTER_KEY, STATE.filter);
+      document.querySelectorAll('.filter-bar [data-filter]').forEach(x => x.classList.toggle("active", x === b));
+      render();
+    });
+  });
+  const sortSel = document.getElementById("sortSelect");
+  sortSel.value = STATE.sort;
+  sortSel.addEventListener("change", () => {
+    STATE.sort = sortSel.value;
+    localStorage.setItem(SORT_KEY, STATE.sort);
+    render();
+  });
+  const muteBtn = document.getElementById("muteBtn");
+  muteBtn.textContent = STATE.muted ? "🔇" : "🔊";
+  muteBtn.addEventListener("click", () => {
+    STATE.muted = !STATE.muted;
+    localStorage.setItem(MUTED_KEY, STATE.muted ? "1" : "0");
+    muteBtn.textContent = STATE.muted ? "🔇" : "🔊";
+    toast("ok", STATE.muted ? "Audio dezactivat" : "Audio activat");
+  });
+
+  document.getElementById("addBtn").addEventListener("click", doAdd);
+  document.getElementById("refreshBtn").addEventListener("click", () => runScan());
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    if (!confirm("Sigur vrei să golești watchlist-ul?")) return;
+    saveWatchlist([]);
+    saveLastStatus({});
+    STATE.rows = [];
+    render();
+    toast("ok", "Watchlist gol");
+  });
+  document.getElementById("importBtn").addEventListener("click", () => {
+    // "Import din Scanner" e de fapt no-op (folosim acelaşi key).
+    // Buton-ul reîncarcă lista din localStorage și rulează scan.
+    toast("ok", "Sincronizat cu watchlist-ul Scanner-ului · pornesc scanare");
+    runScan();
+  });
+  document.getElementById("notifBtn").addEventListener("click", async () => {
+    const ok = await ensureNotifPermission();
+    STATE.notifEnabled = ok;
+    toast(ok ? "ok" : "err", ok ? "Notificări desktop activate" : "Notificări refuzate");
+  });
+
+  setupAutocomplete();
+
+  // Load Binance pairs (autocomplete + validare)
+  setStatus("load", "încărcare pairs Binance...");
+  await loadBinancePairs();
+
+  // Start
+  setStatus("ok", "ready");
+  render();
+  await runScan();
+  startPolling();
+}
+
+init();
+</script>
+
+</body>
+</html>

@@ -4031,6 +4031,7 @@ function initModeUI() {
     nav.style.cssText = "margin-left:0;gap:6px;align-items:center";
     nav.innerHTML = `
       <a href="scanner-hub.html" class="nav-link" title="Back to hub">🏠</a>
+      <a href="watchlist.html" class="nav-link" title="Watchlist Monitor (auto-scan 60s + alerte LONG)" style="background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.4);color:#22c55e">👁️ Watchlist</a>
       ${IS_STOCKS ? '<span id="sessionInd" class="session-ind neut">—</span>' : ''}
     `;
     // Insert right after the H1

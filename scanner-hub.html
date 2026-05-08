@@ -15,6 +15,7 @@
     --stocks-1:#1976d2; --stocks-2:#5bb0ff;
     --news-1:#22d66b; --news-2:#5bdcb0;
     --events-1:#8b6fff; --events-2:#c89bff;
+    --watch-1:#22c55e; --watch-2:#facc15;
     --ease: cubic-bezier(.4,0,.2,1);
   }
   html, body { height: 100%; }
@@ -45,7 +46,7 @@
   }
 
   .cards {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px;
   }
   @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
 
@@ -77,6 +78,7 @@
   .card.stocks { --bar: linear-gradient(90deg, var(--stocks-1), var(--stocks-2)); --glow: rgba(91,176,255,.2); }
   .card.news   { --bar: linear-gradient(90deg, var(--news-1), var(--news-2));     --glow: rgba(34,214,107,.2); }
   .card.events { --bar: linear-gradient(90deg, var(--events-1), var(--events-2)); --glow: rgba(139,111,255,.2); }
+  .card.watch  { --bar: linear-gradient(90deg, var(--watch-1), var(--watch-2));   --glow: rgba(34,197,94,.2); }
 
   .card-icon {
     width: 56px; height: 56px; border-radius: 14px;
@@ -88,6 +90,7 @@
   .card.stocks .card-icon { background: linear-gradient(135deg, var(--stocks-1), var(--stocks-2)); box-shadow: 0 6px 20px rgba(91,176,255,.3); }
   .card.news   .card-icon { background: linear-gradient(135deg, var(--news-1), var(--news-2));     box-shadow: 0 6px 20px rgba(34,214,107,.3); }
   .card.events .card-icon { background: linear-gradient(135deg, var(--events-1), var(--events-2)); box-shadow: 0 6px 20px rgba(139,111,255,.3); }
+  .card.watch  .card-icon { background: linear-gradient(135deg, var(--watch-1), var(--watch-2));   box-shadow: 0 6px 20px rgba(34,197,94,.3); }
 
   .card h2 {
     font-size: 22px; font-weight: 700; letter-spacing: -.3px;
@@ -202,6 +205,20 @@
           <li>Fear &amp; Greed + BTC.D + ETH.D + Trending CoinGecko</li>
         </ul>
         <span class="card-cta">Deschide Events</span>
+      </a>
+
+      <a class="card watch" href="watchlist.html" target="_blank" rel="noopener">
+        <div class="card-icon">👁️</div>
+        <h2>Watchlist Monitor</h2>
+        <div class="card-sub">Coin-urile tale • Auto-scan 60s • Alerte LONG</div>
+        <ul>
+          <li>Adaugi coin-uri și pagina rulează singură în background</li>
+          <li>Direcție per coin: 🟢 STRONG / 🟡 WAIT / 🔵 NEUTRAL / 🔴 AVOID</li>
+          <li>Sugestii LONG (Spring · Acumulare · Stage 2) cu Trade Plan</li>
+          <li>Multi-TF: 1d primar + 4h context, RSI + MTF + divergențe</li>
+          <li>Notificări desktop + beep când apare un STRONG LONG nou</li>
+        </ul>
+        <span class="card-cta">Deschide Watchlist</span>
       </a>
     </div>
 
