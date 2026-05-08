@@ -493,7 +493,7 @@
 <body>
 
 <header>
-  <h1>🔍 Scanner Pro — 25/200 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v39</span></h1>
+  <h1>🔍 Scanner Pro — 25/200 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v40</span></h1>
   <div class="ctl"><span><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span></div>
   <div class="header-stats" id="headerStats"></div>
   <div class="ctl"><label>TF:</label>
@@ -2260,7 +2260,7 @@ function render() {
     if (r.error) {
       const inWatchE = isInWatchlist(r.sym);
       const starBtnE = `<button onclick="event.stopPropagation();window.toggleWatchlist('${encodeURIComponent(r.sym)}')" style="background:transparent;border:none;cursor:pointer;font-size:14px;padding:0 2px;color:${inWatchE ? "#fbbf24" : "#4a4a55"};">${inWatchE ? "★" : "☆"}</button>`;
-      return `<tr onclick="window.open('${tvUrl(r.sym)}','_blank')">
+      return `<tr data-sym="${r.sym}" onclick="window._cryptoRowClick(event,'${r.sym}','${tvUrl(r.sym)}')">
         <td><span class="rank bg-neut">${i+1}</span>${starBtnE}</td>
         <td class="sym-cell"><div class="sym-name">${shortName(r.sym)}</div><div class="err-cell">${r.error}</div></td>
         <td colspan="11" class="err-cell">Eroare fetch</td>
@@ -2344,7 +2344,7 @@ function render() {
     }
     const inWatch = isInWatchlist(r.sym);
     const starBtn = `<button onclick="event.stopPropagation();window.toggleWatchlist('${encodeURIComponent(r.sym)}')" title="${inWatch ? "Scoate din watchlist" : "Adaugă în watchlist"}" style="background:transparent;border:none;cursor:pointer;font-size:14px;padding:0 2px;color:${inWatch ? "#fbbf24" : "#4a4a55"};">${inWatch ? "★" : "☆"}</button>`;
-    return `<tr onclick="window.open('${tvUrl(r.sym)}','_blank')">
+    return `<tr data-sym="${r.sym}" onclick="window._cryptoRowClick(event,'${r.sym}','${tvUrl(r.sym)}')">
       <td><span class="rank ${rankBg(i)}">${i+1}</span>${starBtn}</td>
       <td class="sym-cell">
         <div style="display:flex;align-items:center;gap:4px">
@@ -4263,6 +4263,145 @@ function showInstallBanner() {
 // ═══════════════════════════════════════════════════════════════
 //  AI Bubble (modul shared) — context din semnalele scanner-ului crypto
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  Compare AI mode — select multiple coinuri din tabel cu click + sticky bar
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const sel = new Set();
+  let mode = false;
+
+  const styles = document.createElement("style");
+  styles.textContent = `
+    body.crypto-select-mode #tbody tr { cursor: cell !important; }
+    body.crypto-select-mode #tbody tr:hover { background: rgba(217,70,239,.08) !important; }
+    #tbody tr.row-selected { background: rgba(217,70,239,.18) !important; outline: 2px solid #d946ef; outline-offset: -2px; }
+    #cryptoSelectBtn.active { background: linear-gradient(135deg,#d946ef,#a78bfa) !important; color:#fff !important; border-color:transparent !important; }
+    #cryptoCompareBar {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9000;
+      background: linear-gradient(135deg, #d946ef, #a78bfa);
+      border-radius: 30px; padding: 10px 18px;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 10px 30px rgba(217,70,239,.5);
+      color: #fff; font-weight: 700; font-size: 13px;
+      animation: slideUp .3s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideUp { from { opacity:0; transform:translate(-50%,30px); } to { opacity:1; transform:translate(-50%,0); } }
+    #cryptoCompareBar button {
+      background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3);
+      padding: 5px 12px; border-radius: 18px; font-size: 12px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    #cryptoCompareBar button:hover { background: rgba(255,255,255,.28); }
+    #cryptoCompareBar button.primary { background: #fff; color: #a78bfa; }
+  `;
+  document.head.appendChild(styles);
+
+  function buildSummary(sym) {
+    const r = (typeof rows !== "undefined" ? rows : []).find(x => x.sym === sym && !x.error);
+    if (!r) return `${sym} (date indisponibile)`;
+    const parts = [];
+    parts.push(`${shortName(r.sym)} (${r.sym})`);
+    if (r.price != null) parts.push(`Preț: ${fmtPrice(r.price)} (${r.chgPct >= 0 ? "+" : ""}${r.chgPct?.toFixed(2)}%)`);
+    if (r.score != null) parts.push(`Score: ${r.score.toFixed(1)} · Verdict: ${r.signal || "—"}`);
+    if (r.rsi != null) parts.push(`RSI ${r.rsi.toFixed(0)} · MACD ${r.macd || "—"} · MTF ${r.mtfScore != null ? r.mtfScore : "—"} · ADX ${r.adx?.toFixed(0) || "—"}`);
+    const tags = [];
+    if (r.accumScore && r.accumScore >= 5) tags.push("🏗️ Accum");
+    else if (r.accumScore && r.accumScore >= 3) tags.push("🔶 Accum parțial");
+    if (r.stage2) tags.push("✅ Stage2");
+    if (r.accumSpring) tags.push("💎 Spring");
+    if (r.dist) tags.push("📉 Dist");
+    if (tags.length) parts.push("Setup: " + tags.join(" · "));
+    return parts.join("\n");
+  }
+
+  function updateBar() {
+    const existing = document.getElementById("cryptoCompareBar");
+    if (existing) existing.remove();
+    if (!mode || sel.size < 1) return;
+    const bar = document.createElement("div");
+    bar.id = "cryptoCompareBar";
+    bar.innerHTML = `
+      <span>📋 ${sel.size} selectate (max 5)</span>
+      <button data-action="clear">Curăță</button>
+      <button class="primary" data-action="compare" ${sel.size < 2 ? 'disabled style="opacity:.5"' : ''}>🪄 Compară</button>
+      <button data-action="exit">✕ Ieșire</button>
+    `;
+    document.body.appendChild(bar);
+    bar.querySelector('[data-action="clear"]').addEventListener("click", () => {
+      sel.clear();
+      document.querySelectorAll("#tbody tr.row-selected").forEach(t => t.classList.remove("row-selected"));
+      updateBar();
+    });
+    bar.querySelector('[data-action="exit"]').addEventListener("click", () => {
+      mode = false;
+      sel.clear();
+      document.body.classList.remove("crypto-select-mode");
+      document.querySelectorAll("#tbody tr.row-selected").forEach(t => t.classList.remove("row-selected"));
+      const btn = document.getElementById("cryptoSelectBtn");
+      if (btn) btn.classList.remove("active");
+      updateBar();
+    });
+    bar.querySelector('[data-action="compare"]').addEventListener("click", () => {
+      if (sel.size < 2) return;
+      const summaries = [...sel].map(buildSummary);
+      if (typeof window.aiCompareCoins === "function") {
+        window.aiCompareCoins(summaries, { pageLabel: "Crypto Scanner", maxTokens: 1100 });
+      } else {
+        alert("Modul AI nu e încărcat. Reîmprospătează pagina (Ctrl+Shift+R).");
+      }
+    });
+  }
+
+  function toggleMode() {
+    mode = !mode;
+    if (!mode) {
+      sel.clear();
+      document.querySelectorAll("#tbody tr.row-selected").forEach(t => t.classList.remove("row-selected"));
+    }
+    document.body.classList.toggle("crypto-select-mode", mode);
+    const btn = document.getElementById("cryptoSelectBtn");
+    if (btn) btn.classList.toggle("active", mode);
+    updateBar();
+  }
+
+  // Click handler injectat în onclick din `<tr>`
+  window._cryptoRowClick = function (ev, sym, tvUrl) {
+    if (mode) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      // Excludem clickul pe butoane interne (star, TV button)
+      if (ev.target.closest("button, a")) return;
+      if (sel.has(sym)) sel.delete(sym);
+      else if (sel.size < 5) sel.add(sym);
+      else { alert("Maxim 5 coinuri pentru comparație"); return; }
+      const tr = ev.currentTarget;
+      tr.classList.toggle("row-selected", sel.has(sym));
+      updateBar();
+    } else {
+      window.open(tvUrl, "_blank");
+    }
+  };
+
+  // Buton toggle în header — adăugat după ce DOM-ul e gata
+  function injectBtn() {
+    const header = document.querySelector("header");
+    if (!header || document.getElementById("cryptoSelectBtn")) return;
+    const btn = document.createElement("button");
+    btn.id = "cryptoSelectBtn";
+    btn.type = "button";
+    btn.title = "Mod selectie multi-coin pentru comparație AI";
+    btn.style.cssText = "background:#1f2638;color:#d6dde8;border:1px solid #242b3e;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto";
+    btn.textContent = "📋 Compară AI";
+    btn.addEventListener("click", toggleMode);
+    header.appendChild(btn);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", injectBtn);
+  } else {
+    injectBtn();
+  }
+})();
+
 window._buildCryptoContext = function() {
   if (!rows || !rows.length) return "(Niciun scan încă — apasă ↻ SCAN ca să am date.)";
   const valid = rows.filter(r => !r.error);

@@ -285,7 +285,7 @@
 <body>
 
 <header>
-  <h1>👁️ Watchlist Monitor <span class="ver-badge" id="verBadge">v39</span></h1>
+  <h1>👁️ Watchlist Monitor <span class="ver-badge" id="verBadge">v40</span></h1>
   <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
   <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Crypto</a>
   <a class="nav-link" href="pump-radar.html" title="Pump Radar — detecție pump/dump pe 5m" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#ef4444">🚨 Pump</a>
@@ -361,7 +361,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
-const VERSION = "v39";
+const VERSION = "v40";
 const POLL_INTERVAL_MS = 60_000;       // refresh la 60 secunde când tab-ul e activ
 const STAGGER_MS = 200;                // delay între request-uri Binance ca să evităm rate-limit
 const MAX_COINS = 50;
@@ -1444,7 +1444,7 @@ function render() {
       ? `<button class="row-btn plan" onclick="event.stopPropagation();window.openTradePlanModal('${encodeURIComponent(r.sym)}')" title="Trade Plan: Entry / SL / TP / R:R">📋</button>`
       : "";
     const scoreColor = r.statusColor;
-    html += `<tr class="${trClass}" onclick="window.open('${tvUrl(r.sym)}','_blank')">
+    html += `<tr class="${trClass}" data-sym="${r.sym}" onclick="window._wlRowClick(event,'${r.sym}','${tvUrl(r.sym)}')">
       <td>${sparkSVG(m1?.spark || [], isUp)}</td>
       <td>
         <div class="sym-cell">
@@ -1685,6 +1685,122 @@ init();
 // ═══════════════════════════════════════════════════════════════
 //  AI Bubble (modul shared) — context din coin-uri în watchlist
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  Compare AI mode — checkbox-style select pe watchlist
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const sel = new Set();
+  let mode = false;
+
+  const styles = document.createElement("style");
+  styles.textContent = `
+    body.wl-select-mode #cardsContainer tr { cursor: cell !important; }
+    body.wl-select-mode #cardsContainer tr:hover { background: rgba(217,70,239,.08) !important; }
+    #cardsContainer tr.wl-row-selected { background: rgba(217,70,239,.18) !important; outline: 2px solid #d946ef; outline-offset: -2px; }
+    #wlSelectBtn.active { background: linear-gradient(135deg,#d946ef,#a78bfa) !important; color:#fff !important; border-color:transparent !important; }
+    #wlCompareBar {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9000;
+      background: linear-gradient(135deg, #d946ef, #a78bfa);
+      border-radius: 30px; padding: 10px 18px;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 10px 30px rgba(217,70,239,.5);
+      color: #fff; font-weight: 700; font-size: 13px;
+      animation: slideUp .3s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideUp { from { opacity:0; transform:translate(-50%,30px); } to { opacity:1; transform:translate(-50%,0); } }
+    #wlCompareBar button {
+      background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3);
+      padding: 5px 12px; border-radius: 18px; font-size: 12px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    #wlCompareBar button:hover { background: rgba(255,255,255,.28); }
+    #wlCompareBar button.primary { background: #fff; color: #a78bfa; }
+  `;
+  document.head.appendChild(styles);
+
+  function buildSummary(sym) {
+    const r = (STATE.rows || []).find(x => x.sym === sym);
+    if (!r) return `${sym} (date indisponibile)`;
+    const reasons = (r.reasons || []).slice(0, 3).join(" · ");
+    return `${shortName(r.sym)} (${r.sym})\nStatus: ${r.status || "?"} · LONG_SCORE: ${r.longScore || 0}/100\n${reasons || "—"}`;
+  }
+
+  function updateBar() {
+    document.getElementById("wlCompareBar")?.remove();
+    if (!mode || sel.size < 1) return;
+    const bar = document.createElement("div");
+    bar.id = "wlCompareBar";
+    bar.innerHTML = `
+      <span>📋 ${sel.size} selectate (max 5)</span>
+      <button data-action="clear">Curăță</button>
+      <button class="primary" data-action="compare" ${sel.size < 2 ? 'disabled style="opacity:.5"' : ''}>🪄 Compară</button>
+      <button data-action="exit">✕ Ieșire</button>
+    `;
+    document.body.appendChild(bar);
+    bar.querySelector('[data-action="clear"]').addEventListener("click", () => {
+      sel.clear();
+      document.querySelectorAll("#cardsContainer tr.wl-row-selected").forEach(t => t.classList.remove("wl-row-selected"));
+      updateBar();
+    });
+    bar.querySelector('[data-action="exit"]').addEventListener("click", toggleMode);
+    bar.querySelector('[data-action="compare"]').addEventListener("click", () => {
+      if (sel.size < 2) return;
+      const summaries = [...sel].map(buildSummary);
+      if (typeof window.aiCompareCoins === "function") {
+        window.aiCompareCoins(summaries, { pageLabel: "Watchlist Monitor", maxTokens: 1100 });
+      } else {
+        alert("Modul AI nu e încărcat. Reîmprospătează pagina (Ctrl+Shift+R).");
+      }
+    });
+  }
+
+  function toggleMode() {
+    mode = !mode;
+    if (!mode) {
+      sel.clear();
+      document.querySelectorAll("#cardsContainer tr.wl-row-selected").forEach(t => t.classList.remove("wl-row-selected"));
+    }
+    document.body.classList.toggle("wl-select-mode", mode);
+    const btn = document.getElementById("wlSelectBtn");
+    if (btn) btn.classList.toggle("active", mode);
+    updateBar();
+  }
+
+  window._wlRowClick = function (ev, sym, tvUrl) {
+    if (mode) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      if (ev.target.closest("button, a")) return;
+      if (sel.has(sym)) sel.delete(sym);
+      else if (sel.size < 5) sel.add(sym);
+      else { alert("Maxim 5 coinuri pentru comparație"); return; }
+      const tr = ev.currentTarget;
+      tr.classList.toggle("wl-row-selected", sel.has(sym));
+      updateBar();
+    } else {
+      window.open(tvUrl, "_blank");
+    }
+  };
+
+  function injectBtn() {
+    const header = document.querySelector("header");
+    if (!header || document.getElementById("wlSelectBtn")) return;
+    const btn = document.createElement("button");
+    btn.id = "wlSelectBtn";
+    btn.type = "button";
+    btn.title = "Mod selectie multi-coin pentru comparație AI";
+    btn.style.cssText = "background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit";
+    btn.textContent = "📋 Compară AI";
+    btn.addEventListener("click", toggleMode);
+    header.appendChild(btn);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", injectBtn);
+  } else {
+    injectBtn();
+  }
+})();
+
 window._buildWatchlistContext = function() {
   if (!STATE.rows || !STATE.rows.length) return "(Watchlist gol — adaugă coin-uri ca să am ce analiza.)";
   const lines = STATE.rows.slice(0, 25).map(r => {

@@ -331,6 +331,123 @@ Reguli:
     }
   };
 
+  // ── Public: aiCompareCoins — apelat din pagini cu lista de coinuri (compare AI) ──
+  // summaries = array de string-uri (text/markdown) — câte unul per coin
+  // opts.pageLabel = nume pagină pentru titlu
+  // opts.maxTokens = limită răspuns (default 1000)
+  window.aiCompareCoins = async function (summaries, opts) {
+    opts = opts || {};
+    if (!aiCfg.apiKey) {
+      // Forțăm load dacă bubble-ul nu a fost initializat încă
+      try { aiCfg = JSON.parse(localStorage.getItem(AI_CFG_KEY) || "{}"); } catch (e) {}
+    }
+    if (!aiCfg.apiKey) {
+      alert("API key Claude lipsă — configurează în Settings central (settings.html)");
+      return;
+    }
+    if (!Array.isArray(summaries) || summaries.length < 2) {
+      alert("Selectează cel puțin 2 coinuri pentru comparație");
+      return;
+    }
+
+    // Modal output
+    document.getElementById("aibCompareOverlay")?.remove();
+    injectStyles();
+    // Inject extra styles pentru modal compare (idempotent)
+    if (!document.getElementById("aib-compare-styles")) {
+      const s = document.createElement("style");
+      s.id = "aib-compare-styles";
+      s.textContent = `
+        .aibc-overlay {
+          position:fixed; inset:0; background:rgba(5,8,15,.78); z-index:10000;
+          display:flex; align-items:center; justify-content:center; padding:16px;
+          animation:aib-in .25s ease;
+        }
+        .aibc-modal {
+          background:#121826; border:1px solid #242b3e; border-radius:14px;
+          padding:18px; width:100%; max-width:600px; max-height:90vh;
+          display:flex; flex-direction:column; gap:10px;
+          box-shadow:0 30px 80px rgba(0,0,0,.6);
+          color:#d6dde8; font-size:12px;
+          font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;
+        }
+        .aibc-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+        .aibc-head h3 {
+          flex:1; font-size:15px; font-weight:800; margin:0;
+          background:linear-gradient(90deg,#d946ef,#a78bfa);
+          -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+        }
+        .aibc-head .sub { font-size:10.5px; color:#6b7487; margin-top:3px; }
+        .aibc-output {
+          background:#1a2032; border:1px solid #1b2133;
+          border-radius:8px; padding:12px 14px; min-height:140px;
+          font-size:12.5px; line-height:1.6; color:#d6dde8;
+          white-space:pre-wrap; word-wrap:break-word;
+          font-variant-numeric:tabular-nums;
+          flex:1; overflow-y:auto; max-height:60vh;
+        }
+        .aibc-cursor { display:inline-block; width:7px; height:14px; background:#a78bfa; animation:aib-blink 1s infinite; vertical-align:middle; margin-left:2px; }
+        @keyframes aib-blink { 50% { opacity:0; } }
+        .aibc-actions { display:flex; gap:8px; }
+        .aibc-actions button {
+          flex:1; padding:9px 12px; border-radius:7px; font-size:12px; font-weight:700;
+          cursor:pointer; font-family:inherit; border:1px solid #242b3e;
+          background:#1f2638; color:#d6dde8; transition:all .12s;
+        }
+        .aibc-actions button.primary {
+          background:linear-gradient(135deg,#d946ef,#a78bfa);
+          border-color:transparent; color:#fff;
+        }
+      `;
+      document.head.appendChild(s);
+    }
+
+    const ov = document.createElement("div");
+    ov.id = "aibCompareOverlay";
+    ov.className = "aibc-overlay";
+    ov.addEventListener("click", e => { if (e.target === ov) ov.remove(); });
+    const modelTag = aiCfg.model === AI_MODEL_PREMIUM ? "Opus 4.7" : "Sonnet 4.6";
+    ov.innerHTML = `
+      <div class="aibc-modal">
+        <div class="aibc-head">
+          <div>
+            <h3>🪄 Compare ${summaries.length} coinuri ${opts.pageLabel ? "— " + esc(opts.pageLabel) : ""}</h3>
+            <div class="sub">model ${modelTag} · streaming</div>
+          </div>
+          <button class="aib-close" onclick="document.getElementById('aibCompareOverlay').remove()">×</button>
+        </div>
+        <div class="aibc-output" id="aibcOutput"><span class="aibc-cursor"></span></div>
+        <div class="aibc-actions">
+          <button id="aibcCopy">📋 Copy</button>
+          <button class="primary" onclick="document.getElementById('aibCompareOverlay').remove()">Închide</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(ov);
+    document.getElementById("aibcCopy").addEventListener("click", () => {
+      navigator.clipboard?.writeText(window._aibcLastOutput || "");
+    });
+
+    // Build prompt
+    const blocks = summaries.map((s, i) => `### ${i + 1}.\n${s}`).join("\n\n");
+    const prompt = `Compară aceste ${summaries.length} coinuri pentru un LONG futures pe Pionex. Dă-mi un ranking 1-2-${summaries.length} cu motiv concret pe rând și pe care l-ai alege primul:\n\n${blocks}`;
+
+    // Stream
+    const box = document.getElementById("aibcOutput");
+    let acc = "";
+    try {
+      for await (const chunk of callClaudeStream([{ role: "user", content: prompt }], { maxTokens: opts.maxTokens || 1000 })) {
+        acc += chunk;
+        box.innerHTML = esc(acc).replace(/\n/g, "<br>") + '<span class="aibc-cursor"></span>';
+        box.scrollTop = box.scrollHeight;
+      }
+      box.innerHTML = esc(acc).replace(/\n/g, "<br>");
+      window._aibcLastOutput = acc;
+    } catch (e) {
+      box.innerHTML = `<span style="color:#ef4444">❌ Eroare: ${esc(e.message || e)}</span>`;
+    }
+  };
+
   // ── Public init ──
   window.setupAiBubble = function (opts) {
     pageName = opts.page || "page";
