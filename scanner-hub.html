@@ -139,6 +139,37 @@
   .card .card-cta::after { content: "→"; transition: transform .2s var(--ease); }
   .card:hover .card-cta::after { transform: translateX(3px); }
 
+  .hub-search {
+    margin: 20px auto 30px; max-width: 480px; position: relative;
+  }
+  .hub-search input {
+    width: 100%; padding: 12px 16px 12px 42px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    color: var(--text); font-size: 14px; font-family: inherit;
+    transition: all .15s var(--ease);
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  }
+  .hub-search input::placeholder { color: var(--muted); }
+  .hub-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 4px 16px rgba(91,176,255,.25); }
+  .hub-search::before {
+    content: "🔍"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    font-size: 16px; opacity: .8; pointer-events: none;
+  }
+  .hub-search-clear {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: var(--panel2); border: 1px solid var(--border);
+    color: var(--muted); padding: 3px 8px; border-radius: 6px;
+    font-size: 11px; cursor: pointer; font-family: inherit; display: none;
+  }
+  .hub-search-clear:hover { color: var(--text); }
+  .hub-search.has-text .hub-search-clear { display: inline-block; }
+  .card.hidden-by-search { display: none; }
+  .hub-no-results {
+    text-align: center; padding: 40px 20px; color: var(--muted);
+    font-size: 13px; display: none;
+  }
+  .hub-no-results.visible { display: block; }
+
   .footer {
     margin-top: 40px; text-align: center; font-size: 11px; color: var(--muted);
   }
@@ -165,10 +196,19 @@
     <div class="hub-head">
       <h1>🪙 Crypto Scanner Pro</h1>
       <p>Hub dedicat crypto-ului. Scannere, watchlist, evenimente — toate într-un loc.</p>
-      <p style="margin-top:8px;font-size:12px;opacity:.75">📈 Pentru stocks/Nasdaq → <a href="https://mferent80-source.github.io/premarket_scanner.html/nasdaq-scanner/" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">premarket scanner</a></p>
+      <p style="margin-top:8px;font-size:12px;opacity:.75">📈 Pentru stocks/Nasdaq → <a href="https://mferent80-source.github.io/premarket_scanner.html/nasdaq-scanner/" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">premarket scanner</a> · ⚙️ <a href="settings.html" style="color:var(--accent);text-decoration:none;font-weight:600">Settings central</a></p>
     </div>
 
-    <div class="cards">
+    <div class="hub-search" id="hubSearchWrap">
+      <input type="text" id="hubSearch" placeholder="Caută rapid: pump, watchlist, events, AI, grid, vwap..." autocomplete="off">
+      <button class="hub-search-clear" id="hubSearchClear" type="button">×</button>
+    </div>
+
+    <div class="hub-no-results" id="hubNoResults">
+      🤷 Nimic nu corespunde căutării. Încearcă „crypto", „smart", „news"…
+    </div>
+
+    <div class="cards" id="hubCards">
       <a class="card crypto" href="scanner-crypto.html" target="_blank" rel="noopener">
         <div class="card-icon">🪙</div>
         <h2>Crypto Scanner</h2>
@@ -286,6 +326,47 @@ if ("serviceWorker" in navigator) {
     });
   });
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  Search hub — filtrare rapidă carduri după nume/sub/feature list
+// ═══════════════════════════════════════════════════════════════
+(function setupHubSearch() {
+  const input = document.getElementById("hubSearch");
+  const clearBtn = document.getElementById("hubSearchClear");
+  const wrap = document.getElementById("hubSearchWrap");
+  const cards = document.querySelectorAll("#hubCards .card");
+  const noResults = document.getElementById("hubNoResults");
+
+  // Pre-extract textul searchable din fiecare card (cache)
+  const searchableCards = Array.from(cards).map(card => {
+    const heading = card.querySelector("h2")?.textContent || "";
+    const sub = card.querySelector(".card-sub")?.textContent || "";
+    const features = Array.from(card.querySelectorAll("li")).map(li => li.textContent).join(" ");
+    return {
+      el: card,
+      text: (heading + " " + sub + " " + features).toLowerCase(),
+    };
+  });
+
+  function applySearch() {
+    const q = input.value.trim().toLowerCase();
+    wrap.classList.toggle("has-text", !!q);
+    let visible = 0;
+    for (const sc of searchableCards) {
+      const match = !q || sc.text.includes(q);
+      sc.el.classList.toggle("hidden-by-search", !match);
+      if (match) visible++;
+    }
+    noResults.classList.toggle("visible", q && visible === 0);
+  }
+
+  input.addEventListener("input", applySearch);
+  clearBtn.addEventListener("click", () => { input.value = ""; applySearch(); input.focus(); });
+  // Esc clears search
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { input.value = ""; applySearch(); }
+  });
+})();
 
 // Capture the beforeinstallprompt event so we can show a custom install button.
 // Android Chrome fires this when the site is PWA-installable but not yet installed.

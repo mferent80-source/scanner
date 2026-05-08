@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚙️ Settings — Crypto Scanner Pro</title>
+<meta name="theme-color" content="#0a0d13">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230f1419'/><circle cx='32' cy='32' r='14' fill='none' stroke='%235bb0ff' stroke-width='3'/><circle cx='32' cy='32' r='5' fill='%235bb0ff'/></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0a0d13; --panel:#121826; --panel2:#1a2032; --panel3:#1f2638;
+    --border:#242b3e; --border-soft:#1b2133;
+    --text:#d6dde8; --text-dim:#aab3c2; --muted:#6b7487;
+    --accent:#5bb0ff; --accent2:#8b6fff;
+    --bull-s:#22c55e; --bear-s:#ef4444;
+    --tg:#0088cc; --tg2:#33c2ff;
+    --ai:#d946ef; --ai2:#a78bfa;
+    --ease:cubic-bezier(.4,0,.2,1);
+    color-scheme:dark;
+  }
+  html, body { height:100%; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+    background:var(--bg);
+    background-image:radial-gradient(1400px 700px at 50% -200px, #1a1d2e 0%, #0a0d13 60%);
+    background-attachment:fixed;
+    color:var(--text); padding:14px; font-size:13px; min-height:100vh;
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+  }
+  .wrap { max-width:760px; margin:0 auto; }
+  header {
+    display:flex; align-items:center; gap:10px; padding:8px 14px;
+    background:linear-gradient(180deg,rgba(50,40,60,.65),rgba(20,26,40,.85));
+    backdrop-filter:blur(10px);
+    border:1px solid var(--border); border-radius:12px;
+    margin-bottom:16px;
+  }
+  header h1 {
+    font-size:15px; font-weight:800; letter-spacing:-.2px; margin-right:auto;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .nav-link {
+    display:inline-flex; align-items:center; gap:4px;
+    background:var(--panel2); border:1px solid var(--border);
+    padding:5px 10px; border-radius:6px;
+    color:var(--text-dim); text-decoration:none; font-size:11.5px; font-weight:600;
+    transition:all .12s;
+  }
+  .nav-link:hover { background:var(--panel3); border-color:var(--accent); color:var(--text); }
+
+  .section {
+    background:var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding:16px 18px; margin-bottom:14px;
+  }
+  .section h2 {
+    font-size:14px; font-weight:800; margin-bottom:4px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section h2.tg { background:linear-gradient(90deg,var(--tg),var(--tg2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .section h2.ai { background:linear-gradient(90deg,var(--ai),var(--ai2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .section .sub { font-size:11px; color:var(--muted); margin-bottom:14px; }
+
+  .field { margin-bottom:14px; }
+  .field label {
+    display:block; font-size:10.5px; color:var(--text-dim); font-weight:700;
+    text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px;
+  }
+  .field input[type=text], .field input[type=password] {
+    width:100%; padding:9px 12px; background:var(--panel2); color:var(--text);
+    border:1px solid var(--border); border-radius:7px;
+    font-size:13px; font-family:inherit; font-variant-numeric:tabular-nums;
+  }
+  .field input:focus { outline:none; border-color:var(--accent); }
+  .field .hint { font-size:10.5px; color:var(--muted); line-height:1.5; margin-top:5px; }
+  .field .hint code { background:var(--panel3); padding:1px 5px; border-radius:3px; font-size:10px; }
+
+  .checkbox {
+    display:flex; align-items:center; gap:10px; padding:6px 0; cursor:pointer; font-size:12.5px;
+  }
+  .checkbox input { width:18px; height:18px; }
+  .checkbox-tg input { accent-color:var(--tg); }
+  .checkbox-ai input { accent-color:var(--ai); }
+
+  .radio-group { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+  .radio-group label {
+    display:flex; align-items:center; gap:10px; cursor:pointer; padding:6px 10px;
+    border:1px solid var(--border-soft); border-radius:7px; font-size:12.5px;
+    transition:all .12s;
+  }
+  .radio-group label:hover { background:var(--panel2); }
+  .radio-group label.active { border-color:var(--ai); background:rgba(217,70,239,.06); }
+  .radio-group label input { accent-color:var(--ai); }
+  .radio-group label .price { color:var(--muted); margin-left:auto; font-size:11px; }
+
+  .actions { display:flex; gap:10px; margin-top:12px; }
+  .btn {
+    flex:1; padding:10px 14px; border-radius:8px; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit; border:1px solid var(--border);
+    background:var(--panel2); color:var(--text); transition:all .12s;
+  }
+  .btn:hover { border-color:var(--accent); }
+  .btn.primary {
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; color:#fff;
+  }
+  .btn.primary:hover { filter:brightness(1.1); }
+  .btn.tg-primary {
+    background:linear-gradient(135deg,var(--tg),var(--tg2)); border-color:transparent; color:#fff;
+  }
+  .btn.ai-primary {
+    background:linear-gradient(135deg,var(--ai),var(--ai2)); border-color:transparent; color:#fff;
+  }
+
+  .toast {
+    position:fixed; bottom:20px; right:20px; z-index:10000;
+    background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent);
+    border-radius:8px; padding:10px 14px; font-size:12px; color:var(--text);
+    box-shadow:0 6px 20px rgba(0,0,0,.4);
+    animation:toastIn .3s var(--ease);
+    max-width:320px;
+  }
+  .toast.ok { border-left-color:var(--bull-s); }
+  .toast.err { border-left-color:var(--bear-s); }
+  @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+
+  .footer { text-align:center; padding:14px; color:var(--muted); font-size:10.5px; }
+  .footer a { color:var(--accent); text-decoration:none; }
+
+  .status-pill {
+    display:inline-block; padding:2px 8px; border-radius:4px;
+    font-size:10px; font-weight:700;
+    background:var(--panel3); color:var(--text-dim);
+    margin-left:6px;
+  }
+  .status-pill.on { background:rgba(34,197,94,.18); color:var(--bull-s); border:1px solid rgba(34,197,94,.35); }
+  .status-pill.off { background:rgba(239,68,68,.12); color:var(--bear-s); border:1px solid rgba(239,68,68,.35); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <h1>⚙️ Settings central</h1>
+  <a href="scanner-hub.html" class="nav-link">🏠 Hub</a>
+  <a href="smart-trade-long.html" class="nav-link">🎯 Smart Trade</a>
+  <a href="watchlist.html" class="nav-link">👁️ Watchlist</a>
+  <a href="pump-radar.html" class="nav-link">🚨 Pump</a>
+</header>
+
+<!-- Telegram section -->
+<div class="section">
+  <h2 class="tg">📱 Telegram Alerts <span class="status-pill" id="tgStatusPill">—</span></h2>
+  <div class="sub">Config bot pentru alerte push pe phone — shared între Smart Trade Long, Watchlist Monitor și Pump Radar.</div>
+
+  <div class="field">
+    <label>Bot token</label>
+    <input type="password" id="tgToken" placeholder="123456:ABC-DEF...">
+    <div class="hint">
+      Cum: deschide <code>@BotFather</code> pe Telegram → trimite <code>/newbot</code> → primești token-ul.
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Chat ID</label>
+    <input type="text" id="tgChat" placeholder="123456789 sau -100...">
+    <div class="hint">
+      Trimite-i botului mesaj „start" → deschide <code>api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> → copiază <code>chat.id</code>.
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Pagini active (per pagină)</label>
+    <label class="checkbox checkbox-tg"><input type="checkbox" id="tgPageStl"> Smart Trade Long — alerte 🚀 READY nou</label>
+    <label class="checkbox checkbox-tg"><input type="checkbox" id="tgPageWl"> Watchlist Monitor — alerte 🟢 STRONG LONG nou</label>
+    <label class="checkbox checkbox-tg"><input type="checkbox" id="tgPagePump"> Pump Radar — alerte fiecare PUMP/DUMP/VOL/MOM (poate fi spam)</label>
+  </div>
+
+  <div class="actions">
+    <button class="btn" onclick="testTelegram()">📤 Test mesaj</button>
+    <button class="btn tg-primary" onclick="saveTelegram()">💾 Salvează Telegram</button>
+  </div>
+</div>
+
+<!-- AI section -->
+<div class="section">
+  <h2 class="ai">🪄 AI Claude (Smart Trade) <span class="status-pill" id="aiStatusPill">—</span></h2>
+  <div class="sub">API key Claude pentru analiză AI per coin, comparație multi-coin și chat liber pe Smart Trade Long.</div>
+
+  <div class="field">
+    <label>API key</label>
+    <input type="password" id="aiKey" placeholder="sk-ant-api03-...">
+    <div class="hint">
+      Obține de la <code>console.anthropic.com</code> → Settings → API Keys.<br>
+      ⚠️ Cheia rămâne LOCAL (localStorage); nu pleacă nicăieri în afara API-ului Anthropic.
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Model</label>
+    <div class="radio-group" id="aiModelGroup">
+      <label data-model="claude-sonnet-4-6">
+        <input type="radio" name="aiModel" value="claude-sonnet-4-6">
+        <b>Sonnet 4.6</b> <span class="price">$3 / $15 per 1M (default rapid)</span>
+      </label>
+      <label data-model="claude-opus-4-7">
+        <input type="radio" name="aiModel" value="claude-opus-4-7">
+        <b>Opus 4.7</b> <span class="price">$5 / $25 per 1M (premium)</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="checkbox checkbox-ai"><input type="checkbox" id="aiEnable"> Activează butoane AI pe carduri + bubble chat</label>
+  </div>
+
+  <div class="actions">
+    <button class="btn" onclick="testAi()">📤 Test API key</button>
+    <button class="btn ai-primary" onclick="saveAi()">💾 Salvează AI</button>
+  </div>
+</div>
+
+<!-- Quick links section -->
+<div class="section">
+  <h2 style="background:linear-gradient(90deg,#facc15,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent">⚙️ Setări per-pagină (rămân pe pagina lor)</h2>
+  <div class="sub">Aceste config-uri sunt prea specifice ca să fie centralizate — accesează-le direct pe pagina respectivă.</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+    <a href="smart-trade-long.html" class="nav-link" style="padding:10px 12px;font-size:12px">
+      🎯 Smart Trade Long<br>
+      <span style="color:var(--muted);font-size:10.5px;font-weight:500">Cont/risc · Auto-scan · Premium sliders · Grid setup</span>
+    </a>
+    <a href="watchlist.html" class="nav-link" style="padding:10px 12px;font-size:12px">
+      👁️ Watchlist Monitor<br>
+      <span style="color:var(--muted);font-size:10.5px;font-weight:500">Auto-scan 60s · Alerte LONG · Coin-uri tale</span>
+    </a>
+    <a href="pump-radar.html" class="nav-link" style="padding:10px 12px;font-size:12px">
+      🚨 Pump Radar<br>
+      <span style="color:var(--muted);font-size:10.5px;font-weight:500">Sliders 7 praguri · Cooldown · History 50</span>
+    </a>
+  </div>
+</div>
+
+</div>
+
+<div class="footer">
+  Settings central · config shared cross-page · <a href="scanner-hub.html">← Înapoi la Hub</a>
+</div>
+
+<script>
+"use strict";
+
+// ═══════════════════════════════════════════════════════════════
+//  Storage helpers — keys identice cu cele de pe pagini
+// ═══════════════════════════════════════════════════════════════
+const TG_CFG_KEY = "tg_cfg_v1";
+const TG_PAGES_KEY = "tg_pages_v1";
+const AI_CFG_KEY = "ai_cfg_v1";
+
+function loadJson(key, defaultVal) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? { ...defaultVal, ...JSON.parse(raw) } : { ...defaultVal };
+  } catch (e) { return { ...defaultVal }; }
+}
+function saveJson(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+let tgCfg = loadJson(TG_CFG_KEY, { token: "", chatId: "" });
+let tgPages = loadJson(TG_PAGES_KEY, { stl: false, watchlist: false, pump: false });
+let aiCfg = loadJson(AI_CFG_KEY, { apiKey: "", model: "claude-sonnet-4-6", enabled: false });
+
+// ═══════════════════════════════════════════════════════════════
+//  Toast
+// ═══════════════════════════════════════════════════════════════
+function toast(cls, html, ms = 3500) {
+  const el = document.createElement("div");
+  el.className = "toast " + cls;
+  el.innerHTML = html;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .25s"; setTimeout(() => el.remove(), 250); }, ms);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Telegram
+// ═══════════════════════════════════════════════════════════════
+function refreshTgUI() {
+  document.getElementById("tgToken").value = tgCfg.token || "";
+  document.getElementById("tgChat").value = tgCfg.chatId || "";
+  document.getElementById("tgPageStl").checked = !!tgPages.stl;
+  document.getElementById("tgPageWl").checked = !!tgPages.watchlist;
+  document.getElementById("tgPagePump").checked = !!tgPages.pump;
+  const pill = document.getElementById("tgStatusPill");
+  const configured = !!(tgCfg.token && tgCfg.chatId);
+  const anyOn = tgPages.stl || tgPages.watchlist || tgPages.pump;
+  if (configured && anyOn) { pill.textContent = "ON"; pill.className = "status-pill on"; }
+  else if (configured) { pill.textContent = "configurat (nicio pagină ON)"; pill.className = "status-pill off"; }
+  else { pill.textContent = "neconfigurat"; pill.className = "status-pill off"; }
+}
+
+window.testTelegram = async function() {
+  const token = document.getElementById("tgToken").value.trim();
+  const chat = document.getElementById("tgChat").value.trim();
+  if (!token || !chat) { toast("err", "Completează token + chat ID"); return; }
+  toast("ok", "📤 Trimit test...");
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chat, text: "✅ <b>Settings central</b> — test mesaj de pe pagina settings.\n\nDacă vezi mesajul, integrarea funcționează 🎉", parse_mode: "HTML" })
+    });
+    if (r.ok) toast("ok", "✅ Test trimis cu succes");
+    else { const j = await r.json().catch(() => ({})); toast("err", `Test eșuat: ${j.description || r.status}`); }
+  } catch (e) { toast("err", "Test eșuat: " + e.message); }
+};
+
+window.saveTelegram = function() {
+  tgCfg.token = document.getElementById("tgToken").value.trim();
+  tgCfg.chatId = document.getElementById("tgChat").value.trim();
+  tgPages.stl = document.getElementById("tgPageStl").checked;
+  tgPages.watchlist = document.getElementById("tgPageWl").checked;
+  tgPages.pump = document.getElementById("tgPagePump").checked;
+  saveJson(TG_CFG_KEY, tgCfg);
+  saveJson(TG_PAGES_KEY, tgPages);
+  refreshTgUI();
+  toast("ok", "💾 Telegram salvat — efect imediat pe toate paginile la următoarea deschidere");
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  AI Claude
+// ═══════════════════════════════════════════════════════════════
+function refreshAiUI() {
+  document.getElementById("aiKey").value = aiCfg.apiKey || "";
+  document.getElementById("aiEnable").checked = !!aiCfg.enabled;
+  document.querySelectorAll('input[name="aiModel"]').forEach(r => {
+    r.checked = (r.value === aiCfg.model);
+  });
+  document.querySelectorAll("#aiModelGroup label").forEach(l => {
+    l.classList.toggle("active", l.dataset.model === aiCfg.model);
+  });
+  const pill = document.getElementById("aiStatusPill");
+  if (aiCfg.apiKey && aiCfg.enabled) {
+    const tag = aiCfg.model === "claude-opus-4-7" ? "Opus 4.7" : "Sonnet 4.6";
+    pill.textContent = `ON · ${tag}`; pill.className = "status-pill on";
+  } else if (aiCfg.apiKey) {
+    pill.textContent = "configurat (OFF)"; pill.className = "status-pill off";
+  } else {
+    pill.textContent = "neconfigurat"; pill.className = "status-pill off";
+  }
+}
+
+document.querySelectorAll('input[name="aiModel"]').forEach(r => {
+  r.addEventListener("change", () => {
+    document.querySelectorAll("#aiModelGroup label").forEach(l => {
+      l.classList.toggle("active", l.dataset.model === r.value);
+    });
+  });
+});
+
+window.testAi = async function() {
+  const key = document.getElementById("aiKey").value.trim();
+  const model = document.querySelector('input[name="aiModel"]:checked').value;
+  if (!key) { toast("err", "Completează API key"); return; }
+  toast("ok", "🔄 Test în curs...");
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model, max_tokens: 50,
+        messages: [{ role: "user", content: "Răspunde doar cu „OK funcționează" și nimic altceva." }],
+      }),
+    });
+    if (r.ok) {
+      const j = await r.json();
+      const txt = j.content?.[0]?.text || "(răspuns gol)";
+      toast("ok", `✅ Test OK: ${txt.slice(0, 60)}`);
+    } else {
+      const j = await r.json().catch(() => ({}));
+      toast("err", `Test eșuat: ${j.error?.message || r.status}`);
+    }
+  } catch (e) { toast("err", "Test eșuat: " + e.message); }
+};
+
+window.saveAi = function() {
+  aiCfg.apiKey = document.getElementById("aiKey").value.trim();
+  aiCfg.model = document.querySelector('input[name="aiModel"]:checked').value;
+  aiCfg.enabled = document.getElementById("aiEnable").checked;
+  saveJson(AI_CFG_KEY, aiCfg);
+  refreshAiUI();
+  toast("ok", "💾 AI salvat — re-deschide Smart Trade Long pentru a vedea schimbările");
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════════════════════
+refreshTgUI();
+refreshAiUI();
+</script>
+
+</body>
+</html>
