@@ -264,12 +264,15 @@
 <body>
 
 <header>
-  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v23</span></h1>
-  <a class="nav-link" href="scanner-hub.html">🏠 Hub</a>
-  <a class="nav-link" href="scanner-crypto.html">🪙 Scanner</a>
-  <a class="nav-link" href="watchlist.html">👁️ Watchlist</a>
-  <a class="nav-link" href="pump-radar.html" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#ef4444">🚨 Pump</a>
+  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v24</span></h1>
+  <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
+  <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Scanner</a>
+  <a class="nav-link" href="watchlist.html" title="Watchlist Monitor">👁️ Watchlist</a>
+  <a class="nav-link" href="crypto-events.html" title="Crypto Events">⚡ Events</a>
+  <a class="nav-link" href="pump-radar.html" title="Pump Radar — detecție pump/dump pe 5m" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#ef4444">🚨 Pump</a>
   <span class="status-pill" id="statusPill"><span class="dot"></span><span id="statusText">idle</span></span>
+  <button class="btn" id="autoBtn" title="Auto-scan 5 min">⏱ Auto: OFF</button>
+  <button class="btn" id="alertsBtn" title="Beep + notificare la READY nou">🔔 OFF</button>
   <button class="btn primary" id="scanBtn">↻ Scanează</button>
 </header>
 
@@ -341,7 +344,8 @@
 </div>
 
 <div class="foot">
-  Smart Trade Long v22 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
+  Smart Trade Long v24 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
+  auto-scan 5 min + alerte 🔔 la READY nou ·
   <a href="scanner-hub.html">Înapoi la Hub</a>
 </div>
 
@@ -351,7 +355,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
-const VERSION = "v23";
+const VERSION = "v24";
 const CFG_KEY = "stl_cfg_v1";
 const FILTER_KEY = "stl_filter_v1";
 const SORT_KEY = "stl_sort_v1";
@@ -363,6 +367,12 @@ const TICKER_CACHE_TTL = 60_000;     // 1 min — universul e relativ stabil
 const WATCHLIST_KEY = "scanner_watchlist";  // ⭐ scanner ca filtru
 const BATCH_SIZE = 4;                // batch parallel
 const BATCH_DELAY_MS = 600;          // pauză anti rate-limit
+
+// Auto-scan + alerts
+const AUTO_KEY = "stl_auto_v1";       // bool — pornit/oprit
+const ALERTS_KEY = "stl_alerts_v1";   // bool — beep+notif la READY nou
+const PREV_READY_KEY = "stl_prev_ready_v1"; // Set serializat (Array<sym>)
+const AUTO_INTERVAL_MS = 5 * 60 * 1000;     // re-scan la fiecare 5 min
 
 // Ponderare 5 filtri (max 100)
 const W_MTF = 35;        // MTF (15m + 1h + 4h)
@@ -384,6 +394,11 @@ const STATE = {
   sort: "score-desc",
   isScanning: false,
   lastScan: null,
+  // Auto-scan + alerts
+  auto: false,            // re-scan automat la AUTO_INTERVAL_MS
+  alerts: false,          // beep + Notification API la READY nou
+  scanTimer: null,        // setInterval handle pentru auto-scan
+  prevReadySet: new Set(),// symbol-uri care erau READY la scan-ul anterior
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -758,8 +773,25 @@ async function runScan() {
     }
     STATE.lastScan = Date.now();
     saveResults();
-    setStatus("ready", `gata — ${results.length} coin-uri analizate`);
-    toast("ok", `Scan complet: ${results.length} coin-uri analizate`);
+
+    // ── Detect READY nou (vClass === "ready" și absent în prevReadySet) → alert
+    const currReady = results.filter(r => r.vClass === "ready");
+    const newReady = currReady.filter(r => !STATE.prevReadySet.has(r.sym));
+    if (newReady.length && STATE.alerts) {
+      playReadySound();
+      const top = newReady.slice(0, 3).map(r => `${shortName(r.sym)} (${r.score})`).join(", ");
+      const more = newReady.length > 3 ? ` +${newReady.length - 3}` : "";
+      fireNotification(`🚀 ${newReady.length} READY nou`, top + more);
+      toast("ok", `🚀 READY nou: <b>${top}</b>${more}`, 6000);
+    }
+    // Update prevReadySet pentru următorul scan
+    STATE.prevReadySet = new Set(currReady.map(r => r.sym));
+    try { localStorage.setItem(PREV_READY_KEY, JSON.stringify([...STATE.prevReadySet])); } catch (e) {}
+
+    setStatus("ready", `gata — ${results.length} coin-uri (${currReady.length} 🚀)`);
+    if (!STATE.alerts || !newReady.length) {
+      toast("ok", `Scan complet: ${results.length} coin-uri analizate`);
+    }
   } catch (e) {
     setStatus("ready", "eroare: " + e.message);
     toast("err", "Eroare la scan: " + e.message);
@@ -922,6 +954,99 @@ window.addToWatchlist = function(symRaw) {
 };
 
 // ═══════════════════════════════════════════════════════════════
+//  AUDIO + NOTIFICATION — beep dublu (1100/1300Hz, sine) + Notification API
+// ═══════════════════════════════════════════════════════════════
+let _audioCtx = null;
+function playReadySound() {
+  if (!STATE.alerts) return;
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    const beepOnce = (freq, dur, when) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq; osc.type = "sine";
+      gain.gain.setValueAtTime(0, ctx.currentTime + when);
+      gain.gain.linearRampToValueAtTime(0.20, ctx.currentTime + when + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + when + dur);
+      osc.start(ctx.currentTime + when); osc.stop(ctx.currentTime + when + dur);
+    };
+    beepOnce(1100, 0.18, 0);
+    beepOnce(1300, 0.22, 0.20);
+  } catch (e) { /* noop */ }
+}
+
+async function ensureNotifPermission() {
+  if (!("Notification" in window)) { toast("err", "Browser-ul nu suportă notificări"); return false; }
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") { toast("err", "Notificări blocate. Resetează din browser settings."); return false; }
+  const p = await Notification.requestPermission();
+  return p === "granted";
+}
+function fireNotification(title, body) {
+  if (!STATE.alerts) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const n = new Notification(title, { body, icon: "icon-192.png", tag: "smart-trade-long", renotify: true });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch (e) { /* noop */ }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTO-SCAN — pornește/oprește loop, pause când tab e hidden
+// ═══════════════════════════════════════════════════════════════
+function startAuto() {
+  if (STATE.auto) return;
+  STATE.auto = true;
+  localStorage.setItem(AUTO_KEY, "1");
+  updateAutoBtnUI();
+  // Schedule loop — scan doar dacă tab-ul e vizibil (anti-rate-limit când e în background)
+  STATE.scanTimer = setInterval(() => {
+    if (document.visibilityState === "visible" && !STATE.isScanning) runScan();
+  }, AUTO_INTERVAL_MS);
+  // Run imediat dacă rezultatele sunt vechi (>RESULTS_TTL) sau goale
+  const stale = !STATE.lastScan || (Date.now() - STATE.lastScan > RESULTS_TTL);
+  if (stale && !STATE.isScanning) runScan();
+}
+function stopAuto() {
+  STATE.auto = false;
+  localStorage.setItem(AUTO_KEY, "0");
+  if (STATE.scanTimer) { clearInterval(STATE.scanTimer); STATE.scanTimer = null; }
+  updateAutoBtnUI();
+}
+function toggleAuto() { STATE.auto ? stopAuto() : startAuto(); }
+function updateAutoBtnUI() {
+  const b = document.getElementById("autoBtn");
+  if (!b) return;
+  b.textContent = STATE.auto ? "⏱ Auto: ON (5m)" : "⏱ Auto: OFF";
+  b.classList.toggle("primary", STATE.auto);
+}
+
+async function toggleAlerts() {
+  if (!STATE.alerts) {
+    // Pornim — cerem permisiune notificări (best-effort)
+    const ok = await ensureNotifPermission();
+    STATE.alerts = true;  // pornesc beep chiar dacă notif e blocat
+    localStorage.setItem(ALERTS_KEY, "1");
+    updateAlertsBtnUI();
+    if (ok) toast("ok", "🔔 Alerte ON: beep + notificare la READY nou");
+    else toast("ok", "🔔 Alerte ON: doar beep (notificările sunt blocate)");
+  } else {
+    STATE.alerts = false;
+    localStorage.setItem(ALERTS_KEY, "0");
+    updateAlertsBtnUI();
+    toast("ok", "🔔 Alerte OFF");
+  }
+}
+function updateAlertsBtnUI() {
+  const b = document.getElementById("alertsBtn");
+  if (!b) return;
+  b.textContent = STATE.alerts ? "🔔 ON" : "🔔 OFF";
+  b.classList.toggle("primary", STATE.alerts);
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  TOAST + HELPERS
 // ═══════════════════════════════════════════════════════════════
 function toast(cls, html, ms = 3500) {
@@ -959,6 +1084,13 @@ function init() {
   loadResults();
   STATE.filter = localStorage.getItem(FILTER_KEY) || "all";
   STATE.sort = localStorage.getItem(SORT_KEY) || "score-desc";
+  // Auto + alerts state
+  STATE.alerts = localStorage.getItem(ALERTS_KEY) === "1";
+  // prevReadySet — restaurăm pentru a evita beep-uri false la reload
+  try {
+    const arr = JSON.parse(localStorage.getItem(PREV_READY_KEY) || "[]");
+    if (Array.isArray(arr)) STATE.prevReadySet = new Set(arr);
+  } catch (e) {}
 
   wireSettings();
 
@@ -980,6 +1112,21 @@ function init() {
   });
 
   document.getElementById("scanBtn").addEventListener("click", runScan);
+  document.getElementById("autoBtn").addEventListener("click", toggleAuto);
+  document.getElementById("alertsBtn").addEventListener("click", toggleAlerts);
+  updateAutoBtnUI();
+  updateAlertsBtnUI();
+
+  // Resume auto-scan dacă era ON la închidere — respect convenția Pump Radar
+  if (localStorage.getItem(AUTO_KEY) === "1") startAuto();
+
+  // Force scan când tab redevine vizibil dacă rezultatele sunt stale (>5 min)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && STATE.auto && !STATE.isScanning) {
+      const stale = !STATE.lastScan || (Date.now() - STATE.lastScan > AUTO_INTERVAL_MS);
+      if (stale) runScan();
+    }
+  });
 
   setStatus(STATE.results.length ? "ready" : "", STATE.results.length ? `cached ${STATE.results.length} (apasă scan pentru refresh)` : "idle");
   render();
