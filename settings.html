@@ -179,8 +179,8 @@
   </div>
 
   <div class="actions">
-    <button class="btn" onclick="testTelegram()">📤 Test mesaj</button>
-    <button class="btn tg-primary" onclick="saveTelegram()">💾 Salvează Telegram</button>
+    <button class="btn" type="button" data-action="testTg">📤 Test mesaj</button>
+    <button class="btn tg-primary" type="button" data-action="saveTg">💾 Salvează Telegram</button>
   </div>
 </div>
 
@@ -217,8 +217,8 @@
   </div>
 
   <div class="actions">
-    <button class="btn" onclick="testAi()">📤 Test API key</button>
-    <button class="btn ai-primary" onclick="saveAi()">💾 Salvează AI</button>
+    <button class="btn" type="button" data-action="testAi">📤 Test API key</button>
+    <button class="btn ai-primary" type="button" data-action="saveAi">💾 Salvează AI</button>
   </div>
 </div>
 
@@ -245,161 +245,223 @@
 </div>
 
 <div class="footer">
-  Settings central · config shared cross-page · <a href="scanner-hub.html">← Înapoi la Hub</a>
+  Settings central <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums">v36</span> · config shared cross-page · <a href="scanner-hub.html">← Înapoi la Hub</a>
 </div>
 
 <script>
 "use strict";
 
-// ═══════════════════════════════════════════════════════════════
-//  Storage helpers — keys identice cu cele de pe pagini
-// ═══════════════════════════════════════════════════════════════
-const TG_CFG_KEY = "tg_cfg_v1";
-const TG_PAGES_KEY = "tg_pages_v1";
-const AI_CFG_KEY = "ai_cfg_v1";
+(function () {
+  // ── Storage keys (identice cu pagina de pagini) ──
+  const TG_CFG_KEY = "tg_cfg_v1";
+  const TG_PAGES_KEY = "tg_pages_v1";
+  const AI_CFG_KEY = "ai_cfg_v1";
 
-function loadJson(key, defaultVal) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? { ...defaultVal, ...JSON.parse(raw) } : { ...defaultVal };
-  } catch (e) { return { ...defaultVal }; }
-}
-function saveJson(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
-
-let tgCfg = loadJson(TG_CFG_KEY, { token: "", chatId: "" });
-let tgPages = loadJson(TG_PAGES_KEY, { stl: false, watchlist: false, pump: false });
-let aiCfg = loadJson(AI_CFG_KEY, { apiKey: "", model: "claude-sonnet-4-6", enabled: false });
-
-// ═══════════════════════════════════════════════════════════════
-//  Toast
-// ═══════════════════════════════════════════════════════════════
-function toast(cls, html, ms = 3500) {
-  const el = document.createElement("div");
-  el.className = "toast " + cls;
-  el.innerHTML = html;
-  document.body.appendChild(el);
-  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .25s"; setTimeout(() => el.remove(), 250); }, ms);
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  Telegram
-// ═══════════════════════════════════════════════════════════════
-function refreshTgUI() {
-  document.getElementById("tgToken").value = tgCfg.token || "";
-  document.getElementById("tgChat").value = tgCfg.chatId || "";
-  document.getElementById("tgPageStl").checked = !!tgPages.stl;
-  document.getElementById("tgPageWl").checked = !!tgPages.watchlist;
-  document.getElementById("tgPagePump").checked = !!tgPages.pump;
-  const pill = document.getElementById("tgStatusPill");
-  const configured = !!(tgCfg.token && tgCfg.chatId);
-  const anyOn = tgPages.stl || tgPages.watchlist || tgPages.pump;
-  if (configured && anyOn) { pill.textContent = "ON"; pill.className = "status-pill on"; }
-  else if (configured) { pill.textContent = "configurat (nicio pagină ON)"; pill.className = "status-pill off"; }
-  else { pill.textContent = "neconfigurat"; pill.className = "status-pill off"; }
-}
-
-window.testTelegram = async function() {
-  const token = document.getElementById("tgToken").value.trim();
-  const chat = document.getElementById("tgChat").value.trim();
-  if (!token || !chat) { toast("err", "Completează token + chat ID"); return; }
-  toast("ok", "📤 Trimit test...");
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chat, text: "✅ <b>Settings central</b> — test mesaj de pe pagina settings.\n\nDacă vezi mesajul, integrarea funcționează 🎉", parse_mode: "HTML" })
-    });
-    if (r.ok) toast("ok", "✅ Test trimis cu succes");
-    else { const j = await r.json().catch(() => ({})); toast("err", `Test eșuat: ${j.description || r.status}`); }
-  } catch (e) { toast("err", "Test eșuat: " + e.message); }
-};
-
-window.saveTelegram = function() {
-  tgCfg.token = document.getElementById("tgToken").value.trim();
-  tgCfg.chatId = document.getElementById("tgChat").value.trim();
-  tgPages.stl = document.getElementById("tgPageStl").checked;
-  tgPages.watchlist = document.getElementById("tgPageWl").checked;
-  tgPages.pump = document.getElementById("tgPagePump").checked;
-  saveJson(TG_CFG_KEY, tgCfg);
-  saveJson(TG_PAGES_KEY, tgPages);
-  refreshTgUI();
-  toast("ok", "💾 Telegram salvat — efect imediat pe toate paginile la următoarea deschidere");
-};
-
-// ═══════════════════════════════════════════════════════════════
-//  AI Claude
-// ═══════════════════════════════════════════════════════════════
-function refreshAiUI() {
-  document.getElementById("aiKey").value = aiCfg.apiKey || "";
-  document.getElementById("aiEnable").checked = !!aiCfg.enabled;
-  document.querySelectorAll('input[name="aiModel"]').forEach(r => {
-    r.checked = (r.value === aiCfg.model);
-  });
-  document.querySelectorAll("#aiModelGroup label").forEach(l => {
-    l.classList.toggle("active", l.dataset.model === aiCfg.model);
-  });
-  const pill = document.getElementById("aiStatusPill");
-  if (aiCfg.apiKey && aiCfg.enabled) {
-    const tag = aiCfg.model === "claude-opus-4-7" ? "Opus 4.7" : "Sonnet 4.6";
-    pill.textContent = `ON · ${tag}`; pill.className = "status-pill on";
-  } else if (aiCfg.apiKey) {
-    pill.textContent = "configurat (OFF)"; pill.className = "status-pill off";
-  } else {
-    pill.textContent = "neconfigurat"; pill.className = "status-pill off";
+  function loadJson(key, defaultVal) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? { ...defaultVal, ...JSON.parse(raw) } : { ...defaultVal };
+    } catch (e) { return { ...defaultVal }; }
   }
-}
+  function saveJson(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-document.querySelectorAll('input[name="aiModel"]').forEach(r => {
-  r.addEventListener("change", () => {
-    document.querySelectorAll("#aiModelGroup label").forEach(l => {
-      l.classList.toggle("active", l.dataset.model === r.value);
-    });
-  });
-});
+  let tgCfg = loadJson(TG_CFG_KEY, { token: "", chatId: "" });
+  let tgPages = loadJson(TG_PAGES_KEY, { stl: false, watchlist: false, pump: false });
+  let aiCfg = loadJson(AI_CFG_KEY, { apiKey: "", model: "claude-sonnet-4-6", enabled: false });
 
-window.testAi = async function() {
-  const key = document.getElementById("aiKey").value.trim();
-  const model = document.querySelector('input[name="aiModel"]:checked').value;
-  if (!key) { toast("err", "Completează API key"); return; }
-  toast("ok", "🔄 Test în curs...");
-  try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-      body: JSON.stringify({
-        model, max_tokens: 50,
-        messages: [{ role: "user", content: "Răspunde doar cu „OK funcționează" și nimic altceva." }],
-      }),
-    });
-    if (r.ok) {
-      const j = await r.json();
-      const txt = j.content?.[0]?.text || "(răspuns gol)";
-      toast("ok", `✅ Test OK: ${txt.slice(0, 60)}`);
-    } else {
-      const j = await r.json().catch(() => ({}));
-      toast("err", `Test eșuat: ${j.error?.message || r.status}`);
+  // ── Toast (non-blocking) ──
+  function toast(cls, html, ms) {
+    ms = ms || 3500;
+    const el = document.createElement("div");
+    el.className = "toast " + cls;
+    el.innerHTML = html;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .25s"; setTimeout(() => el.remove(), 250); }, ms);
+  }
+
+  // ── Tiny helper: get input value safely ──
+  function val(id) { const el = document.getElementById(id); return el ? (el.value || "").trim() : ""; }
+  function checked(id) { const el = document.getElementById(id); return el ? !!el.checked : false; }
+
+  // ── Refresh UI (defensive — fiecare câmp în try/catch ca să nu blochezi restul) ──
+  function refreshTgUI() {
+    try {
+      const tok = document.getElementById("tgToken"); if (tok) tok.value = tgCfg.token || "";
+      const ch = document.getElementById("tgChat"); if (ch) ch.value = tgCfg.chatId || "";
+      const a = document.getElementById("tgPageStl"); if (a) a.checked = !!tgPages.stl;
+      const b = document.getElementById("tgPageWl"); if (b) b.checked = !!tgPages.watchlist;
+      const c = document.getElementById("tgPagePump"); if (c) c.checked = !!tgPages.pump;
+      const pill = document.getElementById("tgStatusPill");
+      if (pill) {
+        const configured = !!(tgCfg.token && tgCfg.chatId);
+        const anyOn = tgPages.stl || tgPages.watchlist || tgPages.pump;
+        if (configured && anyOn) { pill.textContent = "ON"; pill.className = "status-pill on"; }
+        else if (configured) { pill.textContent = "configurat (nicio pagină ON)"; pill.className = "status-pill off"; }
+        else { pill.textContent = "neconfigurat"; pill.className = "status-pill off"; }
+      }
+    } catch (e) { console.error("[settings] refreshTgUI", e); }
+  }
+
+  function refreshAiUI() {
+    try {
+      const k = document.getElementById("aiKey"); if (k) k.value = aiCfg.apiKey || "";
+      const en = document.getElementById("aiEnable"); if (en) en.checked = !!aiCfg.enabled;
+      document.querySelectorAll('input[name="aiModel"]').forEach(r => { r.checked = (r.value === aiCfg.model); });
+      document.querySelectorAll("#aiModelGroup label").forEach(l => { l.classList.toggle("active", l.dataset.model === aiCfg.model); });
+      const pill = document.getElementById("aiStatusPill");
+      if (pill) {
+        if (aiCfg.apiKey && aiCfg.enabled) {
+          const tag = aiCfg.model === "claude-opus-4-7" ? "Opus 4.7" : "Sonnet 4.6";
+          pill.textContent = `ON · ${tag}`; pill.className = "status-pill on";
+        } else if (aiCfg.apiKey) {
+          pill.textContent = "configurat (OFF)"; pill.className = "status-pill off";
+        } else {
+          pill.textContent = "neconfigurat"; pill.className = "status-pill off";
+        }
+      }
+    } catch (e) { console.error("[settings] refreshAiUI", e); }
+  }
+
+  // ── Telegram actions ──
+  async function testTelegram() {
+    const token = val("tgToken");
+    const chat = val("tgChat");
+    if (!token || !chat) { toast("err", "Completează token + chat ID"); return; }
+    toast("ok", "📤 Trimit test...");
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chat,
+          text: "✅ <b>Settings central</b> — test mesaj de pe pagina settings.\n\nDacă vezi mesajul, integrarea funcționează 🎉",
+          parse_mode: "HTML",
+        }),
+      });
+      if (r.ok) toast("ok", "✅ Test trimis cu succes");
+      else {
+        const j = await r.json().catch(() => ({}));
+        toast("err", `Test eșuat: ${j.description || ("HTTP " + r.status)}`);
+      }
+    } catch (e) {
+      toast("err", "Test eșuat: " + (e && e.message ? e.message : e));
+      console.error("[settings] testTelegram", e);
     }
-  } catch (e) { toast("err", "Test eșuat: " + e.message); }
-};
+  }
 
-window.saveAi = function() {
-  aiCfg.apiKey = document.getElementById("aiKey").value.trim();
-  aiCfg.model = document.querySelector('input[name="aiModel"]:checked').value;
-  aiCfg.enabled = document.getElementById("aiEnable").checked;
-  saveJson(AI_CFG_KEY, aiCfg);
-  refreshAiUI();
-  toast("ok", "💾 AI salvat — re-deschide Smart Trade Long pentru a vedea schimbările");
-};
+  function saveTelegram() {
+    try {
+      tgCfg.token = val("tgToken");
+      tgCfg.chatId = val("tgChat");
+      tgPages.stl = checked("tgPageStl");
+      tgPages.watchlist = checked("tgPageWl");
+      tgPages.pump = checked("tgPagePump");
+      saveJson(TG_CFG_KEY, tgCfg);
+      saveJson(TG_PAGES_KEY, tgPages);
+      refreshTgUI();
+      toast("ok", "💾 Telegram salvat — efect imediat la următoarea deschidere a paginilor");
+    } catch (e) {
+      toast("err", "Salvare eșuată: " + (e && e.message ? e.message : e));
+      console.error("[settings] saveTelegram", e);
+    }
+  }
 
-// ═══════════════════════════════════════════════════════════════
-//  Init
-// ═══════════════════════════════════════════════════════════════
-refreshTgUI();
-refreshAiUI();
+  // ── AI actions ──
+  async function testAi() {
+    const key = val("aiKey");
+    const radio = document.querySelector('input[name="aiModel"]:checked');
+    const model = radio ? radio.value : "claude-sonnet-4-6";
+    if (!key) { toast("err", "Completează API key"); return; }
+    toast("ok", "🔄 Test în curs...");
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 50,
+          messages: [{ role: "user", content: "Răspunde doar cu „OK funcționează" și nimic altceva." }],
+        }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        const txt = (j.content && j.content[0] && j.content[0].text) || "(răspuns gol)";
+        toast("ok", `✅ Test OK: ${txt.slice(0, 60)}`);
+      } else {
+        const j = await r.json().catch(() => ({}));
+        const msg = (j.error && j.error.message) || ("HTTP " + r.status);
+        toast("err", `Test eșuat: ${msg}`);
+      }
+    } catch (e) {
+      toast("err", "Test eșuat: " + (e && e.message ? e.message : e));
+      console.error("[settings] testAi", e);
+    }
+  }
+
+  function saveAi() {
+    try {
+      const radio = document.querySelector('input[name="aiModel"]:checked');
+      aiCfg.apiKey = val("aiKey");
+      aiCfg.model = radio ? radio.value : "claude-sonnet-4-6";
+      aiCfg.enabled = checked("aiEnable");
+      saveJson(AI_CFG_KEY, aiCfg);
+      refreshAiUI();
+      toast("ok", "💾 AI salvat — re-deschide Smart Trade Long pentru a vedea schimbările");
+    } catch (e) {
+      toast("err", "Salvare eșuată: " + (e && e.message ? e.message : e));
+      console.error("[settings] saveAi", e);
+    }
+  }
+
+  // ── Wire-up: butoane via data-action (mai safe decât onclick inline) ──
+  function wire() {
+    const handlers = {
+      testTg: testTelegram, saveTg: saveTelegram,
+      testAi: testAi, saveAi: saveAi,
+    };
+    document.querySelectorAll("[data-action]").forEach(btn => {
+      const action = btn.dataset.action;
+      const handler = handlers[action];
+      if (handler) btn.addEventListener("click", handler);
+    });
+    // Highlight pe radio model selectat (active class)
+    document.querySelectorAll('input[name="aiModel"]').forEach(r => {
+      r.addEventListener("change", () => {
+        document.querySelectorAll("#aiModelGroup label").forEach(l => {
+          l.classList.toggle("active", l.dataset.model === r.value);
+        });
+      });
+    });
+  }
+
+  // ── Boot ──
+  function init() {
+    try {
+      wire();
+      refreshTgUI();
+      refreshAiUI();
+      console.log("[settings] OK init — tgCfg=", { hasToken: !!tgCfg.token, hasChat: !!tgCfg.chatId }, "aiCfg=", { hasKey: !!aiCfg.apiKey, model: aiCfg.model, enabled: aiCfg.enabled });
+    } catch (e) {
+      console.error("[settings] init failed", e);
+      // Afișaj vizibil în UI ca user-ul să vadă ce nu merge
+      const div = document.createElement("div");
+      div.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#7f1d1d;color:#fff;padding:10px 14px;border-radius:8px;z-index:99999;font-size:12px";
+      div.textContent = "⚠️ Eroare la init settings: " + (e && e.message ? e.message : e);
+      document.body.appendChild(div);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
 </script>
 
 </body>
