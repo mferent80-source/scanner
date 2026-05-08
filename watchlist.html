@@ -285,7 +285,7 @@
 <body>
 
 <header>
-  <h1>👁️ Watchlist Monitor <span class="ver-badge" id="verBadge">v16</span></h1>
+  <h1>👁️ Watchlist Monitor <span class="ver-badge" id="verBadge">v17</span></h1>
   <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
   <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Crypto</a>
   <a class="nav-link" href="scanner-stocks.html" title="Stocks Scanner">📈 Stocks</a>
@@ -355,17 +355,22 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
-const VERSION = "v16";
+const VERSION = "v17";
 const POLL_INTERVAL_MS = 60_000;       // refresh la 60 secunde când tab-ul e activ
 const STAGGER_MS = 200;                // delay între request-uri Binance ca să evităm rate-limit
 const MAX_COINS = 50;
-const WATCHLIST_KEY = "scanner_watchlist";        // SHARED cu scanner-crypto.html
+// Lista permanentă a paginii — INDEPENDENTĂ de scanner_watchlist din scanner-crypto.html.
+// Scannerul propagă one-way (add ⭐ → adaugă aici), DAR remove/clear pe scanner NU șterge nimic de aici.
+// Migrare one-time la prima rulare (vezi migrateFromScannerWatchlist).
+const MASTER_KEY = "wl_master_v1";
+const SCANNER_KEY = "scanner_watchlist";          // legacy/sursă pentru sync incremental + import
 const FILTER_KEY = "wl_filter";
 const SORT_KEY = "wl_sort";
 const MUTED_KEY = "wl_muted";
 const PAIRS_CACHE_KEY = "wl_binance_pairs_v1";    // listă pairs Binance USDT, cache 24h
 const PAIRS_CACHE_TTL = 24 * 60 * 60 * 1000;
 const LAST_STATUS_KEY = "wl_last_status_v1";      // pentru detectare schimbări (STRONG fired)
+const MIGRATED_KEY = "wl_migrated_v1";            // flag pentru migrare one-time
 
 // ═══════════════════════════════════════════════════════════════
 //  STATE
@@ -383,13 +388,44 @@ const STATE = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  WATCHLIST persistence (key shared cu scanner-crypto.html)
+//  WATCHLIST persistence — folosește MASTER_KEY (independent de scanner)
 // ═══════════════════════════════════════════════════════════════
 function getWatchlist() {
-  try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]"); }
+  try { return JSON.parse(localStorage.getItem(MASTER_KEY) || "[]"); }
   catch (e) { return []; }
 }
-function saveWatchlist(list) { localStorage.setItem(WATCHLIST_KEY, JSON.stringify(list)); }
+function saveWatchlist(list) { localStorage.setItem(MASTER_KEY, JSON.stringify(list)); }
+
+// Migrare one-time la prima rulare după ce s-a introdus arhitectura cu 2 chei.
+// Copiem ce ai în scanner_watchlist → wl_master_v1 ca să nu pierzi watchlist-ul existent.
+function migrateFromScannerWatchlist() {
+  if (localStorage.getItem(MIGRATED_KEY)) return;
+  const masterRaw = localStorage.getItem(MASTER_KEY);
+  if (masterRaw && masterRaw !== "[]") { localStorage.setItem(MIGRATED_KEY, "1"); return; }
+  let scanner;
+  try { scanner = JSON.parse(localStorage.getItem(SCANNER_KEY) || "[]"); }
+  catch (e) { scanner = []; }
+  if (Array.isArray(scanner) && scanner.length) {
+    localStorage.setItem(MASTER_KEY, JSON.stringify(scanner));
+  }
+  localStorage.setItem(MIGRATED_KEY, "1");
+}
+
+// Merge incremental din scanner_watchlist (one-way pull): adaugă în master ce nu e deja.
+// Util după ce userul stelează coin-uri în Crypto Scanner — buton ⬇ Import.
+function mergeFromScannerWatchlist() {
+  let scanner;
+  try { scanner = JSON.parse(localStorage.getItem(SCANNER_KEY) || "[]"); }
+  catch (e) { scanner = []; }
+  if (!Array.isArray(scanner) || !scanner.length) return 0;
+  const master = getWatchlist();
+  let added = 0;
+  for (const sym of scanner) {
+    if (!master.includes(sym)) { master.push(sym); added++; }
+  }
+  if (added > 0) saveWatchlist(master);
+  return added;
+}
 
 // Normalizare: input "BTC" → "BINANCE:BTCUSDT"; "BTCUSDT" → "BINANCE:BTCUSDT"; "BINANCE:BTCUSDT" → unchanged.
 function normalizeSymbol(raw) {
@@ -1547,6 +1583,9 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 //  INIT
 // ═══════════════════════════════════════════════════════════════
 async function init() {
+  // Migrare one-time: copiem ⭐ existent din scanner_watchlist → wl_master_v1 (la prima deschidere)
+  migrateFromScannerWatchlist();
+
   // Restore prefs
   STATE.filter = localStorage.getItem(FILTER_KEY) || "all";
   STATE.sort = localStorage.getItem(SORT_KEY) || "score-desc";
@@ -1590,10 +1629,15 @@ async function init() {
     toast("ok", "Watchlist gol");
   });
   document.getElementById("importBtn").addEventListener("click", () => {
-    // "Import din Scanner" e de fapt no-op (folosim acelaşi key).
-    // Buton-ul reîncarcă lista din localStorage și rulează scan.
-    toast("ok", "Sincronizat cu watchlist-ul Scanner-ului · pornesc scanare");
-    runScan();
+    // Merge one-way: adaugă în master orice ★ din Crypto Scanner care lipsește aici.
+    // Nu șterge nimic. Util dacă ai stelat coin-uri în scanner înainte să ai pagina aici.
+    const added = mergeFromScannerWatchlist();
+    if (added > 0) {
+      toast("ok", `Importat ${added} simboluri noi din ⭐ Scanner · pornesc scanare`);
+      runScan();
+    } else {
+      toast("ok", "Nicio diferență — lista master e deja la zi");
+    }
   });
   document.getElementById("notifBtn").addEventListener("click", async () => {
     const ok = await ensureNotifPermission();

@@ -615,6 +615,7 @@
   <button class="chip" data-filter="sig" data-val="divbull" title="Divergență bullish: preț LL + oscilator HL (reversal up)">🐂 Bull Div</button>
   <button class="chip" data-filter="sig" data-val="divbear" title="Divergență bearish: preț HH + oscilator LH (reversal down)">🐻 Bear Div</button>
   <button class="chip" data-filter="sig" data-val="watch" title="Doar simbolurile din watchlist-ul personal (⭐ pe rând pentru add/remove)">⭐ Watchlist <span id="watchlistCounter" style="opacity:.7"></span></button>
+  <button onclick="window.clearScannerWatchlist()" title="Golește watchlist-ul ⭐ al scannerului. Lista din pagina Watchlist Monitor rămâne intactă." style="background:rgba(214,69,69,.10);border:1px solid rgba(214,69,69,.35);color:var(--bear-s);font-size:11px;padding:3px 8px;border-radius:999px;cursor:pointer;font-weight:600;">🗑️ Clear ★</button>
   <button class="chip" data-filter="sig" data-val="accum" title="Setup acumulare 6 săptămâni — toate 5 criterii îndeplinite, doar TF 1d">🏗️ Accum</button>
   <button class="chip" data-filter="sig" data-val="accumpartial" title="Acumulare parțială: 3 sau 4 din 5 criterii îndeplinite (în formare)">🔶 Parțial</button>
   <button class="chip" data-filter="sig" data-val="biaslong" title="Bias LONG (score > 0) fără setup specific — doar direcție pozitivă">📈 Bias LONG</button>
@@ -1238,7 +1239,13 @@ const MTF_CONFIG = {
 // ═══════════════════════════════════════════════════════════════
 //  WATCHLIST PERSISTENTĂ (localStorage — rezistă la refresh/deploy)
 // ═══════════════════════════════════════════════════════════════
+// Arhitectură cu 2 liste independente:
+//   • scanner_watchlist (acest fișier) — lista temporară ⭐ a scannerului. Bulk-clear OK.
+//   • wl_master_v1 (Watchlist Monitor) — lista permanentă a paginii dedicate.
+// Add ⭐ în scanner → propagă la AMBELE. Remove ⭐ sau Clear → atinge DOAR scanner.
+// Astfel poți goli scannerul fără să pierzi lista de pe Watchlist Monitor.
 const WATCHLIST_KEY = "scanner_watchlist";
+const MASTER_KEY = "wl_master_v1"; // shared cu watchlist.html (one-way: scanner → master)
 
 function getWatchlist() {
   try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]"); }
@@ -1250,13 +1257,40 @@ function saveWatchlist(list) {
 function isInWatchlist(sym) {
   return getWatchlist().includes(sym);
 }
+// Adaugă în lista master (Watchlist Monitor) fără duplicate. NU șterge nimic de acolo.
+function addToMaster(sym) {
+  let master;
+  try { master = JSON.parse(localStorage.getItem(MASTER_KEY) || "[]"); }
+  catch (e) { master = []; }
+  if (!Array.isArray(master)) master = [];
+  if (!master.includes(sym)) {
+    master.push(sym);
+    localStorage.setItem(MASTER_KEY, JSON.stringify(master));
+  }
+}
 window.toggleWatchlist = function(symRaw) {
   const sym = decodeURIComponent(symRaw);
   const list = getWatchlist();
   const idx = list.indexOf(sym);
-  if (idx >= 0) list.splice(idx, 1);
-  else list.push(sym);
+  if (idx >= 0) {
+    list.splice(idx, 1);   // remove: doar din scanner_watchlist (master rămâne)
+  } else {
+    list.push(sym);        // add: în scanner_watchlist...
+    addToMaster(sym);      // ...și one-way în lista master pentru Watchlist Monitor
+  }
   saveWatchlist(list);
+  if (typeof render === "function") render();
+  if (typeof updateWatchlistCounter === "function") updateWatchlistCounter();
+};
+// Bulk clear: golește DOAR scanner_watchlist. Lista master (Watchlist Monitor) rămâne intactă.
+window.clearScannerWatchlist = function() {
+  const n = getWatchlist().length;
+  if (!n) { alert("Watchlist-ul ⭐ e deja gol."); return; }
+  if (!confirm(
+    `Golești watchlist-ul ⭐ al scannerului (${n} simboluri)?\n\n` +
+    `Lista din pagina Watchlist Monitor NU va fi afectată — coin-urile rămân acolo.`
+  )) return;
+  saveWatchlist([]);
   if (typeof render === "function") render();
   if (typeof updateWatchlistCounter === "function") updateWatchlistCounter();
 };
@@ -3694,6 +3728,8 @@ document.getElementById("autoPickWatchlistBtn").onclick = () => {
   )) return;
 
   saveWatchlist([...current, ...newAdds.map(x => x.sym)]);
+  // Propagă auto-pick-urile în lista master (Watchlist Monitor) — same one-way rule ca toggleWatchlist
+  newAdds.forEach(x => addToMaster(x.sym));
   if (typeof updateWatchlistCounter === "function") updateWatchlistCounter();
   if (typeof render === "function") render();
   setStatus("ok", `🎯 Adăugat ${newAdds.length} simboluri în watchlist`);
