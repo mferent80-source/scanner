@@ -221,6 +221,79 @@
   .actions .pionex { background:rgba(249,115,22,.15); color:var(--accent); border-color:rgba(249,115,22,.40); }
   .actions .pionex:hover { background:rgba(249,115,22,.25); }
   .actions .watch { background:rgba(34,197,94,.12); color:var(--bull-s); border-color:rgba(34,197,94,.35); }
+  .actions .grid-btn { background:rgba(139,92,246,.14); color:#a78bfa; border-color:rgba(139,92,246,.40); }
+  .actions .grid-btn:hover { background:rgba(139,92,246,.22); color:#c4b5fd; }
+
+  /* Grid modal — dark, scrollable */
+  .grid-overlay {
+    position:fixed; inset:0; background:rgba(5,8,15,.78); z-index:9999;
+    display:flex; align-items:center; justify-content:center; padding:16px;
+    animation:fadeIn .2s var(--ease);
+  }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  .grid-modal {
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:18px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto;
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+    color:var(--text); font-size:12px;
+  }
+  .grid-modal-head {
+    display:flex; justify-content:space-between; align-items:flex-start;
+    margin-bottom:12px; gap:10px;
+  }
+  .grid-modal-head h3 {
+    font-size:15px; font-weight:800; letter-spacing:-.2px;
+    background:linear-gradient(90deg,#8b5cf6,#a78bfa);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .grid-modal-head .sub { font-size:10.5px; color:var(--muted); margin-top:3px; }
+  .grid-modal-close {
+    background:transparent; border:none; color:var(--muted); font-size:18px;
+    cursor:pointer; padding:0 4px; line-height:1;
+  }
+  .grid-modal-close:hover { color:var(--text); }
+  .grid-section {
+    background:var(--panel2); border:1px solid var(--border-soft);
+    border-radius:8px; padding:10px 12px; margin-bottom:8px;
+  }
+  .grid-section-title {
+    font-size:10px; font-weight:800; letter-spacing:.5px; text-transform:uppercase;
+    color:var(--text-dim); margin-bottom:6px;
+  }
+  .grid-row { display:flex; justify-content:space-between; align-items:center; padding:3px 0; gap:8px; }
+  .grid-row .lbl { color:var(--text-dim); font-size:11px; }
+  .grid-row .val { font-weight:700; font-variant-numeric:tabular-nums; font-size:12px; }
+  .grid-row .val.pos { color:var(--bull-s); }
+  .grid-row .val.neg { color:var(--bear-s); }
+  .grid-row .val.warn { color:#facc15; }
+  .grid-section.safe { border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.06); }
+  .grid-section.unsafe { border-color:rgba(239,68,68,.40); background:rgba(239,68,68,.07); }
+  .grid-cfg-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;
+  }
+  .grid-cfg-grid label {
+    font-size:10px; color:var(--muted); display:block; margin-bottom:3px;
+    text-transform:uppercase; letter-spacing:.3px; font-weight:600;
+  }
+  .grid-cfg-grid input, .grid-cfg-grid select {
+    width:100%; padding:5px 8px; background:var(--panel3); color:var(--text);
+    border:1px solid var(--border); border-radius:5px; font-size:12px;
+    font-family:inherit; font-variant-numeric:tabular-nums; font-weight:700;
+  }
+  .grid-cfg-grid input:focus, .grid-cfg-grid select:focus { outline:none; border-color:var(--accent); }
+  .grid-modal-actions {
+    display:flex; gap:8px; margin-top:10px;
+  }
+  .grid-modal-actions button {
+    flex:1; padding:9px 12px; border-radius:7px; font-size:12px; font-weight:700;
+    cursor:pointer; font-family:inherit; border:1px solid var(--border);
+    background:var(--panel3); color:var(--text); transition:all .12s;
+  }
+  .grid-modal-actions button.primary {
+    background:linear-gradient(135deg,#8b5cf6,#a78bfa); border-color:transparent; color:#fff;
+  }
+  .grid-modal-actions button.primary:hover { filter:brightness(1.1); }
+  .grid-modal-actions button:hover { border-color:var(--accent); }
 
   .empty {
     padding:50px 20px; text-align:center; color:var(--muted); font-size:13px;
@@ -264,7 +337,7 @@
 <body>
 
 <header>
-  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v24</span></h1>
+  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v25</span></h1>
   <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
   <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Scanner</a>
   <a class="nav-link" href="watchlist.html" title="Watchlist Monitor">👁️ Watchlist</a>
@@ -344,8 +417,8 @@
 </div>
 
 <div class="foot">
-  Smart Trade Long v24 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
-  auto-scan 5 min + alerte 🔔 la READY nou ·
+  Smart Trade Long v25 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
+  auto-scan 5 min + alerte 🔔 la READY nou · 🤖 Pionex Grid auto-setup ·
   <a href="scanner-hub.html">Înapoi la Hub</a>
 </div>
 
@@ -355,7 +428,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
-const VERSION = "v24";
+const VERSION = "v25";
 const CFG_KEY = "stl_cfg_v1";
 const FILTER_KEY = "stl_filter_v1";
 const SORT_KEY = "stl_sort_v1";
@@ -374,6 +447,17 @@ const ALERTS_KEY = "stl_alerts_v1";   // bool — beep+notif la READY nou
 const PREV_READY_KEY = "stl_prev_ready_v1"; // Set serializat (Array<sym>)
 const AUTO_INTERVAL_MS = 5 * 60 * 1000;     // re-scan la fiecare 5 min
 
+// Pionex Grid Auto-Setup
+const GRID_CFG_KEY = "stl_grid_cfg_v1";
+const DEFAULT_GRID_CFG = {
+  investment: 400,        // USDT investit (margin)
+  maxLeverage: 3,         // cap pe leverage (algorithmul poate sugera mai mic)
+  takeProfitPct: 8,       // % deasupra preț — ținta TP a grid-ului
+  stopLossPct: 5,         // % sub preț — SL pentru exit grid
+  spacingPreset: "wide",  // tight (.25%/grid) / normal (.5%) / wide (.9%) / very-wide (1.5%)
+  rangeBias: 0.85,        // % din range care e SUB current price (.5 simetric, .85 defensive)
+};
+
 // Ponderare 5 filtri (max 100)
 const W_MTF = 35;        // MTF (15m + 1h + 4h)
 const W_VOL = 15;        // Volume 1h vs SMA20
@@ -389,6 +473,7 @@ const DEFAULT_CFG = { accountSize: 1000, riskPct: 1.0, universeSize: 50, watchOn
 // ═══════════════════════════════════════════════════════════════
 const STATE = {
   cfg: { ...DEFAULT_CFG },
+  gridCfg: { ...DEFAULT_GRID_CFG },
   results: [],          // [{ sym, price, score, verdict, filters, mtf, setup, ... }]
   filter: "all",
   sort: "score-desc",
@@ -411,6 +496,14 @@ function loadCfg() {
   } catch (e) { /* noop */ }
 }
 function saveCfg() { localStorage.setItem(CFG_KEY, JSON.stringify(STATE.cfg)); }
+
+function loadGridCfg() {
+  try {
+    const raw = localStorage.getItem(GRID_CFG_KEY);
+    if (raw) STATE.gridCfg = { ...DEFAULT_GRID_CFG, ...JSON.parse(raw) };
+  } catch (e) { /* noop */ }
+}
+function saveGridCfg() { localStorage.setItem(GRID_CFG_KEY, JSON.stringify(STATE.gridCfg)); }
 
 function loadResults() {
   try {
@@ -922,7 +1015,8 @@ function render() {
       </div>
       <div class="actions" onclick="event.stopPropagation()">
         <a href="${tvUrl(r.sym)}" target="_blank" rel="noopener">📈 TradingView</a>
-        <a href="${pionexUrl(r.sym)}" target="_blank" rel="noopener" class="pionex">🤖 Pionex Futures</a>
+        <a href="${pionexUrl(r.sym)}" target="_blank" rel="noopener" class="pionex">🚀 Pionex</a>
+        <button class="grid-btn" onclick="window.showGridSetup('${encodeURIComponent(r.sym)}')" title="Pionex Grid Auto-Setup">🤖 Grid</button>
         <button class="watch" onclick="window.addToWatchlist('${encodeURIComponent(r.sym)}')">⭐ Watchlist</button>
       </div>
     </div>`;
@@ -951,6 +1045,289 @@ window.addToWatchlist = function(symRaw) {
   if (!Array.isArray(master)) master = [];
   if (!master.includes(fullSym)) { master.push(fullSym); localStorage.setItem("wl_master_v1", JSON.stringify(master)); added = true; }
   toast(added ? "ok" : "err", added ? `${shortName(sym)} adăugat în watchlist (scanner + monitor)` : `${shortName(sym)} e deja în watchlist`);
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  PIONEX GRID AUTO-SETUP — calculator parametri + modal cu copy-to-clipboard
+//  Adaptat din premarket crypto-scanner (calcGridParams). Folosește indicatorii
+//  scanate (atr/volRel/rsi) ca proxy de volatilitate; nu mai cere chg5m.
+// ═══════════════════════════════════════════════════════════════
+function calcGridParams(r, gridCfg) {
+  const cfg = gridCfg || STATE.gridCfg;
+  const price = r.price;
+  const atr = r.indicators.atr;
+  const atrRatio = atr / price;        // ATR ca % din preț
+  const volRatio = r.indicators.volRel; // 1.0 = mediu
+  const rsi = r.indicators.rsi;
+
+  // Volatility score 0-100 (proxy din indicatori existenți)
+  let volatilityScore = 0;
+  volatilityScore += Math.min((atrRatio * 100) * 8, 50);     // 1% ATR → 8 pts; cap 50
+  volatilityScore += Math.min(Math.max(0, volRatio - 1) * 15, 30); // vol ratio bonus; cap 30
+  volatilityScore += Math.min(Math.abs(50 - rsi) * 0.5, 20); // RSI distance 50; cap 20
+  volatilityScore = Math.max(0, Math.min(100, volatilityScore));
+
+  // Range pct — funcție de volatilitate
+  let rangePct;
+  if (volatilityScore < 30) rangePct = 4;
+  else if (volatilityScore < 60) rangePct = 7;
+  else if (volatilityScore < 80) rangePct = 11;
+  else rangePct = 16;
+
+  // Range bias — % din range care e SUB current (defensive vs simetric)
+  const bias = Math.max(0.3, Math.min(0.95, cfg.rangeBias));
+  const rangeLow = price * (1 - rangePct * bias / 100);
+  const rangeHigh = price * (1 + rangePct * (1 - bias) / 100);
+
+  // Spacing & grid count — Pionex futures grid limits 2-150
+  const spacingMap = { tight: 0.25, normal: 0.5, wide: 0.9, "very-wide": 1.5 };
+  const targetSpacing = spacingMap[cfg.spacingPreset] || 0.9;
+  let gridCount = Math.max(5, Math.min(150, Math.round(rangePct / targetSpacing)));
+  const spacingPct = rangePct / gridCount;
+
+  // Leverage — invers proporțional cu volatility, capped la maxLeverage
+  let leverage;
+  if (volatilityScore > 80) leverage = 2;
+  else if (volatilityScore > 60) leverage = 3;
+  else if (volatilityScore > 30) leverage = 4;
+  else leverage = 5;
+  leverage = Math.min(leverage, cfg.maxLeverage);
+
+  // Liquidation estimate (Pionex maintenance margin ~0.5%)
+  const liquidationPrice = price * (1 - 1 / leverage + 0.005);
+  const distanceToLiq = ((price - liquidationPrice) / price) * 100;
+  const safe = rangeLow > liquidationPrice * 1.05;
+
+  // TP / SL absolut
+  const tpPrice = price * (1 + cfg.takeProfitPct / 100);
+  const slPrice = price * (1 - cfg.stopLossPct / 100);
+
+  // Profit / loss estimate ($)
+  const profitPerGridPctNum = spacingPct * leverage * 0.9; // 90% după fees
+  const profitPerGridUsd = cfg.investment * profitPerGridPctNum / 100;
+  const estimatedProfitFullRange = profitPerGridUsd * gridCount;
+  const tpProfitUsd = cfg.investment * cfg.takeProfitPct / 100 * leverage;
+  const slLossUsd = cfg.investment * cfg.stopLossPct / 100 * leverage;
+  const positionSize = cfg.investment * leverage;
+
+  return {
+    coin: shortName(r.sym), symbol: r.sym, currentPrice: price,
+    rangeLow, rangeHigh, rangePct,
+    gridCount, spacingPct, leverage,
+    investment: cfg.investment, positionSize,
+    profitPerGridUsd, profitPerGridPct: profitPerGridPctNum.toFixed(2),
+    estimatedProfitFullRange,
+    tpProfitUsd, slLossUsd,
+    takeProfit: tpPrice, stopLoss: slPrice,
+    liquidationPrice, distanceToLiq, safe,
+    volatilityScore: Math.round(volatilityScore),
+    cfgSnapshot: { ...cfg },
+    reasoning: { atrPct: (atrRatio * 100).toFixed(2), volRatio: volRatio.toFixed(2), rsi: rsi.toFixed(0) },
+  };
+}
+
+function gridParamsToText(p) {
+  const cfg = p.cfgSnapshot;
+  return `🤖 ${p.coin}/USDT Futures Grid (LONG)
+━━━━━━━━━━━━━━━━━━━━━
+💵 Preț curent: $${fmtPrice(p.currentPrice)}
+
+📊 RANGE:
+  Lower: $${fmtPrice(p.rangeLow)}
+  Upper: $${fmtPrice(p.rangeHigh)}
+  Spread: ${p.rangePct.toFixed(2)}%
+
+⚙️ PARAMETRI:
+  Grid count: ${p.gridCount}
+  Mode: Arithmetic
+  Spacing: ${p.spacingPct.toFixed(3)}% / grid
+  Leverage: ${p.leverage}x
+  Investment: $${cfg.investment}
+  Position size: $${p.positionSize.toFixed(2)} (cu leverage)
+
+💰 ESTIMĂRI $:
+  Profit / grid: +$${p.profitPerGridUsd.toFixed(2)}
+  Full-range potential: +$${p.estimatedProfitFullRange.toFixed(2)}
+  Profit la TP: +$${p.tpProfitUsd.toFixed(2)}
+  Pierdere la SL: -$${p.slLossUsd.toFixed(2)}
+
+🎯 ȚINTE:
+  Take Profit: $${fmtPrice(p.takeProfit)} (+${cfg.takeProfitPct}%)
+  Stop Loss: $${fmtPrice(p.stopLoss)} (-${cfg.stopLossPct}%)
+
+⚠️ RISC:
+  Liquidation: $${fmtPrice(p.liquidationPrice)}
+  Distanță: ${p.distanceToLiq.toFixed(2)}%
+  Safety: ${p.safe ? "✅ OK" : "⚠️ RISC RIDICAT"}
+
+💡 Profit / grid (%): ${p.profitPerGridPct}%
+🔥 Volatility: ${p.volatilityScore}/100
+
+📈 Bazat pe:
+  ATR: ${p.reasoning.atrPct}%
+  Vol ratio: ${p.reasoning.volRatio}x
+  RSI: ${p.reasoning.rsi}
+
+🔗 Pionex: pionex.com/en/futures-trade/${p.coin}_USDT.PERP`;
+}
+
+window.showGridSetup = function(symRaw) {
+  const sym = decodeURIComponent(symRaw);
+  const r = STATE.results.find(x => x.sym === sym);
+  if (!r) { toast("err", "Coin negăsit în rezultate (re-scan pentru date proaspete)"); return; }
+  renderGridModal(r);
+};
+
+function renderGridModal(r) {
+  const existing = document.getElementById("gridModalOverlay");
+  if (existing) existing.remove();
+
+  const p = calcGridParams(r);
+  const cfg = STATE.gridCfg;
+
+  const ov = document.createElement("div");
+  ov.id = "gridModalOverlay";
+  ov.className = "grid-overlay";
+  ov.addEventListener("click", (e) => { if (e.target === ov) ov.remove(); });
+
+  const safetyClass = p.safe ? "safe" : "unsafe";
+  const safetyEmoji = p.safe ? "✅" : "⚠️";
+  const safetyTxt = p.safe ? "Safety OK — range deasupra liquidation" : "RISC RIDICAT — range prea aproape de liquidation";
+
+  ov.innerHTML = `
+    <div class="grid-modal" data-sym="${r.sym}">
+      <div class="grid-modal-head">
+        <div>
+          <h3>🤖 Grid Setup — ${p.coin}</h3>
+          <div class="sub">Pionex LONG Futures Grid · auto-calc din indicatori</div>
+        </div>
+        <button class="grid-modal-close" onclick="document.getElementById('gridModalOverlay').remove()">×</button>
+      </div>
+
+      <div class="grid-section">
+        <div class="grid-row"><span class="lbl">💵 Preț curent</span><span class="val">$${fmtPrice(p.currentPrice)}</span></div>
+        <div class="grid-row"><span class="lbl">🔥 Volatility score</span><span class="val ${p.volatilityScore > 70 ? "neg" : (p.volatilityScore > 40 ? "warn" : "pos")}">${p.volatilityScore}/100</span></div>
+      </div>
+
+      <div class="grid-section">
+        <div class="grid-section-title">📊 Range</div>
+        <div class="grid-row"><span class="lbl">Lower</span><span class="val">$${fmtPrice(p.rangeLow)}</span></div>
+        <div class="grid-row"><span class="lbl">Upper</span><span class="val">$${fmtPrice(p.rangeHigh)}</span></div>
+        <div class="grid-row"><span class="lbl">Spread / Spacing</span><span class="val">${p.rangePct.toFixed(2)}% · ${p.spacingPct.toFixed(3)}%/grid</span></div>
+      </div>
+
+      <div class="grid-section">
+        <div class="grid-section-title">⚙️ Parametri</div>
+        <div class="grid-row"><span class="lbl">Grid count</span><span class="val">${p.gridCount}</span></div>
+        <div class="grid-row"><span class="lbl">Leverage</span><span class="val">${p.leverage}x</span></div>
+        <div class="grid-row"><span class="lbl">Investment / Position</span><span class="val">$${p.investment} → $${p.positionSize.toFixed(0)}</span></div>
+        <div class="grid-row"><span class="lbl">Profit / grid</span><span class="val pos">+${p.profitPerGridPct}% (≈ +$${p.profitPerGridUsd.toFixed(2)})</span></div>
+        <div class="grid-row"><span class="lbl">Full-range potential</span><span class="val pos">+$${p.estimatedProfitFullRange.toFixed(2)}</span></div>
+      </div>
+
+      <div class="grid-section">
+        <div class="grid-section-title">🎯 Ținte</div>
+        <div class="grid-row"><span class="lbl">Take Profit</span><span class="val pos">$${fmtPrice(p.takeProfit)} (+${cfg.takeProfitPct}% · +$${p.tpProfitUsd.toFixed(2)})</span></div>
+        <div class="grid-row"><span class="lbl">Stop Loss</span><span class="val neg">$${fmtPrice(p.stopLoss)} (-${cfg.stopLossPct}% · -$${p.slLossUsd.toFixed(2)})</span></div>
+      </div>
+
+      <div class="grid-section ${safetyClass}">
+        <div class="grid-section-title">${safetyEmoji} Risc</div>
+        <div class="grid-row"><span class="lbl">Liquidation</span><span class="val ${p.safe ? "pos" : "neg"}">$${fmtPrice(p.liquidationPrice)}</span></div>
+        <div class="grid-row"><span class="lbl">Distanță până la liq.</span><span class="val">${p.distanceToLiq.toFixed(2)}%</span></div>
+        <div class="grid-row"><span class="lbl"></span><span class="val ${p.safe ? "pos" : "neg"}" style="font-size:10.5px">${safetyTxt}</span></div>
+      </div>
+
+      <div class="grid-section">
+        <div class="grid-section-title">⚙️ Config (modifică și re-calculează)</div>
+        <div class="grid-cfg-grid">
+          <div>
+            <label>Investment ($)</label>
+            <input type="number" id="gcInvestment" value="${cfg.investment}" min="50" step="50">
+          </div>
+          <div>
+            <label>Max leverage</label>
+            <input type="number" id="gcLeverage" value="${cfg.maxLeverage}" min="1" max="10" step="1">
+          </div>
+          <div>
+            <label>Take Profit %</label>
+            <input type="number" id="gcTP" value="${cfg.takeProfitPct}" min="2" max="50" step="1">
+          </div>
+          <div>
+            <label>Stop Loss %</label>
+            <input type="number" id="gcSL" value="${cfg.stopLossPct}" min="1" max="20" step="1">
+          </div>
+          <div>
+            <label>Spacing preset</label>
+            <select id="gcSpacing">
+              <option value="tight" ${cfg.spacingPreset === "tight" ? "selected" : ""}>tight (.25%/grid)</option>
+              <option value="normal" ${cfg.spacingPreset === "normal" ? "selected" : ""}>normal (.5%/grid)</option>
+              <option value="wide" ${cfg.spacingPreset === "wide" ? "selected" : ""}>wide (.9%/grid)</option>
+              <option value="very-wide" ${cfg.spacingPreset === "very-wide" ? "selected" : ""}>very-wide (1.5%/grid)</option>
+            </select>
+          </div>
+          <div>
+            <label>Range bias (sub current)</label>
+            <select id="gcBias">
+              <option value="0.5" ${cfg.rangeBias == 0.5 ? "selected" : ""}>50% (simetric)</option>
+              <option value="0.7" ${cfg.rangeBias == 0.7 ? "selected" : ""}>70% (echilibrat)</option>
+              <option value="0.85" ${cfg.rangeBias == 0.85 ? "selected" : ""}>85% (defensiv)</option>
+              <option value="0.95" ${cfg.rangeBias == 0.95 ? "selected" : ""}>95% (foarte defensiv)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-modal-actions">
+        <button onclick="window.applyGridCfg('${encodeURIComponent(r.sym)}')">↻ Re-calculează</button>
+        <button class="primary" onclick="window.copyGridParams('${encodeURIComponent(r.sym)}')">📋 Copy</button>
+        <a href="${pionexUrl(r.sym)}" target="_blank" rel="noopener" style="flex:1;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:9px 12px;border-radius:7px;border:1px solid rgba(249,115,22,.4);background:rgba(249,115,22,.15);color:var(--accent);font-weight:700;font-size:12px">🚀 Pionex</a>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(ov);
+}
+
+window.applyGridCfg = function(symRaw) {
+  const sym = decodeURIComponent(symRaw);
+  const r = STATE.results.find(x => x.sym === sym);
+  if (!r) return;
+  // Citește input-urile, persistă, re-render modal
+  const inv = parseFloat(document.getElementById("gcInvestment").value) || DEFAULT_GRID_CFG.investment;
+  const lev = parseInt(document.getElementById("gcLeverage").value, 10) || DEFAULT_GRID_CFG.maxLeverage;
+  const tp = parseFloat(document.getElementById("gcTP").value) || DEFAULT_GRID_CFG.takeProfitPct;
+  const sl = parseFloat(document.getElementById("gcSL").value) || DEFAULT_GRID_CFG.stopLossPct;
+  const sp = document.getElementById("gcSpacing").value;
+  const bias = parseFloat(document.getElementById("gcBias").value);
+  STATE.gridCfg = {
+    investment: Math.max(50, inv),
+    maxLeverage: Math.max(1, Math.min(10, lev)),
+    takeProfitPct: Math.max(2, Math.min(50, tp)),
+    stopLossPct: Math.max(1, Math.min(20, sl)),
+    spacingPreset: sp,
+    rangeBias: bias,
+  };
+  saveGridCfg();
+  renderGridModal(r);
+};
+
+window.copyGridParams = function(symRaw) {
+  const sym = decodeURIComponent(symRaw);
+  const r = STATE.results.find(x => x.sym === sym);
+  if (!r) return;
+  const p = calcGridParams(r);
+  const txt = gridParamsToText(p);
+  navigator.clipboard.writeText(txt).then(
+    () => toast("ok", `📋 Grid setup ${p.coin} copiat în clipboard`),
+    () => {
+      // Fallback dacă clipboard API e blocat (HTTP, vechi)
+      const ta = document.createElement("textarea");
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); toast("ok", `📋 Copiat (fallback)`); }
+      catch (e) { toast("err", "Copy a eșuat — selectează manual"); }
+      ta.remove();
+    }
+  );
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -1081,6 +1458,7 @@ function wireSettings() {
 // ═══════════════════════════════════════════════════════════════
 function init() {
   loadCfg();
+  loadGridCfg();
   loadResults();
   STATE.filter = localStorage.getItem(FILTER_KEY) || "all";
   STATE.sort = localStorage.getItem(SORT_KEY) || "score-desc";
