@@ -425,6 +425,52 @@
   .grid-modal-actions button.primary:hover { filter:brightness(1.1); }
   .grid-modal-actions button:hover { border-color:var(--accent); }
 
+  /* Premium filter sliders */
+  .premium-panel {
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    margin-bottom:8px; overflow:hidden;
+  }
+  .premium-panel summary {
+    padding:9px 12px; cursor:pointer; font-weight:600; user-select:none; font-size:11.5px;
+    display:flex; align-items:center; gap:6px; transition:background .12s var(--ease);
+    list-style:none;
+  }
+  .premium-panel summary::-webkit-details-marker { display:none; }
+  .premium-panel summary::before {
+    content:"▶"; font-size:8px; color:var(--muted); transition:transform .15s var(--ease); display:inline-block; width:10px;
+  }
+  .premium-panel[open] summary::before { transform:rotate(90deg); }
+  .premium-panel summary:hover { background:var(--panel2); }
+  .slider-grid {
+    padding:10px 14px 14px; border-top:1px solid var(--border-soft);
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;
+  }
+  .slider-field { display:flex; flex-direction:column; gap:5px; }
+  .slider-field-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .slider-field label { font-size:10.5px; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+  .slider-field .val {
+    font-size:14px; font-weight:800; color:var(--accent);
+    font-variant-numeric:tabular-nums; min-width:50px; text-align:right;
+  }
+  .slider-field input[type=range] {
+    width:100%; -webkit-appearance:none; appearance:none;
+    height:6px; background:var(--panel3); border-radius:3px; outline:none;
+  }
+  .slider-field input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:18px; height:18px;
+    background:linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius:50%; cursor:pointer; border:2px solid var(--panel);
+    box-shadow:0 2px 6px rgba(0,0,0,.3);
+  }
+  .slider-field input[type=range]::-moz-range-thumb {
+    width:18px; height:18px; background:var(--accent); border-radius:50%; cursor:pointer; border:2px solid var(--panel);
+  }
+  .premium-stats {
+    padding:8px 14px; background:var(--panel2); border-top:1px solid var(--border-soft);
+    display:flex; gap:14px; font-size:11px; color:var(--text-dim);
+  }
+  .premium-stats b { color:var(--accent); font-weight:700; }
+
   .empty {
     padding:50px 20px; text-align:center; color:var(--muted); font-size:13px;
   }
@@ -467,7 +513,7 @@
 <body>
 
 <header>
-  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v30</span></h1>
+  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v31</span></h1>
   <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
   <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Scanner</a>
   <a class="nav-link" href="watchlist.html" title="Watchlist Monitor">👁️ Watchlist</a>
@@ -518,6 +564,37 @@
   </div>
 </details>
 
+<!-- PREMIUM FILTERS (sliders configurabile) -->
+<details class="premium-panel" id="premiumPanel">
+  <summary>💎 Premium filters — sliders configurabile (chip „💎 Premium" pentru a aplica)</summary>
+  <div class="slider-grid">
+    <div class="slider-field">
+      <div class="slider-field-head"><label>Min Score</label><span class="val" id="pVal-minScore">60</span></div>
+      <input type="range" id="pSlider-minScore" min="0" max="100" step="5" value="60">
+    </div>
+    <div class="slider-field">
+      <div class="slider-field-head"><label>Min R:R (TP2)</label><span class="val" id="pVal-minRR">1.5</span></div>
+      <input type="range" id="pSlider-minRR" min="0" max="5" step="0.1" value="1.5">
+    </div>
+    <div class="slider-field">
+      <div class="slider-field-head"><label>Min Vol Ratio</label><span class="val" id="pVal-minVol">1.0x</span></div>
+      <input type="range" id="pSlider-minVol" min="0.5" max="3" step="0.1" value="1.0">
+    </div>
+    <div class="slider-field">
+      <div class="slider-field-head"><label>Max RSI</label><span class="val" id="pVal-maxRSI">75</span></div>
+      <input type="range" id="pSlider-maxRSI" min="50" max="90" step="1" value="75">
+    </div>
+    <div class="slider-field">
+      <div class="slider-field-head"><label>Min ATR%</label><span class="val" id="pVal-minATR">0.3%</span></div>
+      <input type="range" id="pSlider-minATR" min="0" max="5" step="0.1" value="0.3">
+    </div>
+  </div>
+  <div class="premium-stats">
+    <span>Trec filtre: <b id="premiumPassCount">—</b> / <b id="premiumTotalCount">—</b></span>
+    <span style="margin-left:auto"><a href="#" onclick="window.resetPremium();return false" style="color:var(--accent);text-decoration:none">Reset defaults</a></span>
+  </div>
+</details>
+
 <!-- STATS -->
 <div class="stats-strip" id="statsStrip">
   <span class="stat-pill"><span class="stat-lbl">Scanate:</span><span class="stat-val" id="statTotal">0</span></span>
@@ -537,6 +614,7 @@
   <button class="chip" data-filter="top5">Top 5 score</button>
   <button class="chip" data-filter="vwap-discount" title="LONG-friendly: -1σ sau mai jos față de VWAP">🟢 VWAP discount</button>
   <button class="chip" data-filter="vwap-no-premium" title="Evită PREMIUM: nu e la 2σ+ peste VWAP">🚫 fără premium</button>
+  <button class="chip" data-filter="premium" title="Aplică sliders premium din panoul ⚙️ Premium filters">💎 Premium</button>
   <span style="width:1px;height:18px;background:var(--border);margin:0 6px"></span>
   <label>Sortare:</label>
   <select id="sortSelect" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit;cursor:pointer">
@@ -552,8 +630,8 @@
 </div>
 
 <div class="foot">
-  Smart Trade Long v30 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
-  auto-scan 5 min + alerte 🔔/📱 la READY nou · 🤖 Pionex Grid auto-setup · 📊 VWAP zone σ · 🪄 AI Claude (Sonnet 4.6 / Opus 4.7) ·
+  Smart Trade Long v31 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
+  auto-scan 5 min + alerte 🔔/📱 · 🤖 Pionex Grid auto-setup · 📊 VWAP zone σ · 🪄 AI Claude · 💎 Sliders premium filters ·
   <a href="scanner-hub.html">Înapoi la Hub</a>
 </div>
 
@@ -563,7 +641,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
-const VERSION = "v30";
+const VERSION = "v31";
 const CFG_KEY = "stl_cfg_v1";
 const FILTER_KEY = "stl_filter_v1";
 const SORT_KEY = "stl_sort_v1";
@@ -613,6 +691,17 @@ Reguli:
 - Citează cifrele specifice din date (ex: "RSI 67 + VWAP +0.8σ = aproape de premium").
 - Pentru comparații, dă un ranking explicit 1-2-3 cu motiv pe rând.`;
 
+// Premium filters (sliders) — strict cumulative, persist independent de filter chips
+const PREMIUM_KEY = "stl_premium_filters_v1";
+const DEFAULT_PREMIUM = {
+  minScore: 60,    // 0-100
+  minRR: 1.5,      // 0-5
+  minVol: 1.0,     // 0.5-3 (ratio)
+  maxRSI: 75,      // 50-90 (evită overbought)
+  minATR: 0.3,     // 0-5 (% din preț — evită coin-uri prea liniștite pentru momentum)
+  enabled: false,  // chip „💎 Premium" activ
+};
+
 // Pionex Grid Auto-Setup
 const GRID_CFG_KEY = "stl_grid_cfg_v1";
 const DEFAULT_GRID_CFG = {
@@ -641,6 +730,7 @@ const STATE = {
   cfg: { ...DEFAULT_CFG },
   gridCfg: { ...DEFAULT_GRID_CFG },
   aiCfg: { ...DEFAULT_AI_CFG },
+  premium: { ...DEFAULT_PREMIUM },
   results: [],          // [{ sym, price, score, verdict, filters, mtf, setup, ... }]
   filter: "all",
   sort: "score-desc",
@@ -690,6 +780,26 @@ function loadAiCfg() {
 function saveAiCfg() { localStorage.setItem(AI_CFG_KEY, JSON.stringify(STATE.aiCfg)); }
 function saveAiHistory() {
   try { localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(STATE.aiHistory.slice(-30))); } catch (e) {}
+}
+
+function loadPremium() {
+  try {
+    const raw = localStorage.getItem(PREMIUM_KEY);
+    if (raw) STATE.premium = { ...DEFAULT_PREMIUM, ...JSON.parse(raw) };
+  } catch (e) {}
+}
+function savePremium() { localStorage.setItem(PREMIUM_KEY, JSON.stringify(STATE.premium)); }
+
+// Aplică sliders premium pe rezultate (strict cumulative)
+function passesPremium(r) {
+  const p = STATE.premium;
+  if (r.score < p.minScore) return false;
+  if (r.setup.rr2 < p.minRR) return false;
+  if (r.indicators.volRel < p.minVol) return false;
+  if (r.indicators.rsi > p.maxRSI) return false;
+  const atrPct = (r.indicators.atr / r.price) * 100;
+  if (atrPct < p.minATR) return false;
+  return true;
 }
 
 function loadResults() {
@@ -1189,6 +1299,7 @@ function applyFilter(rows) {
   if (STATE.filter === "top5") return rows.slice(0, 5);
   if (STATE.filter === "vwap-discount") return rows.filter(r => r.vwap && (r.vwap.zone === "extremeLow" || r.vwap.zone === "low"));
   if (STATE.filter === "vwap-no-premium") return rows.filter(r => r.vwap && r.vwap.zone !== "extremeHigh");
+  if (STATE.filter === "premium") return rows.filter(passesPremium);
   return rows;
 }
 function applySort(rows) {
@@ -1215,6 +1326,7 @@ function render() {
   document.getElementById("statLastScan").textContent = STATE.lastScan
     ? new Date(STATE.lastScan).toLocaleTimeString("ro-RO")
     : "—";
+  updatePremiumStats();
 
   const container = document.getElementById("cardsContainer");
   const filtered = applySort(applyFilter(STATE.results));
@@ -2315,11 +2427,53 @@ function wireSettings() {
 // ═══════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════
+function wirePremiumSliders() {
+  const fields = [
+    { id: "minScore", suffix: "", precision: 0 },
+    { id: "minRR", suffix: "", precision: 1 },
+    { id: "minVol", suffix: "x", precision: 1 },
+    { id: "maxRSI", suffix: "", precision: 0 },
+    { id: "minATR", suffix: "%", precision: 1 },
+  ];
+  for (const f of fields) {
+    const slider = document.getElementById(`pSlider-${f.id}`);
+    const valEl = document.getElementById(`pVal-${f.id}`);
+    slider.value = STATE.premium[f.id];
+    valEl.textContent = (+STATE.premium[f.id]).toFixed(f.precision) + f.suffix;
+    slider.addEventListener("input", () => {
+      const v = parseFloat(slider.value);
+      STATE.premium[f.id] = v;
+      valEl.textContent = v.toFixed(f.precision) + f.suffix;
+      savePremium();
+      updatePremiumStats();
+      // Re-render doar dacă filtrul „premium" e activ (rapid feedback)
+      if (STATE.filter === "premium") render();
+    });
+  }
+  updatePremiumStats();
+}
+function updatePremiumStats() {
+  const total = STATE.results.length;
+  const pass = STATE.results.filter(passesPremium).length;
+  const passEl = document.getElementById("premiumPassCount");
+  const totalEl = document.getElementById("premiumTotalCount");
+  if (passEl) passEl.textContent = pass;
+  if (totalEl) totalEl.textContent = total;
+}
+window.resetPremium = function() {
+  STATE.premium = { ...DEFAULT_PREMIUM };
+  savePremium();
+  wirePremiumSliders();
+  if (STATE.filter === "premium") render();
+  toast("ok", "💎 Sliders resetate la default");
+};
+
 function init() {
   loadCfg();
   loadGridCfg();
   loadTgCfg();
   loadAiCfg();
+  loadPremium();
   loadResults();
   STATE.filter = localStorage.getItem(FILTER_KEY) || "all";
   STATE.sort = localStorage.getItem(SORT_KEY) || "score-desc";
@@ -2356,6 +2510,7 @@ function init() {
   document.getElementById("tgBtn").addEventListener("click", window.openTelegramModal);
   document.getElementById("aiBtn").addEventListener("click", window.openAiConfigModal);
   document.getElementById("selectBtn").addEventListener("click", toggleSelectMode);
+  wirePremiumSliders();
   updateAutoBtnUI();
   updateAlertsBtnUI();
   updateTgBtnUI();
