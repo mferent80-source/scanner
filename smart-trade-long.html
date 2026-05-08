@@ -337,7 +337,7 @@
 <body>
 
 <header>
-  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v25</span></h1>
+  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v26</span></h1>
   <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
   <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Scanner</a>
   <a class="nav-link" href="watchlist.html" title="Watchlist Monitor">👁️ Watchlist</a>
@@ -346,6 +346,7 @@
   <span class="status-pill" id="statusPill"><span class="dot"></span><span id="statusText">idle</span></span>
   <button class="btn" id="autoBtn" title="Auto-scan 5 min">⏱ Auto: OFF</button>
   <button class="btn" id="alertsBtn" title="Beep + notificare la READY nou">🔔 OFF</button>
+  <button class="btn" id="tgBtn" title="Telegram alerts — config token + chatId">📱 TG</button>
   <button class="btn primary" id="scanBtn">↻ Scanează</button>
 </header>
 
@@ -417,8 +418,8 @@
 </div>
 
 <div class="foot">
-  Smart Trade Long v25 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
-  auto-scan 5 min + alerte 🔔 la READY nou · 🤖 Pionex Grid auto-setup ·
+  Smart Trade Long v26 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
+  auto-scan 5 min + alerte 🔔/📱 la READY nou · 🤖 Pionex Grid auto-setup ·
   <a href="scanner-hub.html">Înapoi la Hub</a>
 </div>
 
@@ -428,7 +429,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
-const VERSION = "v25";
+const VERSION = "v26";
 const CFG_KEY = "stl_cfg_v1";
 const FILTER_KEY = "stl_filter_v1";
 const SORT_KEY = "stl_sort_v1";
@@ -446,6 +447,11 @@ const AUTO_KEY = "stl_auto_v1";       // bool — pornit/oprit
 const ALERTS_KEY = "stl_alerts_v1";   // bool — beep+notif la READY nou
 const PREV_READY_KEY = "stl_prev_ready_v1"; // Set serializat (Array<sym>)
 const AUTO_INTERVAL_MS = 5 * 60 * 1000;     // re-scan la fiecare 5 min
+
+// Telegram alerts (config shared cross-page prin localStorage `tg_cfg_v1`)
+const TG_CFG_KEY = "tg_cfg_v1";          // shared cu Watchlist Monitor + Pump Radar
+const TG_PAGES_KEY = "tg_pages_v1";      // per-page enable: { stl: bool, watchlist: bool, pump: bool }
+const TG_PAGE_ID = "stl";                // identificator pagină pentru per-page enable
 
 // Pionex Grid Auto-Setup
 const GRID_CFG_KEY = "stl_grid_cfg_v1";
@@ -870,12 +876,25 @@ async function runScan() {
     // ── Detect READY nou (vClass === "ready" și absent în prevReadySet) → alert
     const currReady = results.filter(r => r.vClass === "ready");
     const newReady = currReady.filter(r => !STATE.prevReadySet.has(r.sym));
-    if (newReady.length && STATE.alerts) {
-      playReadySound();
-      const top = newReady.slice(0, 3).map(r => `${shortName(r.sym)} (${r.score})`).join(", ");
-      const more = newReady.length > 3 ? ` +${newReady.length - 3}` : "";
-      fireNotification(`🚀 ${newReady.length} READY nou`, top + more);
-      toast("ok", `🚀 READY nou: <b>${top}</b>${more}`, 6000);
+    if (newReady.length) {
+      if (STATE.alerts) {
+        playReadySound();
+        const top = newReady.slice(0, 3).map(r => `${shortName(r.sym)} (${r.score})`).join(", ");
+        const more = newReady.length > 3 ? ` +${newReady.length - 3}` : "";
+        fireNotification(`🚀 ${newReady.length} READY nou`, top + more);
+        toast("ok", `🚀 READY nou: <b>${top}</b>${more}`, 6000);
+      }
+      // Telegram (independent de toggle 🔔 alerts — are propriul switch)
+      if (tgPageEnabled && tgCfg.token && tgCfg.chatId) {
+        const lines = newReady.slice(0, 5).map(r => {
+          const s = r.setup;
+          return `🚀 <b>${shortName(r.sym)}</b> · score <b>${r.score}/100</b>\n` +
+                 `  Entry $${fmtPrice(s.entry)} · SL $${fmtPrice(s.sl)} (${s.slDelta.toFixed(2)}%)\n` +
+                 `  TP1/TP2/TP3 $${fmtPrice(s.tp1)}/$${fmtPrice(s.tp2)}/$${fmtPrice(s.tp3)} · R:R ${s.rr2.toFixed(2)}`;
+        }).join("\n\n");
+        const more = newReady.length > 5 ? `\n\n... +${newReady.length - 5} alte READY` : "";
+        sendTelegram(`🎯 <b>Smart Trade Long</b> — ${newReady.length} READY nou\n\n${lines}${more}`);
+      }
     }
     // Update prevReadySet pentru următorul scan
     STATE.prevReadySet = new Set(currReady.map(r => r.sym));
@@ -1424,6 +1443,158 @@ function updateAlertsBtnUI() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  TELEGRAM ALERTS — module shared cross-page (config în `tg_cfg_v1`,
+//  per-page enable în `tg_pages_v1`). Trimite mesaje la READY nou.
+// ═══════════════════════════════════════════════════════════════
+let tgCfg = { token: "", chatId: "" };       // shared între pagini
+let tgPageEnabled = false;                    // doar pentru pagina curentă
+
+function loadTgCfg() {
+  try {
+    const raw = localStorage.getItem(TG_CFG_KEY);
+    if (raw) tgCfg = { ...tgCfg, ...JSON.parse(raw) };
+  } catch (e) {}
+  try {
+    const pages = JSON.parse(localStorage.getItem(TG_PAGES_KEY) || "{}");
+    tgPageEnabled = !!pages[TG_PAGE_ID];
+  } catch (e) {}
+}
+function saveTgCfg() { localStorage.setItem(TG_CFG_KEY, JSON.stringify(tgCfg)); }
+function setTgPageEnabled(on) {
+  let pages = {};
+  try { pages = JSON.parse(localStorage.getItem(TG_PAGES_KEY) || "{}"); } catch (e) {}
+  pages[TG_PAGE_ID] = !!on;
+  localStorage.setItem(TG_PAGES_KEY, JSON.stringify(pages));
+  tgPageEnabled = !!on;
+}
+
+async function sendTelegram(text) {
+  if (!tgPageEnabled || !tgCfg.token || !tgCfg.chatId) return false;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${tgCfg.token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: tgCfg.chatId,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+      }),
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      console.warn("[TG] send failed:", r.status, j.description || "");
+    }
+    return r.ok;
+  } catch (e) {
+    console.warn("[TG] send error:", e.message);
+    return false;
+  }
+}
+
+function updateTgBtnUI() {
+  const b = document.getElementById("tgBtn");
+  if (!b) return;
+  const configured = !!(tgCfg.token && tgCfg.chatId);
+  if (!configured) { b.textContent = "📱 TG"; b.classList.remove("primary"); return; }
+  b.textContent = tgPageEnabled ? "📱 ON" : "📱 OFF";
+  b.classList.toggle("primary", tgPageEnabled);
+}
+
+window.openTelegramModal = function() {
+  const existing = document.getElementById("tgModalOverlay");
+  if (existing) existing.remove();
+
+  const ov = document.createElement("div");
+  ov.id = "tgModalOverlay";
+  ov.className = "grid-overlay";
+  ov.addEventListener("click", (e) => { if (e.target === ov) ov.remove(); });
+
+  ov.innerHTML = `
+    <div class="grid-modal" style="max-width:440px">
+      <div class="grid-modal-head">
+        <div>
+          <h3 style="background:linear-gradient(90deg,#0088cc,#33c2ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent">📱 Telegram Alerts</h3>
+          <div class="sub">Config bot · trimite alerte READY pe phone</div>
+        </div>
+        <button class="grid-modal-close" onclick="document.getElementById('tgModalOverlay').remove()">×</button>
+      </div>
+
+      <div class="grid-section">
+        <div class="grid-section-title">⚙️ Config bot (shared cu Watchlist + Pump Radar)</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+          <div>
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;font-weight:600">Bot token</label>
+            <input type="password" id="tgTokenInput" value="${escAttr(tgCfg.token)}" placeholder="123456:ABC-DEF..." style="width:100%;padding:7px 10px;background:var(--panel3);color:var(--text);border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit;font-variant-numeric:tabular-nums">
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;font-weight:600">Chat ID</label>
+            <input type="text" id="tgChatInput" value="${escAttr(tgCfg.chatId)}" placeholder="123456789 sau -100..." style="width:100%;padding:7px 10px;background:var(--panel3);color:var(--text);border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit;font-variant-numeric:tabular-nums">
+          </div>
+          <div style="font-size:10.5px;color:var(--muted);line-height:1.5">
+            <b style="color:var(--text-dim)">Cum obții:</b><br>
+            1. <code style="background:var(--panel3);padding:1px 4px;border-radius:3px">@BotFather</code> pe Telegram → <code style="background:var(--panel3);padding:1px 4px;border-radius:3px">/newbot</code> → primești token<br>
+            2. Trimite-i botului mesaj „start" → deschide <code style="background:var(--panel3);padding:1px 4px;border-radius:3px">api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> → copiază <code style="background:var(--panel3);padding:1px 4px;border-radius:3px">chat.id</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-section">
+        <div class="grid-section-title">📍 Pe această pagină (Smart Trade Long)</div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 0">
+          <input type="checkbox" id="tgEnableInput" ${tgPageEnabled ? "checked" : ""} style="accent-color:#0088cc;width:18px;height:18px">
+          <span style="font-size:12.5px">Trimite alerte Telegram la <b>🚀 READY nou</b></span>
+        </label>
+        <div style="font-size:10px;color:var(--muted);line-height:1.4;margin-top:4px">
+          Mesajele apar și ca beep/notification dacă <b>🔔 Alerte</b> e ON. Telegram e trimis suplimentar.
+        </div>
+      </div>
+
+      <div class="grid-modal-actions">
+        <button onclick="window.testTelegram()">📤 Test</button>
+        <button class="primary" onclick="window.saveTelegramCfg()">💾 Salvează</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(ov);
+};
+
+window.testTelegram = async function() {
+  const token = document.getElementById("tgTokenInput").value.trim();
+  const chatId = document.getElementById("tgChatInput").value.trim();
+  if (!token || !chatId) { toast("err", "Completează token + chatId"); return; }
+  // Trimite test fără a salva — folosește valori curente din input
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: "✅ <b>Smart Trade Long</b> — test alert\n\nDacă vezi mesajul, integrarea funcționează 🎯",
+        parse_mode: "HTML",
+      }),
+    });
+    if (r.ok) toast("ok", "📤 Test trimis cu succes");
+    else {
+      const j = await r.json().catch(() => ({}));
+      toast("err", `Test eșuat: ${j.description || r.status}`);
+    }
+  } catch (e) { toast("err", "Test eșuat: " + e.message); }
+};
+
+window.saveTelegramCfg = function() {
+  tgCfg.token = document.getElementById("tgTokenInput").value.trim();
+  tgCfg.chatId = document.getElementById("tgChatInput").value.trim();
+  saveTgCfg();
+  setTgPageEnabled(document.getElementById("tgEnableInput").checked);
+  updateTgBtnUI();
+  document.getElementById("tgModalOverlay").remove();
+  toast("ok", tgPageEnabled ? "📱 Telegram ON pe Smart Trade" : "📱 Telegram OFF pe Smart Trade");
+};
+
+function escAttr(s) { return String(s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
+
+// ═══════════════════════════════════════════════════════════════
 //  TOAST + HELPERS
 // ═══════════════════════════════════════════════════════════════
 function toast(cls, html, ms = 3500) {
@@ -1459,6 +1630,7 @@ function wireSettings() {
 function init() {
   loadCfg();
   loadGridCfg();
+  loadTgCfg();
   loadResults();
   STATE.filter = localStorage.getItem(FILTER_KEY) || "all";
   STATE.sort = localStorage.getItem(SORT_KEY) || "score-desc";
@@ -1492,8 +1664,10 @@ function init() {
   document.getElementById("scanBtn").addEventListener("click", runScan);
   document.getElementById("autoBtn").addEventListener("click", toggleAuto);
   document.getElementById("alertsBtn").addEventListener("click", toggleAlerts);
+  document.getElementById("tgBtn").addEventListener("click", window.openTelegramModal);
   updateAutoBtnUI();
   updateAlertsBtnUI();
+  updateTgBtnUI();
 
   // Resume auto-scan dacă era ON la închidere — respect convenția Pump Radar
   if (localStorage.getItem(AUTO_KEY) === "1") startAuto();
