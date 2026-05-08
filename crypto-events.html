@@ -310,7 +310,7 @@
 <body>
 
 <header>
-  <h1>⚡ Crypto Events <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;vertical-align:middle" title="Versiune cache SW (debug deploy)">v40</span></h1>
+  <h1>⚡ Crypto Events <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;vertical-align:middle" title="Versiune cache SW (debug deploy)">v41</span></h1>
   <a href="scanner-hub.html" class="nav-link">🏠 Hub</a>
   <a href="scanner-crypto.html" class="nav-link">🪙 Scanner</a>
   <a href="news.html" class="nav-link">📰 News</a>
@@ -1490,15 +1490,182 @@ window._buildEventsContext = function() {
 </script>
 <script defer src="ai-bubble.js"></script>
 <script>
-window.addEventListener("load", () => {
+// Setup AI bubble + select-mode imediat după load (defer asigură că ai-bubble.js e gata)
+function _eventsBoot() {
   if (typeof setupAiBubble === "function") {
     setupAiBubble({
       page: "Crypto Events",
       getContext: window._buildEventsContext,
       systemHint: "User-ul vede dashboard cu heatmap categorii (Layer1/DeFi/Meme/AI etc.), movers 1h/24h, OI Δ whale flow, L/S ratio extreme, funding rates. Întrebări tipice: ce sectoare pumpează?, e bubble pe meme?, OI surge ce înseamnă?",
     });
+  } else {
+    // Fallback dacă ai-bubble.js încă nu s-a încărcat — retry o dată
+    setTimeout(_eventsBoot, 200);
+    return;
   }
-});
+  // Inițializează mode select
+  _initEventsSelectMode();
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", _eventsBoot);
+} else {
+  _eventsBoot();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Compare AI + Watchlist multi-select pe TOATE tabelele
+// ═══════════════════════════════════════════════════════════════
+function _initEventsSelectMode() {
+  if (window._eventsSelectInited) return;
+  window._eventsSelectInited = true;
+
+  const sel = new Map(); // sym → row text snippet (pentru build summary)
+  let mode = false;
+
+  const styles = document.createElement("style");
+  styles.textContent = `
+    body.events-select-mode tbody[id$="-body"] tr { cursor: cell !important; }
+    body.events-select-mode tbody[id$="-body"] tr:hover { background: rgba(217,70,239,.08) !important; }
+    tbody[id$="-body"] tr.events-row-selected { background: rgba(217,70,239,.18) !important; outline: 2px solid #d946ef; outline-offset: -2px; }
+    #eventsSelectBtn.active { background: linear-gradient(135deg,#d946ef,#a78bfa) !important; color:#fff !important; border-color:transparent !important; }
+    #eventsCompareBar {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9000;
+      background: linear-gradient(135deg, #d946ef, #a78bfa);
+      border-radius: 30px; padding: 10px 18px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+      box-shadow: 0 10px 30px rgba(217,70,239,.5);
+      color: #fff; font-weight: 700; font-size: 13px;
+      animation: slideUp .3s cubic-bezier(.4,0,.2,1);
+      max-width: calc(100vw - 40px);
+    }
+    @keyframes slideUp { from { opacity:0; transform:translate(-50%,30px); } to { opacity:1; transform:translate(-50%,0); } }
+    #eventsCompareBar button {
+      background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3);
+      padding: 5px 12px; border-radius: 18px; font-size: 12px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    #eventsCompareBar button:hover { background: rgba(255,255,255,.28); }
+    #eventsCompareBar button.primary { background: #fff; color: #a78bfa; }
+    #eventsCompareBar button.warn { background: rgba(34,197,94,.4); color: #fff; }
+  `;
+  document.head.appendChild(styles);
+
+  function extractSymFromRow(tr) {
+    // Caut simbolul în prima celulă cu .sym sau .coin
+    const symEl = tr.querySelector(".sym, .coin .sym");
+    if (symEl) return (symEl.textContent || "").trim().toUpperCase();
+    // Fallback: prima celulă text
+    const td = tr.querySelector("td");
+    if (!td) return null;
+    const txt = (td.textContent || "").trim().toUpperCase();
+    // Extract primul cuvânt alfanumeric
+    const m = txt.match(/[A-Z][A-Z0-9]+/);
+    return m ? m[0] : null;
+  }
+
+  function rowSnapshot(tr) {
+    return Array.from(tr.querySelectorAll("td")).map(td => (td.textContent || "").replace(/\s+/g, " ").trim()).join(" | ");
+  }
+
+  function updateBar() {
+    document.getElementById("eventsCompareBar")?.remove();
+    if (!mode || sel.size < 1) return;
+    const bar = document.createElement("div");
+    bar.id = "eventsCompareBar";
+    bar.innerHTML = `
+      <span>📋 ${sel.size} selectate (max 8)</span>
+      <button data-action="clear">Curăță</button>
+      <button class="primary" data-action="compare" ${sel.size < 2 ? 'disabled style="opacity:.5"' : ''}>🪄 Compară</button>
+      <button class="warn" data-action="watchlist">⭐ Watchlist</button>
+      <button data-action="exit">✕ Ieșire</button>
+    `;
+    document.body.appendChild(bar);
+    bar.querySelector('[data-action="clear"]').addEventListener("click", () => {
+      sel.clear();
+      document.querySelectorAll("tbody[id$='-body'] tr.events-row-selected").forEach(t => t.classList.remove("events-row-selected"));
+      updateBar();
+    });
+    bar.querySelector('[data-action="exit"]').addEventListener("click", toggleMode);
+    bar.querySelector('[data-action="compare"]').addEventListener("click", () => {
+      if (sel.size < 2) return;
+      const summaries = [...sel.entries()].map(([sym, snap]) => `${sym}\n${snap}`);
+      if (typeof window.aiCompareCoins === "function") {
+        window.aiCompareCoins(summaries, { pageLabel: "Crypto Events", maxTokens: 1200 });
+      } else {
+        alert("Modul AI nu e încărcat. Reîmprospătează pagina (Ctrl+Shift+R).");
+      }
+    });
+    bar.querySelector('[data-action="watchlist"]').addEventListener("click", () => {
+      if (sel.size < 1) return;
+      // Adaugă toate selectate la wl_master_v1 + scanner_watchlist (format BINANCE:XUSDT)
+      let wl1, wl2;
+      try { wl1 = JSON.parse(localStorage.getItem("wl_master_v1") || "[]"); } catch (e) { wl1 = []; }
+      try { wl2 = JSON.parse(localStorage.getItem("scanner_watchlist") || "[]"); } catch (e) { wl2 = []; }
+      if (!Array.isArray(wl1)) wl1 = [];
+      if (!Array.isArray(wl2)) wl2 = [];
+      let added = 0;
+      for (const [sym, _] of sel) {
+        // Convertesc sym la format BINANCE:XUSDT (presupun futures USDT pair)
+        const base = sym.replace(/USDT$/, "");
+        const fullSym = "BINANCE:" + base + "USDT";
+        if (!wl1.includes(fullSym)) { wl1.push(fullSym); added++; }
+        if (!wl2.includes(fullSym)) wl2.push(fullSym);
+      }
+      localStorage.setItem("wl_master_v1", JSON.stringify(wl1));
+      localStorage.setItem("scanner_watchlist", JSON.stringify(wl2));
+      // Toast feedback
+      const toastEl = document.createElement("div");
+      toastEl.style.cssText = "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:10001;background:#22c55e;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;box-shadow:0 8px 20px rgba(34,197,94,.4)";
+      toastEl.textContent = `⭐ ${added} adăugate la watchlist (${sel.size - added} erau deja)`;
+      document.body.appendChild(toastEl);
+      setTimeout(() => toastEl.remove(), 3500);
+    });
+  }
+
+  function toggleMode() {
+    mode = !mode;
+    if (!mode) {
+      sel.clear();
+      document.querySelectorAll("tbody[id$='-body'] tr.events-row-selected").forEach(t => t.classList.remove("events-row-selected"));
+    }
+    document.body.classList.toggle("events-select-mode", mode);
+    const btn = document.getElementById("eventsSelectBtn");
+    if (btn) btn.classList.toggle("active", mode);
+    updateBar();
+  }
+
+  // Event delegation pe TOATE tabelele cu id ending -body
+  document.addEventListener("click", (ev) => {
+    if (!mode) return;
+    const tr = ev.target.closest("tbody[id$='-body'] tr");
+    if (!tr) return;
+    if (tr.classList.contains("skeleton-row")) return;
+    if (tr.querySelector(".empty")) return;
+    ev.stopPropagation();
+    ev.preventDefault();
+    const sym = extractSymFromRow(tr);
+    if (!sym) return;
+    if (sel.has(sym)) { sel.delete(sym); }
+    else if (sel.size < 8) { sel.set(sym, rowSnapshot(tr)); }
+    else { alert("Maxim 8 coinuri pentru comparație"); return; }
+    tr.classList.toggle("events-row-selected", sel.has(sym));
+    updateBar();
+  }, true);
+
+  // Buton toggle în header
+  const header = document.querySelector("header");
+  if (header && !document.getElementById("eventsSelectBtn")) {
+    const btn = document.createElement("button");
+    btn.id = "eventsSelectBtn";
+    btn.type = "button";
+    btn.title = "Mod selectie multi-coin pentru comparație AI sau adăugare în watchlist";
+    btn.style.cssText = "background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit";
+    btn.textContent = "📋 Acțiuni AI / ⭐";
+    btn.addEventListener("click", toggleMode);
+    header.appendChild(btn);
+  }
+}
+
 </script>
 </body>
 </html>
