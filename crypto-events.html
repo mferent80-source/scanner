@@ -229,6 +229,12 @@
   @media (max-width: 1100px) { .vfo-grid { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 720px)  { .vfo-grid { grid-template-columns: 1fr; } }
 
+  /* === Long/Short Flow grid (OI Δ + L/S ratio) === */
+  .lf-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;
+  }
+  @media (max-width: 880px) { .lf-grid { grid-template-columns: 1fr; } }
+
   /* === Grid Unlocks + Liquidations === */
   .ul-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;
@@ -400,6 +406,35 @@
         <th>Symbol</th><th class="num">Mark Price</th><th class="num">OI ($)</th><th class="num">OI (cont)</th>
       </tr></thead>
       <tbody id="oi-body"><tr class="skeleton-row"><td colspan="4"><span class="skeleton-bar"></span></td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- === OI Surge + L/S Ratio (whale flow) === -->
+<section class="lf-grid">
+  <div class="panel-box">
+    <div class="panel-head">
+      <span class="icon">🐋</span><h3>OI Δ 1h (whale flow)</h3>
+      <span class="panel-sub">Binance Futures · top 25 vol</span>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Symbol</th><th class="num">Mark</th><th class="num">OI Δ 1h</th><th class="num">OI ($)</th>
+      </tr></thead>
+      <tbody id="oi-delta-body"><tr class="skeleton-row"><td colspan="4"><span class="skeleton-bar"></span></td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="panel-box">
+    <div class="panel-head">
+      <span class="icon">⚖️</span><h3>Long/Short Ratio extreme</h3>
+      <span class="panel-sub">Binance Futures · top accounts · 5m</span>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Symbol</th><th class="num">Mark</th><th class="num">L/S</th><th class="num">% Long</th>
+      </tr></thead>
+      <tbody id="lsr-body"><tr class="skeleton-row"><td colspan="4"><span class="skeleton-bar"></span></td></tr></tbody>
     </table>
   </div>
 </section>
@@ -649,6 +684,73 @@ async function fetchOpenInterest() {
 
   // 3) Top după OI în USD
   return enriched.sort((a, b) => b.oi_usd - a.oi_usd).slice(0, OI_LIMIT);
+}
+
+// === Binance Futures: OI delta 1h (whale flow detection) ===
+// Folosește openInterestHist period=5m, limit=12 → ultima oră în 12 puncte.
+// Sortează după Δ% absolut (atât surge cât și drop sunt informative).
+async function fetchOIDelta1h() {
+  const ticker24 = await fetchJson(`${BIN_FUT}/ticker/24hr`);
+  const candidates = ticker24
+    .filter(t => t.symbol.endsWith('USDT'))
+    .map(t => ({ symbol: t.symbol, base: t.symbol.replace(/USDT$/, ''), quote_volume: parseFloat(t.quoteVolume) }))
+    .filter(t => !isNaN(t.quote_volume))
+    .sort((a, b) => b.quote_volume - a.quote_volume)
+    .slice(0, 25);
+
+  const url = (s) => `https://fapi.binance.com/futures/data/openInterestHist?symbol=${s}&period=5m&limit=12`;
+  const results = await Promise.allSettled(candidates.map(c => fetchJson(url(c.symbol))));
+
+  const enriched = [];
+  candidates.forEach((c, i) => {
+    const r = results[i];
+    if (r.status !== 'fulfilled' || !Array.isArray(r.value) || r.value.length < 2) return;
+    const arr = r.value;
+    const first = parseFloat(arr[0].sumOpenInterest);
+    const last = parseFloat(arr[arr.length - 1].sumOpenInterest);
+    const lastUsd = parseFloat(arr[arr.length - 1].sumOpenInterestValue);
+    if (!first || !last) return;
+    const deltaPct = ((last - first) / first) * 100;
+    enriched.push({ ...c, oi_delta_pct: deltaPct, oi_now: last, oi_usd: lastUsd });
+  });
+  // Top 10 după valoare absolută a Δ% (surge sau drop, ambele relevante)
+  return enriched.sort((a, b) => Math.abs(b.oi_delta_pct) - Math.abs(a.oi_delta_pct)).slice(0, 10);
+}
+
+// === Binance Futures: Long/Short Account Ratio (top accounts) ===
+// L/S > 1 = mai multe top-accounts long; > 3 = bullish extreme.
+// L/S < 1 = mai multe short; < 0.33 = bearish extreme. Top după distanță față de 1.
+async function fetchLongShortRatio() {
+  const [ticker24, premium] = await Promise.all([
+    fetchJson(`${BIN_FUT}/ticker/24hr`),
+    fetchJson(`${BIN_FUT}/premiumIndex`),
+  ]);
+  const markBySym = new Map(premium.map(p => [p.symbol, parseFloat(p.markPrice)]));
+  const candidates = ticker24
+    .filter(t => t.symbol.endsWith('USDT'))
+    .map(t => ({
+      symbol: t.symbol, base: t.symbol.replace(/USDT$/, ''),
+      quote_volume: parseFloat(t.quoteVolume), mark_price: markBySym.get(t.symbol),
+    }))
+    .filter(t => !isNaN(t.quote_volume) && t.mark_price)
+    .sort((a, b) => b.quote_volume - a.quote_volume)
+    .slice(0, 25);
+
+  const url = (s) => `https://fapi.binance.com/futures/data/topLongShortAccountRatio?symbol=${s}&period=5m&limit=1`;
+  const results = await Promise.allSettled(candidates.map(c => fetchJson(url(c.symbol))));
+
+  const enriched = [];
+  candidates.forEach((c, i) => {
+    const r = results[i];
+    if (r.status !== 'fulfilled' || !Array.isArray(r.value) || !r.value.length) return;
+    const last = r.value[r.value.length - 1];
+    const ratio = parseFloat(last.longShortRatio);
+    const longAcc = parseFloat(last.longAccount);
+    if (!ratio || !longAcc) return;
+    enriched.push({ ...c, ls_ratio: ratio, long_pct: longAcc * 100 });
+  });
+  // Sortăm după distanța de 1 (extreme = informative); top 10
+  return enriched.sort((a, b) => Math.abs(Math.log(b.ls_ratio)) - Math.abs(Math.log(a.ls_ratio))).slice(0, 10);
 }
 
 // === DefiLlama: token unlocks viitoare ===
@@ -911,6 +1013,45 @@ function renderTrending(items) {
 }
 
 // === Render: Open Interest === //
+function renderOIDelta(rows) {
+  const tbody = $('oi-delta-body');
+  if (!rows || !rows.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty">Nu sunt date</td></tr>`; return; }
+  let html = '';
+  for (const r of rows) {
+    const dCls = r.oi_delta_pct >= 0 ? "up" : "down";
+    const sign = r.oi_delta_pct >= 0 ? "+" : "";
+    html += `<tr>
+      <td><span class="coin"><span class="sym">${r.base}</span><span class="name">USDT</span></span></td>
+      <td class="num">${fmtUSD(r.mark_price || (r.oi_usd / r.oi_now))}</td>
+      <td class="num"><span class="pct-pill ${dCls}">${sign}${r.oi_delta_pct.toFixed(2)}%</span></td>
+      <td class="num">${fmtUSD(r.oi_usd)}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+function renderLSR(rows) {
+  const tbody = $('lsr-body');
+  if (!rows || !rows.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty">Nu sunt date</td></tr>`; return; }
+  let html = '';
+  for (const r of rows) {
+    const ratio = r.ls_ratio;
+    let cls, label;
+    if (ratio >= 3)        { cls = "up";   label = "Bull extrem"; }
+    else if (ratio >= 1.5) { cls = "up";   label = "Long heavy"; }
+    else if (ratio >= 0.67){ cls = "";     label = "Echilibrat"; }
+    else if (ratio >= 0.33){ cls = "down"; label = "Short heavy"; }
+    else                   { cls = "down"; label = "Bear extrem"; }
+    html += `<tr title="${label}">
+      <td><span class="coin"><span class="sym">${r.base}</span><span class="name">USDT</span></span></td>
+      <td class="num">${fmtUSD(r.mark_price)}</td>
+      <td class="num"><span class="pct-pill ${cls}">${ratio.toFixed(2)}</span></td>
+      <td class="num">${r.long_pct.toFixed(1)}%</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
 function renderOI(rows) {
   const body = $('oi-body');
   if (!rows || !rows.length) {
@@ -999,9 +1140,11 @@ async function refreshAll() {
     fetchOpenInterest(),    // 5
     fetchUnlocks(),         // 6
     fetchLiquidations(),    // 7
+    fetchOIDelta1h(),       // 8 — F4: OI surge whale flow
+    fetchLongShortRatio(),  // 9 — F4: L/S ratio extreme
   ]);
 
-  const [markets, fng, glob, trending, funding, oi, unlocks, liq] = tasks;
+  const [markets, fng, glob, trending, funding, oi, unlocks, liq, oiDelta, lsr] = tasks;
 
   let okCount = 0;
   const total = tasks.length;
@@ -1038,6 +1181,12 @@ async function refreshAll() {
 
   if (liq.status === 'fulfilled')      { renderLiquidations(liq.value); okCount++; }
   else                                 { console.warn('liquidations failed', liq.reason); $('liq-body').innerHTML = `<tr><td colspan="4" class="empty">OKX indisponibil sau blocat</td></tr>`; }
+
+  if (oiDelta.status === 'fulfilled')  { renderOIDelta(oiDelta.value); okCount++; }
+  else                                 { console.warn('OI delta failed', oiDelta.reason); $('oi-delta-body').innerHTML = `<tr><td colspan="4" class="empty">Binance blocat sau indisponibil</td></tr>`; }
+
+  if (lsr.status === 'fulfilled')      { renderLSR(lsr.value); okCount++; }
+  else                                 { console.warn('L/S ratio failed', lsr.reason); $('lsr-body').innerHTML = `<tr><td colspan="4" class="empty">Binance blocat sau indisponibil</td></tr>`; }
 
   lastFetchTs = Date.now();
   if (okCount === total) {
