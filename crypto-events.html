@@ -229,6 +229,46 @@
   @media (max-width: 1100px) { .vfo-grid { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 720px)  { .vfo-grid { grid-template-columns: 1fr; } }
 
+  /* === Heatmap categorii crypto (narrative tracker) === */
+  .heatmap-section {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 0; margin-bottom: 10px; overflow: hidden;
+  }
+  .heatmap-tabs {
+    display: flex; gap: 4px; padding: 8px 14px 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .heatmap-tab {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-dim); padding: 4px 10px; border-radius: 6px 6px 0 0;
+    font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
+    margin-bottom: -1px;
+  }
+  .heatmap-tab:hover { color: var(--text); }
+  .heatmap-tab.active { background: var(--panel2); color: var(--accent); border-bottom-color: var(--panel2); }
+  .heatmap-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 6px; padding: 12px;
+  }
+  .heat-tile {
+    background: var(--panel2); border: 1px solid var(--border-soft);
+    border-radius: 8px; padding: 12px 14px; cursor: pointer;
+    transition: transform .15s var(--ease), border-color .15s var(--ease);
+    position: relative; overflow: hidden;
+  }
+  .heat-tile:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .heat-tile-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .heat-tile-pct { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+  .heat-tile-meta { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .heat-tile.up-extreme   { background: linear-gradient(135deg, rgba(34,214,107,.32), rgba(34,214,107,.10)); border-color: rgba(34,214,107,.55); }
+  .heat-tile.up-strong    { background: linear-gradient(135deg, rgba(34,214,107,.22), rgba(34,214,107,.06)); border-color: rgba(34,214,107,.40); }
+  .heat-tile.up-mild      { background: linear-gradient(135deg, rgba(34,214,107,.12), rgba(34,214,107,.03)); border-color: rgba(34,214,107,.25); }
+  .heat-tile.flat         { background: var(--panel2); }
+  .heat-tile.down-mild    { background: linear-gradient(135deg, rgba(255,77,77,.12), rgba(255,77,77,.03)); border-color: rgba(255,77,77,.25); }
+  .heat-tile.down-strong  { background: linear-gradient(135deg, rgba(255,77,77,.22), rgba(255,77,77,.06)); border-color: rgba(255,77,77,.40); }
+  .heat-tile.down-extreme { background: linear-gradient(135deg, rgba(255,77,77,.32), rgba(255,77,77,.10)); border-color: rgba(255,77,77,.55); }
+  .heat-tile-coins { font-size: 9.5px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
   /* === Long/Short Flow grid (OI Δ + L/S ratio) === */
   .lf-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;
@@ -311,6 +351,21 @@
   <button class="filter-chip" data-mcap="1000000000">&gt; $1B</button>
   <button class="filter-chip" data-mcap="10000000000">&gt; $10B</button>
   <span class="filter-label" style="margin-left:auto;" id="filter-count">—</span>
+</section>
+
+<!-- === Heatmap categorii crypto (narrative tracker) === -->
+<section class="heatmap-section">
+  <div class="panel-head" style="border-bottom: none">
+    <span class="icon">🔥</span><h3>Heatmap categorii — narrative tracker</h3>
+    <span class="panel-sub" id="heatmap-sub">avg pe top 100 mcap</span>
+  </div>
+  <div class="heatmap-tabs">
+    <button class="heatmap-tab active" data-period="1h">📈 1h</button>
+    <button class="heatmap-tab" data-period="24h">📊 24h</button>
+  </div>
+  <div class="heatmap-grid" id="heatmap-grid">
+    <div class="heat-tile flat"><div class="heat-tile-name">se încarcă…</div></div>
+  </div>
 </section>
 
 <!-- === Movers 2x2: 1h Gainers/Losers + 24h Gainers/Losers === -->
@@ -569,6 +624,136 @@ async function fetchJson(url, timeoutMs = 12_000) {
   } finally {
     clearTimeout(t);
   }
+}
+
+// === Mapping coin symbol → categorie (pentru heatmap narrative tracker) ===
+// Symbol-urile sunt din CoinGecko (lowercase). Coin-urile nemapate sunt ignorate.
+const CRYPTO_CAT = {
+  // ₿ BTC & ETH
+  btc: "BTC&ETH", eth: "BTC&ETH",
+  // 🔷 Layer1
+  sol: "Layer1", bnb: "Layer1", ada: "Layer1", avax: "Layer1",
+  dot: "Layer1", near: "Layer1", atom: "Layer1", xrp: "Layer1",
+  trx: "Layer1", algo: "Layer1", sui: "Layer1", apt: "Layer1",
+  inj: "Layer1", sei: "Layer1", tia: "Layer1", kas: "Layer1",
+  icp: "Layer1", hbar: "Layer1", vet: "Layer1", ftm: "Layer1",
+  egld: "Layer1", etc: "Layer1", bch: "Layer1", ltc: "Layer1",
+  xlm: "Layer1", flow: "Layer1", ton: "Layer1", "the-open-network": "Layer1",
+  cro: "Layer1", btt: "Layer1",
+  // 🟦 Layer2
+  arb: "Layer2", op: "Layer2", matic: "Layer2", pol: "Layer2",
+  imx: "Layer2", manta: "Layer2", metis: "Layer2", strk: "Layer2",
+  zk: "Layer2", blast: "Layer2", mnt: "Layer2", scr: "Layer2",
+  // 🌾 DeFi
+  uni: "DeFi", aave: "DeFi", mkr: "DeFi", comp: "DeFi",
+  crv: "DeFi", snx: "DeFi", rune: "DeFi", sushi: "DeFi",
+  gmx: "DeFi", jup: "DeFi", ray: "DeFi", jto: "DeFi",
+  pendle: "DeFi", ena: "DeFi", ethfi: "DeFi", eigen: "DeFi",
+  ldo: "DeFi", dydx: "DeFi", fxs: "DeFi", cake: "DeFi",
+  ondo: "DeFi", usual: "DeFi", morpho: "DeFi", spell: "DeFi",
+  yfi: "DeFi", "1inch": "DeFi", bal: "DeFi",
+  // 🐶 Meme
+  doge: "Meme", shib: "Meme", pepe: "Meme", floki: "Meme",
+  bonk: "Meme", wif: "Meme", meme: "Meme", bome: "Meme",
+  turbo: "Meme", babydoge: "Meme", popcat: "Meme", pnut: "Meme",
+  giga: "Meme", brett: "Meme", fartcoin: "Meme", trump: "Meme",
+  mew: "Meme", dog: "Meme", act: "Meme", neiro: "Meme",
+  goat: "Meme", chillguy: "Meme", spx: "Meme",
+  // 🤖 AI
+  fet: "AI", agix: "AI", rndr: "AI", render: "AI", ocean: "AI",
+  tao: "AI", ai: "AI", arkm: "AI", wld: "AI", grt: "AI",
+  akt: "AI", io: "AI", nmr: "AI", aixbt: "AI", virtual: "AI",
+  agent: "AI", "ai16z": "AI",
+  // 🎮 Gaming/Metaverse
+  axs: "Gaming", gala: "Gaming", mana: "Gaming", sand: "Gaming",
+  enj: "Gaming", ron: "Gaming", beam: "Gaming", magic: "Gaming",
+  pixel: "Gaming", ape: "Gaming", prime: "Gaming", chr: "Gaming",
+  ygg: "Gaming", ilv: "Gaming",
+  // 📡 DePIN/Storage
+  fil: "DePIN", ar: "DePIN", iotx: "DePIN", hnt: "DePIN",
+  theta: "DePIN", lpt: "DePIN", storj: "DePIN", livepeer: "DePIN",
+  // 🔮 Oracle
+  link: "Oracle", band: "Oracle", api3: "Oracle", pyth: "Oracle",
+  // 💱 Exchange
+  bgb: "Exchange", okb: "Exchange", kcs: "Exchange",
+  gt: "Exchange", leo: "Exchange", ht: "Exchange",
+  // 🔒 Privacy
+  xmr: "Privacy", zec: "Privacy", dash: "Privacy",
+};
+
+const CAT_META = {
+  "BTC&ETH":  { emoji: "₿",   color: "orange" },
+  "Layer1":   { emoji: "🔷",  color: "blue" },
+  "Layer2":   { emoji: "🟦",  color: "blue" },
+  "DeFi":     { emoji: "🌾",  color: "green" },
+  "Meme":     { emoji: "🐶",  color: "yellow" },
+  "AI":       { emoji: "🤖",  color: "purple" },
+  "Gaming":   { emoji: "🎮",  color: "pink" },
+  "DePIN":    { emoji: "📡",  color: "cyan" },
+  "Oracle":   { emoji: "🔮",  color: "violet" },
+  "Exchange": { emoji: "💱",  color: "yellow" },
+  "Privacy":  { emoji: "🔒",  color: "gray" },
+};
+
+let heatmapPeriod = "1h"; // sau "24h"
+let heatmapData = null;   // cache markets de la ultimul render
+
+function calcHeatmap(markets, period) {
+  const buckets = {};
+  for (const c of markets) {
+    const cat = CRYPTO_CAT[(c.symbol || "").toLowerCase()];
+    if (!cat) continue;
+    const change = period === "1h" ? c.chg_1h : c.chg_24h;
+    if (change == null || isNaN(change)) continue;
+    if (!buckets[cat]) buckets[cat] = { name: cat, sum: 0, count: 0, coins: [], top: [] };
+    buckets[cat].sum += change;
+    buckets[cat].count++;
+    buckets[cat].coins.push({ symbol: (c.symbol || "").toUpperCase(), change, mcap: c.market_cap });
+  }
+  // Calc avg + sortează coin-urile per categorie după mcap pentru top 5 afișat
+  const out = [];
+  for (const cat in buckets) {
+    const b = buckets[cat];
+    b.avg = b.sum / b.count;
+    b.coins.sort((a, b) => b.mcap - a.mcap);
+    b.top = b.coins.slice(0, 5).map(x => x.symbol);
+    out.push(b);
+  }
+  // Sortează categorii după avg desc (cele mai bull primele)
+  return out.sort((a, b) => b.avg - a.avg);
+}
+
+function heatTileClass(pct) {
+  if (pct >=  5)  return "up-extreme";
+  if (pct >=  2)  return "up-strong";
+  if (pct >=  0.5) return "up-mild";
+  if (pct >  -0.5) return "flat";
+  if (pct >  -2)  return "down-mild";
+  if (pct >  -5)  return "down-strong";
+  return "down-extreme";
+}
+
+function renderHeatmap() {
+  const grid = $('heatmap-grid');
+  if (!heatmapData) { grid.innerHTML = `<div class="heat-tile flat"><div class="heat-tile-name">Nu sunt date</div></div>`; return; }
+  const buckets = calcHeatmap(heatmapData, heatmapPeriod);
+  let html = "";
+  for (const b of buckets) {
+    const meta = CAT_META[b.name] || { emoji: "•" };
+    const cls = heatTileClass(b.avg);
+    const sign = b.avg >= 0 ? "+" : "";
+    const top = b.top.join(" · ");
+    html += `<div class="heat-tile ${cls}" title="${b.coins.map(c => c.symbol + " " + (c.change >= 0 ? "+" : "") + c.change.toFixed(1) + "%").join(", ")}">
+      <div class="heat-tile-name">${meta.emoji} ${b.name}</div>
+      <div class="heat-tile-pct">${sign}${b.avg.toFixed(2)}%</div>
+      <div class="heat-tile-meta">${b.count} coin-uri · top mcap</div>
+      <div class="heat-tile-coins">${top}</div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+  // Update sub-text cu count total
+  const totalMapped = buckets.reduce((s, b) => s + b.count, 0);
+  $('heatmap-sub').textContent = `${totalMapped} coin-uri mapate · ${heatmapPeriod} avg`;
 }
 
 // === CoinGecko: top 100 cu schimbări 1h + 24h ===
@@ -1153,6 +1338,8 @@ async function refreshAll() {
     cachedMarkets = markets.value;          // cache pentru re-render local când utilizatorul schimbă filtrul
     renderMovers(markets.value);
     renderVolume(markets.value);
+    heatmapData = markets.value;            // F5: heatmap categorii folosește același feed CoinGecko
+    renderHeatmap();
     okCount++;
   } else {
     console.warn('markets failed', markets.reason);
@@ -1237,6 +1424,16 @@ document.querySelectorAll('.filter-chip').forEach(chip => {
       renderMovers(cachedMarkets);
       renderVolume(cachedMarkets);
     }
+  });
+});
+
+// Heatmap tabs (1h / 24h) — re-render local fără fetch
+document.querySelectorAll('.heatmap-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.heatmap-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    heatmapPeriod = tab.dataset.period;
+    renderHeatmap();
   });
 });
 
