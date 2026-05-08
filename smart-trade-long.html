@@ -200,6 +200,21 @@
   .mtf-pill.neg { color:var(--bear-s); border-color:rgba(239,68,68,.35); }
   .mtf-pill .mtf-tf { color:var(--muted); margin-right:3px; font-weight:500; }
 
+  /* VWAP zone pill — vizual mean-reversion */
+  .vwap-pill {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:2px 7px; border-radius:4px;
+    font-size:9.5px; font-weight:700; font-variant-numeric:tabular-nums;
+    border:1px solid var(--border-soft);
+    margin-left:auto;
+  }
+  .vwap-pill .vwap-tag { color:var(--muted); margin-right:2px; font-weight:500; }
+  .vwap-pill.zone-extremeLow { background:rgba(34,197,94,.18); color:#22c55e; border-color:rgba(34,197,94,.45); }
+  .vwap-pill.zone-low        { background:rgba(34,197,94,.10); color:#86efac; border-color:rgba(34,197,94,.30); }
+  .vwap-pill.zone-neutral    { background:var(--panel3); color:var(--text-dim); }
+  .vwap-pill.zone-high       { background:rgba(250,204,21,.12); color:#facc15; border-color:rgba(250,204,21,.35); }
+  .vwap-pill.zone-extremeHigh{ background:rgba(239,68,68,.16); color:#ef4444; border-color:rgba(239,68,68,.45); }
+
   .setup-box {
     background:var(--panel3); border:1px solid var(--border-soft); border-radius:6px;
     padding:7px 10px; margin-bottom:7px; font-size:11px;
@@ -337,7 +352,7 @@
 <body>
 
 <header>
-  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v26</span></h1>
+  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v27</span></h1>
   <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
   <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Scanner</a>
   <a class="nav-link" href="watchlist.html" title="Watchlist Monitor">👁️ Watchlist</a>
@@ -403,6 +418,8 @@
   <button class="chip" data-filter="actionable">🚀 READY + 🟢 OK</button>
   <button class="chip" data-filter="ready">🚀 doar READY</button>
   <button class="chip" data-filter="top5">Top 5 score</button>
+  <button class="chip" data-filter="vwap-discount" title="LONG-friendly: -1σ sau mai jos față de VWAP">🟢 VWAP discount</button>
+  <button class="chip" data-filter="vwap-no-premium" title="Evită PREMIUM: nu e la 2σ+ peste VWAP">🚫 fără premium</button>
   <span style="width:1px;height:18px;background:var(--border);margin:0 6px"></span>
   <label>Sortare:</label>
   <select id="sortSelect" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit;cursor:pointer">
@@ -418,8 +435,8 @@
 </div>
 
 <div class="foot">
-  Smart Trade Long v26 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
-  auto-scan 5 min + alerte 🔔/📱 la READY nou · 🤖 Pionex Grid auto-setup ·
+  Smart Trade Long v27 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
+  auto-scan 5 min + alerte 🔔/📱 la READY nou · 🤖 Pionex Grid auto-setup · 📊 VWAP zone σ (mean-reversion) ·
   <a href="scanner-hub.html">Înapoi la Hub</a>
 </div>
 
@@ -429,7 +446,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
-const VERSION = "v26";
+const VERSION = "v27";
 const CFG_KEY = "stl_cfg_v1";
 const FILTER_KEY = "stl_filter_v1";
 const SORT_KEY = "stl_sort_v1";
@@ -586,6 +603,49 @@ function atrLast(highs, lows, closes, len = 14) {
   for (let i = len; i < trs.length; i++) a = (a * (len-1) + trs[i]) / len;
   return a;
 }
+// VWAP rolling pe `bars` (closes/highs/lows/volumes) cu σ deviation.
+// Folosim typical price (H+L+C)/3 ponderat de volum. Window = toate bar-ele primite.
+// Returnează { vwap, sigma, zone, deviationPct }
+//   zone: "extremeLow" | "low" | "neutral" | "high" | "extremeHigh"
+function vwapMetrics(bars) {
+  const h = bars.highs, l = bars.lows, c = bars.closes, v = bars.volumes;
+  if (!c.length) return null;
+  let sumPV = 0, sumV = 0;
+  const tp = [];
+  for (let i = 0; i < c.length; i++) {
+    const t = (h[i] + l[i] + c[i]) / 3;
+    tp.push(t);
+    sumPV += t * v[i];
+    sumV += v[i];
+  }
+  if (sumV === 0) return null;
+  const vwap = sumPV / sumV;
+  // σ ponderat pe volum
+  let sumVar = 0;
+  for (let i = 0; i < c.length; i++) {
+    sumVar += Math.pow(tp[i] - vwap, 2) * v[i];
+  }
+  const sigma = Math.sqrt(sumVar / sumV);
+  const price = c[c.length - 1];
+  const deviation = (price - vwap) / sigma; // câte σ deasupra/sub
+  let zone;
+  if (deviation <= -2) zone = "extremeLow";
+  else if (deviation <= -1) zone = "low";
+  else if (deviation < 1) zone = "neutral";
+  else if (deviation < 2) zone = "high";
+  else zone = "extremeHigh";
+  return {
+    vwap, sigma,
+    deviation: deviation,
+    deviationPct: ((price - vwap) / vwap) * 100,
+    zone,
+    sigma1Up: vwap + sigma,
+    sigma1Dn: vwap - sigma,
+    sigma2Up: vwap + 2 * sigma,
+    sigma2Dn: vwap - 2 * sigma,
+  };
+}
+
 function adxLast(highs, lows, closes, len = 14) {
   if (highs.length < len * 2 + 1) return NaN;
   const pDM = [], mDM = [], trs = [];
@@ -803,6 +863,9 @@ async function scanSymbol(symbol) {
     else if (score >= 45) { verdict = "🟡 SETUP MIXT"; vClass = "mixt"; }
     else { verdict = "🔴 NU LONG"; vClass = "no"; }
 
+    // VWAP rolling pe 1h (ultimele 100 bars ≈ 4 zile)
+    const vwap = vwapMetrics(bars1h);
+
     return {
       sym: symbol,
       price,
@@ -812,6 +875,7 @@ async function scanSymbol(symbol) {
       mtf: { tf15: mtf15, tf1h: mtf1h, tf4h: mtf4h },
       setup: { entry: price, sl, tp1, tp2, tp3, slDelta, rr2, atr, positionSize, positionUSDT, riskUSDT },
       indicators: { adx, rsi, atr, volRel },
+      vwap, // { vwap, sigma, deviation, deviationPct, zone, sigma1Up/Dn, sigma2Up/Dn }
     };
   } catch (e) {
     return { sym: symbol, error: e.message };
@@ -923,6 +987,21 @@ function setStatus(cls, txt) {
   text.textContent = txt;
 }
 
+function vwapPill(v) {
+  if (!v) return "";
+  const labels = {
+    extremeLow:  { txt: "DISCOUNT",  emoji: "🟢", title: `2σ+ sub VWAP — discount extrem (mean-reversion bullish)` },
+    low:         { txt: "LOW",       emoji: "🟢", title: `1-2σ sub VWAP — sub valoarea medie ponderată` },
+    neutral:     { txt: "NEUTRAL",   emoji: "⚪", title: `±1σ — în zonă normală` },
+    high:        { txt: "HIGH",      emoji: "🟡", title: `1-2σ peste VWAP — premium` },
+    extremeHigh: { txt: "PREMIUM",   emoji: "🔴", title: `2σ+ peste VWAP — overbought (evită LONG)` },
+  };
+  const meta = labels[v.zone] || labels.neutral;
+  const dev = v.deviation.toFixed(2);
+  const sign = v.deviation >= 0 ? "+" : "";
+  return `<span class="vwap-pill zone-${v.zone}" title="VWAP: ${meta.title}">${meta.emoji} <span class="vwap-tag">VWAP</span>${sign}${dev}σ · ${meta.txt}</span>`;
+}
+
 function shortName(sym) { return sym.replace(/USDT$/, ""); }
 function tvUrl(sym) { return "https://www.tradingview.com/chart/?symbol=BINANCE:" + encodeURIComponent(sym + ".P") + "&interval=60"; }
 function pionexUrl(sym) {
@@ -944,6 +1023,8 @@ function applyFilter(rows) {
   if (STATE.filter === "actionable") return rows.filter(r => r.vClass === "ready" || r.vClass === "ok");
   if (STATE.filter === "ready") return rows.filter(r => r.vClass === "ready");
   if (STATE.filter === "top5") return rows.slice(0, 5);
+  if (STATE.filter === "vwap-discount") return rows.filter(r => r.vwap && (r.vwap.zone === "extremeLow" || r.vwap.zone === "low"));
+  if (STATE.filter === "vwap-no-premium") return rows.filter(r => r.vwap && r.vwap.zone !== "extremeHigh");
   return rows;
 }
 function applySort(rows) {
@@ -1024,6 +1105,7 @@ function render() {
         ${mtfPill("4h", m.tf4h)}
         <span class="mtf-pill"><span class="mtf-tf">RSI</span>${i.rsi.toFixed(0)}</span>
         <span class="mtf-pill"><span class="mtf-tf">ATR%</span>${(i.atr/r.price*100).toFixed(2)}</span>
+        ${vwapPill(r.vwap)}
       </div>
       <div class="setup-box">
         <div class="setup-row"><span class="setup-lbl">Entry</span><span class="setup-val">${fmtPrice(s.entry)}</span></div>
