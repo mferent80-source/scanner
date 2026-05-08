@@ -727,14 +727,14 @@
 // ═══════════════════════════════════════════════════════════════
 //  MODE DETECTION — robust, works regardless of filename or hosting
 // ═══════════════════════════════════════════════════════════════
-// Priority order:
+// Priority order (corectat 2026-05-08):
 //   1. URL hash (#crypto / #stocks) — for explicit deep-links
-//   2. Saved user preference in localStorage
-//   3. Filename hint (scanner-stocks.html → stocks)
+//   2. Filename hint (scanner-crypto.html / scanner-stocks.html) — sursă de adevăr
+//      când e vizibilă, ca să nu se inverseze din hub când userul a comutat
+//      anterior modul prin toggle.
+//   3. Saved user preference (`msp_shared_mode`) — fallback când filename-ul
+//      e mascat (Telegram, WhatsApp, Gmail viewer, etc.).
 //   4. Default: crypto
-// This means if you open the file via any app that hides the filename
-// (Telegram, WhatsApp, Gmail viewer, etc.) the saved preference still works.
-// A visible toggle in the header lets you switch any time.
 const _MODE_KEY = "msp_shared_mode";
 const _fname = (location.pathname || "").toLowerCase();
 const _hash = (location.hash || "").toLowerCase();
@@ -743,9 +743,9 @@ const _saved = localStorage.getItem(_MODE_KEY);
 let MODE;
 if (_hash.includes("stocks")) MODE = "stocks";
 else if (_hash.includes("crypto")) MODE = "crypto";
-else if (_saved === "stocks" || _saved === "crypto") MODE = _saved;
 else if (_fname.includes("stocks")) MODE = "stocks";
 else if (_fname.includes("crypto")) MODE = "crypto";
+else if (_saved === "stocks" || _saved === "crypto") MODE = _saved;
 else MODE = "crypto";
 
 const IS_CRYPTO = MODE === "crypto";
@@ -4183,11 +4183,13 @@ document.getElementById("themeToggle")?.addEventListener("click", () => {
     ? "Crypto mode — click pentru Stocks"
     : "Stocks mode — click pentru Crypto";
   btn.addEventListener("click", () => {
+    // Navigare directă la celălalt fișier — filename-ul e sursa de adevăr,
+    // nu mai pasăm prin saved preference (care provoca inversiuni la deschiderea
+    // din hub după ce userul comutase manual).
+    const targetFile = IS_CRYPTO ? "scanner-stocks.html" : "scanner-crypto.html";
     const next = IS_CRYPTO ? "stocks" : "crypto";
-    localStorage.setItem(_MODE_KEY, next);
-    // Clear the hash so it doesn't override the saved preference on reload
-    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
-    location.reload();
+    localStorage.setItem(_MODE_KEY, next); // păstrăm pentru cazurile când filename e mascat
+    location.href = targetFile;
   });
 })();
 </script>
