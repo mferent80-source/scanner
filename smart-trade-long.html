@@ -238,6 +238,121 @@
   .actions .watch { background:rgba(34,197,94,.12); color:var(--bull-s); border-color:rgba(34,197,94,.35); }
   .actions .grid-btn { background:rgba(139,92,246,.14); color:#a78bfa; border-color:rgba(139,92,246,.40); }
   .actions .grid-btn:hover { background:rgba(139,92,246,.22); color:#c4b5fd; }
+  .actions .ai-btn { background:rgba(217,70,239,.14); color:#e879f9; border-color:rgba(217,70,239,.40); }
+  .actions .ai-btn:hover { background:rgba(217,70,239,.22); color:#f0abfc; }
+
+  /* Multi-select mode — outline pe carduri selectate */
+  .stl-card.selected { outline:2px solid #d946ef; outline-offset:-2px; box-shadow:0 0 16px rgba(217,70,239,.35); }
+  .stl-card.selected::after {
+    content:"✓"; position:absolute; top:6px; right:6px;
+    width:22px; height:22px; border-radius:50%;
+    background:#d946ef; color:#fff; font-weight:800; font-size:13px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 8px rgba(217,70,239,.5);
+  }
+  .stl-card.select-mode { cursor:cell; }
+  .compare-bar {
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    z-index:9000; background:linear-gradient(135deg, #d946ef, #a78bfa);
+    border-radius:30px; padding:10px 18px;
+    display:flex; align-items:center; gap:10px;
+    box-shadow:0 10px 30px rgba(217,70,239,.5);
+    color:#fff; font-weight:700; font-size:13px;
+    animation:slideUp .3s var(--ease);
+  }
+  @keyframes slideUp { from { opacity:0; transform:translate(-50%,30px); } to { opacity:1; transform:translate(-50%,0); } }
+  .compare-bar button {
+    background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.3);
+    padding:5px 12px; border-radius:18px; font-size:12px; font-weight:700;
+    cursor:pointer; font-family:inherit; transition:all .15s;
+  }
+  .compare-bar button:hover { background:rgba(255,255,255,.28); }
+  .compare-bar button.primary { background:#fff; color:#a78bfa; }
+
+  /* AI chat bubble — floating bottom-right */
+  .ai-bubble-fab {
+    position:fixed; bottom:20px; right:20px; z-index:8500;
+    width:54px; height:54px; border-radius:50%;
+    background:linear-gradient(135deg, #d946ef, #a78bfa);
+    color:#fff; font-size:24px; font-weight:800;
+    border:none; cursor:pointer;
+    box-shadow:0 8px 24px rgba(217,70,239,.5);
+    transition:transform .15s var(--ease);
+  }
+  .ai-bubble-fab:hover { transform:scale(1.08); }
+  .ai-bubble-panel {
+    position:fixed; bottom:84px; right:20px; z-index:8501;
+    width:380px; max-width:calc(100vw - 40px);
+    height:520px; max-height:calc(100vh - 120px);
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; box-shadow:0 20px 50px rgba(0,0,0,.6);
+    display:flex; flex-direction:column;
+    animation:bubbleIn .25s var(--ease);
+  }
+  @keyframes bubbleIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  .ai-bubble-head {
+    padding:12px 14px; border-bottom:1px solid var(--border-soft);
+    display:flex; align-items:center; gap:10px;
+    background:linear-gradient(180deg, rgba(217,70,239,.08), transparent);
+  }
+  .ai-bubble-head h3 {
+    flex:1; font-size:13px; font-weight:800;
+    background:linear-gradient(90deg, #d946ef, #a78bfa);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .ai-bubble-head .ai-model-tag {
+    font-size:9px; padding:2px 6px; border-radius:3px;
+    background:rgba(167,139,250,.18); color:#a78bfa;
+    border:1px solid rgba(167,139,250,.35); font-weight:700;
+  }
+  .ai-bubble-close {
+    background:transparent; border:none; color:var(--muted);
+    font-size:18px; cursor:pointer; padding:0 4px;
+  }
+  .ai-bubble-close:hover { color:var(--text); }
+  .ai-bubble-msgs {
+    flex:1; overflow-y:auto; padding:12px;
+    display:flex; flex-direction:column; gap:8px;
+    font-size:12px; line-height:1.45;
+  }
+  .ai-msg { padding:8px 10px; border-radius:10px; max-width:88%; word-wrap:break-word; }
+  .ai-msg.user { background:var(--panel3); color:var(--text); align-self:flex-end; border:1px solid var(--border); }
+  .ai-msg.bot { background:rgba(217,70,239,.10); color:var(--text); align-self:flex-start; border:1px solid rgba(217,70,239,.30); }
+  .ai-msg.err { background:rgba(239,68,68,.12); color:#fca5a5; border:1px solid rgba(239,68,68,.35); align-self:flex-start; }
+  .ai-msg-empty {
+    color:var(--muted); font-size:11.5px; text-align:center;
+    padding:20px 12px; line-height:1.6;
+  }
+  .ai-bubble-input {
+    padding:10px; border-top:1px solid var(--border-soft);
+    display:flex; gap:6px; align-items:flex-end;
+  }
+  .ai-bubble-input textarea {
+    flex:1; padding:8px 10px; background:var(--panel3); color:var(--text);
+    border:1px solid var(--border); border-radius:8px;
+    font-size:12px; font-family:inherit; resize:none; min-height:38px; max-height:120px;
+  }
+  .ai-bubble-input textarea:focus { outline:none; border-color:#a78bfa; }
+  .ai-bubble-input button {
+    background:linear-gradient(135deg, #d946ef, #a78bfa); color:#fff; border:none;
+    padding:9px 14px; border-radius:8px; font-size:12px; font-weight:700;
+    cursor:pointer; font-family:inherit;
+  }
+  .ai-bubble-input button:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* AI analysis modal — output streamed cu loading dots */
+  .ai-output {
+    background:var(--panel2); border:1px solid var(--border-soft);
+    border-radius:8px; padding:12px 14px; min-height:120px;
+    font-size:12.5px; line-height:1.6; color:var(--text);
+    white-space:pre-wrap; word-wrap:break-word;
+    font-variant-numeric:tabular-nums;
+  }
+  .ai-output .ai-cursor {
+    display:inline-block; width:7px; height:14px; background:#a78bfa;
+    animation:blink 1s infinite; vertical-align:middle; margin-left:2px;
+  }
+  @keyframes blink { 50% { opacity:0; } }
 
   /* Grid modal — dark, scrollable */
   .grid-overlay {
@@ -352,7 +467,7 @@
 <body>
 
 <header>
-  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v27</span></h1>
+  <h1>🎯 Smart Trade Long <span class="ver-badge" id="verBadge">v30</span></h1>
   <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
   <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Scanner</a>
   <a class="nav-link" href="watchlist.html" title="Watchlist Monitor">👁️ Watchlist</a>
@@ -362,6 +477,8 @@
   <button class="btn" id="autoBtn" title="Auto-scan 5 min">⏱ Auto: OFF</button>
   <button class="btn" id="alertsBtn" title="Beep + notificare la READY nou">🔔 OFF</button>
   <button class="btn" id="tgBtn" title="Telegram alerts — config token + chatId">📱 TG</button>
+  <button class="btn" id="aiBtn" title="AI Config — Claude API key + model select">🪄 AI</button>
+  <button class="btn" id="selectBtn" title="Multi-select pentru comparație AI">📋 Select</button>
   <button class="btn primary" id="scanBtn">↻ Scanează</button>
 </header>
 
@@ -435,8 +552,8 @@
 </div>
 
 <div class="foot">
-  Smart Trade Long v27 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
-  auto-scan 5 min + alerte 🔔/📱 la READY nou · 🤖 Pionex Grid auto-setup · 📊 VWAP zone σ (mean-reversion) ·
+  Smart Trade Long v30 · scoring 5-filter (MTF + Vol + ADX + Struct + R:R) · setup auto Entry/SL/TP1/TP2/TP3 ·
+  auto-scan 5 min + alerte 🔔/📱 la READY nou · 🤖 Pionex Grid auto-setup · 📊 VWAP zone σ · 🪄 AI Claude (Sonnet 4.6 / Opus 4.7) ·
   <a href="scanner-hub.html">Înapoi la Hub</a>
 </div>
 
@@ -446,7 +563,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
-const VERSION = "v27";
+const VERSION = "v30";
 const CFG_KEY = "stl_cfg_v1";
 const FILTER_KEY = "stl_filter_v1";
 const SORT_KEY = "stl_sort_v1";
@@ -469,6 +586,32 @@ const AUTO_INTERVAL_MS = 5 * 60 * 1000;     // re-scan la fiecare 5 min
 const TG_CFG_KEY = "tg_cfg_v1";          // shared cu Watchlist Monitor + Pump Radar
 const TG_PAGES_KEY = "tg_pages_v1";      // per-page enable: { stl: bool, watchlist: bool, pump: bool }
 const TG_PAGE_ID = "stl";                // identificator pagină pentru per-page enable
+
+// AI integration (Claude API direct browser)
+const AI_CFG_KEY = "ai_cfg_v1";  // shared cu alte pagini ce ar putea adăuga AI
+const AI_HISTORY_KEY = "stl_ai_history_v1";  // pentru bubble chat (sessionStorage ar fi mai bine, dar localStorage e shared)
+const AI_MODEL_DEFAULT = "claude-sonnet-4-6";
+const AI_MODEL_PREMIUM = "claude-opus-4-7";
+const AI_API_URL = "https://api.anthropic.com/v1/messages";
+const AI_API_VERSION = "2023-06-01";
+const DEFAULT_AI_CFG = { apiKey: "", model: AI_MODEL_DEFAULT, enabled: false };
+
+// System prompt comun (cached între requests pentru cost optim)
+const AI_SYSTEM_PROMPT = `Ești un trader pro Pionex futures cu experiență concretă pe scoring tehnic crypto.
+Analizezi setup-uri LONG bazate pe scor 5-filter (MTF / Volum / ADX / Structure break / R:R) + VWAP zone σ + indicatori (RSI, ATR, EMA).
+
+Format răspuns:
+1) Verdict scurt (✅ LONG OK / ⚠️ MIXT / ❌ EVITĂ + scor calitativ A/B/C)
+2) Risc principal (1 propoziție concretă — nu generic „volatilitate")
+3) Recomandare execuție (entry now / pullback / skip / wait confirmation)
+
+Reguli:
+- Răspuns ÎNTOTDEAUNA în română.
+- Maxim 4-5 propoziții total.
+- Fără markdown excesiv (fără ###, fără **bold** decât pe verdict).
+- Fără disclaimere generice gen "consultă un consilier" — userul e trader real.
+- Citează cifrele specifice din date (ex: "RSI 67 + VWAP +0.8σ = aproape de premium").
+- Pentru comparații, dă un ranking explicit 1-2-3 cu motiv pe rând.`;
 
 // Pionex Grid Auto-Setup
 const GRID_CFG_KEY = "stl_grid_cfg_v1";
@@ -497,6 +640,7 @@ const DEFAULT_CFG = { accountSize: 1000, riskPct: 1.0, universeSize: 50, watchOn
 const STATE = {
   cfg: { ...DEFAULT_CFG },
   gridCfg: { ...DEFAULT_GRID_CFG },
+  aiCfg: { ...DEFAULT_AI_CFG },
   results: [],          // [{ sym, price, score, verdict, filters, mtf, setup, ... }]
   filter: "all",
   sort: "score-desc",
@@ -507,6 +651,11 @@ const STATE = {
   alerts: false,          // beep + Notification API la READY nou
   scanTimer: null,        // setInterval handle pentru auto-scan
   prevReadySet: new Set(),// symbol-uri care erau READY la scan-ul anterior
+  // AI integration
+  selectMode: false,        // multi-select activ (pentru compare)
+  selectedSyms: new Set(),  // simboluri selectate (max 5)
+  aiHistory: [],            // bubble chat history [{role, text}]
+  aiBubbleOpen: false,
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -527,6 +676,21 @@ function loadGridCfg() {
   } catch (e) { /* noop */ }
 }
 function saveGridCfg() { localStorage.setItem(GRID_CFG_KEY, JSON.stringify(STATE.gridCfg)); }
+
+function loadAiCfg() {
+  try {
+    const raw = localStorage.getItem(AI_CFG_KEY);
+    if (raw) STATE.aiCfg = { ...DEFAULT_AI_CFG, ...JSON.parse(raw) };
+  } catch (e) {}
+  try {
+    const h = JSON.parse(localStorage.getItem(AI_HISTORY_KEY) || "[]");
+    if (Array.isArray(h)) STATE.aiHistory = h.slice(-30);  // cap 30 mesaje
+  } catch (e) {}
+}
+function saveAiCfg() { localStorage.setItem(AI_CFG_KEY, JSON.stringify(STATE.aiCfg)); }
+function saveAiHistory() {
+  try { localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(STATE.aiHistory.slice(-30))); } catch (e) {}
+}
 
 function loadResults() {
   try {
@@ -1081,7 +1245,12 @@ function render() {
       <span class="filter-lbl">${filt.lbl}</span>
       <span class="filter-val">${filt.val}</span>
     </div>`;
-    html += `<div class="stl-card v-${r.vClass}" onclick="event.target.closest('a,button')||window.open('${tvUrl(r.sym)}','_blank')">
+    const isSelected = STATE.selectedSyms.has(r.sym);
+    const cardCls = `v-${r.vClass}${STATE.selectMode ? " select-mode" : ""}${isSelected ? " selected" : ""}`;
+    const cardClick = STATE.selectMode
+      ? `window.toggleCardSelection('${encodeURIComponent(r.sym)}', event)`
+      : `event.target.closest('a,button')||window.open('${tvUrl(r.sym)}','_blank')`;
+    html += `<div class="stl-card ${cardCls}" data-sym="${r.sym}" onclick="${cardClick}">
       <div class="stl-head">
         <div>
           <span class="stl-sym">${shortName(r.sym)}</span>
@@ -1118,6 +1287,7 @@ function render() {
         <a href="${tvUrl(r.sym)}" target="_blank" rel="noopener">📈 TradingView</a>
         <a href="${pionexUrl(r.sym)}" target="_blank" rel="noopener" class="pionex">🚀 Pionex</a>
         <button class="grid-btn" onclick="window.showGridSetup('${encodeURIComponent(r.sym)}')" title="Pionex Grid Auto-Setup">🤖 Grid</button>
+        ${STATE.aiCfg.enabled && STATE.aiCfg.apiKey ? `<button class="ai-btn" onclick="window.showAiAnalysis('${encodeURIComponent(r.sym)}')" title="Analiză AI single coin">🪄 AI</button>` : ""}
         <button class="watch" onclick="window.addToWatchlist('${encodeURIComponent(r.sym)}')">⭐ Watchlist</button>
       </div>
     </div>`;
@@ -1677,6 +1847,442 @@ window.saveTelegramCfg = function() {
 function escAttr(s) { return String(s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
 
 // ═══════════════════════════════════════════════════════════════
+//  AI INTEGRATION — Claude API direct browser cu streaming + caching
+//  Default: claude-sonnet-4-6 (cost-effective). Toggle: claude-opus-4-7 (premium)
+//  Headers: x-api-key + anthropic-version + anthropic-dangerous-direct-browser-access
+//  Caching: system message marcat cu cache_control ephemeral (~5 min TTL)
+// ═══════════════════════════════════════════════════════════════
+
+// Async generator: yield text chunks from streaming response
+async function* callClaudeStream(messages, opts = {}) {
+  const cfg = STATE.aiCfg;
+  if (!cfg.apiKey) throw new Error("API key Claude lipsă — configurează în 🪄 AI");
+  const model = opts.model || cfg.model || AI_MODEL_DEFAULT;
+  const maxTokens = opts.maxTokens || 1024;
+
+  const body = {
+    model,
+    max_tokens: maxTokens,
+    stream: true,
+    system: [
+      { type: "text", text: AI_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+    ],
+    messages,
+  };
+
+  const res = await fetch(AI_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": cfg.apiKey,
+      "anthropic-version": AI_API_VERSION,
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    let errMsg = `HTTP ${res.status}`;
+    try { const j = await res.json(); errMsg = j.error?.message || errMsg; } catch (e) {}
+    throw new Error(errMsg);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";  // ultima linie poate fi parțială
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (!data || data === "[DONE]") continue;
+      try {
+        const evt = JSON.parse(data);
+        if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
+          yield evt.delta.text;
+        }
+      } catch (e) { /* ignoră evenimente neparsabile */ }
+    }
+  }
+}
+
+// Construiește context concis pentru un coin (input la AI)
+function buildCoinContext(r) {
+  const f = r.filters;
+  const m = r.mtf;
+  const i = r.indicators;
+  const s = r.setup;
+  const v = r.vwap;
+  const vwapZone = v ? `${v.zone} (${v.deviation >= 0 ? "+" : ""}${v.deviation.toFixed(2)}σ)` : "N/A";
+  return `${shortName(r.sym)} (futures USDT)
+- Score total: ${r.score}/100 (${r.verdict})
+- Preț: $${fmtPrice(r.price)}
+- Filtre 5: MTF ${f.mtf.val} (${f.mtf.pts}/${f.mtf.max}) · Vol ${f.vol.val} (${f.vol.pts.toFixed(0)}/${f.vol.max}) · ADX ${f.adx.val} (${f.adx.pts.toFixed(0)}/${f.adx.max}) · Struct ${f.str.val} (${f.str.pts}/${f.str.max}) · R:R ${f.rr.val} (${f.rr.pts.toFixed(0)}/${f.rr.max})
+- MTF score: 15m ${m.tf15} / 1h ${m.tf1h} / 4h ${m.tf4h}
+- Indicatori: RSI ${i.rsi.toFixed(0)} · ATR% ${(i.atr/r.price*100).toFixed(2)} · vol ratio ${i.volRel.toFixed(2)}x · ADX ${i.adx.toFixed(0)}
+- VWAP zone: ${vwapZone}
+- Setup auto: Entry $${fmtPrice(s.entry)}, SL $${fmtPrice(s.sl)} (${s.slDelta.toFixed(2)}%), TP1/TP2/TP3 $${fmtPrice(s.tp1)}/$${fmtPrice(s.tp2)}/$${fmtPrice(s.tp3)}, R:R ${s.rr2.toFixed(2)}`;
+}
+
+window.openAiConfigModal = function() {
+  const existing = document.getElementById("aiConfigOverlay");
+  if (existing) existing.remove();
+  const cfg = STATE.aiCfg;
+  const ov = document.createElement("div");
+  ov.id = "aiConfigOverlay";
+  ov.className = "grid-overlay";
+  ov.addEventListener("click", (e) => { if (e.target === ov) ov.remove(); });
+  ov.innerHTML = `
+    <div class="grid-modal" style="max-width:460px">
+      <div class="grid-modal-head">
+        <div>
+          <h3 style="background:linear-gradient(90deg,#d946ef,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent">🪄 AI Config (Claude)</h3>
+          <div class="sub">Claude API direct · streaming · prompt caching</div>
+        </div>
+        <button class="grid-modal-close" onclick="document.getElementById('aiConfigOverlay').remove()">×</button>
+      </div>
+      <div class="grid-section">
+        <div class="grid-section-title">🔑 API key</div>
+        <input type="password" id="aiKeyInput" value="${escAttr(cfg.apiKey)}" placeholder="sk-ant-api03-..." style="width:100%;padding:8px 10px;background:var(--panel3);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;font-variant-numeric:tabular-nums">
+        <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-top:6px">
+          Obține de la <code style="background:var(--panel3);padding:1px 4px;border-radius:3px">console.anthropic.com</code> → Settings → API Keys.<br>
+          ⚠️ Cheia rămâne LOCAL în browser (localStorage), nu se trimite nicăieri în afară de API-ul Anthropic.
+        </div>
+      </div>
+      <div class="grid-section">
+        <div class="grid-section-title">🧠 Model</div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 0">
+          <input type="radio" name="aiModel" value="${AI_MODEL_DEFAULT}" ${cfg.model === AI_MODEL_DEFAULT ? "checked" : ""} style="accent-color:#a78bfa">
+          <span style="font-size:12.5px"><b>Sonnet 4.6</b> <span style="color:var(--muted)">($3/M in · $15/M out — default rapid)</span></span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 0">
+          <input type="radio" name="aiModel" value="${AI_MODEL_PREMIUM}" ${cfg.model === AI_MODEL_PREMIUM ? "checked" : ""} style="accent-color:#d946ef">
+          <span style="font-size:12.5px"><b>Opus 4.7</b> <span style="color:var(--muted)">($5/M in · $25/M out — premium pentru analize critice)</span></span>
+        </label>
+      </div>
+      <div class="grid-section">
+        <div class="grid-section-title">📍 General</div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 0">
+          <input type="checkbox" id="aiEnableInput" ${cfg.enabled ? "checked" : ""} style="accent-color:#a78bfa;width:18px;height:18px">
+          <span style="font-size:12.5px">Activează butoane AI pe carduri (🪄 AI per coin) și bubble chat</span>
+        </label>
+      </div>
+      <div class="grid-modal-actions">
+        <button onclick="window.testAi()">📤 Test</button>
+        <button class="primary" style="background:linear-gradient(135deg,#d946ef,#a78bfa)" onclick="window.saveAiCfg()">💾 Salvează</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(ov);
+};
+
+window.testAi = async function() {
+  const key = document.getElementById("aiKeyInput").value.trim();
+  const model = document.querySelector('input[name="aiModel"]:checked').value;
+  if (!key) { toast("err", "Completează API key"); return; }
+  toast("ok", "🔄 Test în curs...");
+  try {
+    const r = await fetch(AI_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": AI_API_VERSION,
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 50,
+        messages: [{ role: "user", content: "Răspunde cu „OK funcționează" și nimic altceva." }],
+      }),
+    });
+    if (r.ok) {
+      const j = await r.json();
+      const txt = j.content?.[0]?.text || "(răspuns gol)";
+      toast("ok", `✅ Test OK: ${txt.slice(0, 50)}`);
+    } else {
+      const j = await r.json().catch(() => ({}));
+      toast("err", `Test eșuat: ${j.error?.message || r.status}`);
+    }
+  } catch (e) { toast("err", "Test eșuat: " + e.message); }
+};
+
+window.saveAiCfg = function() {
+  STATE.aiCfg.apiKey = document.getElementById("aiKeyInput").value.trim();
+  STATE.aiCfg.model = document.querySelector('input[name="aiModel"]:checked').value;
+  STATE.aiCfg.enabled = document.getElementById("aiEnableInput").checked;
+  saveAiCfg();
+  document.getElementById("aiConfigOverlay").remove();
+  updateAiBtnUI();
+  render();  // re-render carduri ca să apară butonul AI dacă e activat
+  toast("ok", STATE.aiCfg.enabled ? `🪄 AI ON (${STATE.aiCfg.model})` : "🪄 AI OFF");
+};
+
+function updateAiBtnUI() {
+  const b = document.getElementById("aiBtn");
+  if (!b) return;
+  const cfg = STATE.aiCfg;
+  if (!cfg.apiKey) { b.textContent = "🪄 AI"; b.classList.remove("primary"); return; }
+  b.textContent = cfg.enabled ? `🪄 ${cfg.model === AI_MODEL_PREMIUM ? "Opus" : "Sonnet"}` : "🪄 AI";
+  b.classList.toggle("primary", cfg.enabled);
+}
+
+// Modal pentru analiză single coin sau compare (renderează loading + streaming)
+async function streamAiToModal(messages, opts) {
+  const existing = document.getElementById("aiOutputOverlay");
+  if (existing) existing.remove();
+
+  const ov = document.createElement("div");
+  ov.id = "aiOutputOverlay";
+  ov.className = "grid-overlay";
+  ov.addEventListener("click", (e) => { if (e.target === ov) ov.remove(); });
+  ov.innerHTML = `
+    <div class="grid-modal" style="max-width:560px">
+      <div class="grid-modal-head">
+        <div>
+          <h3 style="background:linear-gradient(90deg,#d946ef,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${opts.title}</h3>
+          <div class="sub">${opts.subtitle} · model ${STATE.aiCfg.model}</div>
+        </div>
+        <button class="grid-modal-close" onclick="document.getElementById('aiOutputOverlay').remove()">×</button>
+      </div>
+      <div class="ai-output" id="aiOutputBox"><span class="ai-cursor"></span></div>
+      <div class="grid-modal-actions">
+        <button onclick="window.copyAiOutput()">📋 Copy</button>
+        <button class="primary" style="background:linear-gradient(135deg,#d946ef,#a78bfa)" onclick="document.getElementById('aiOutputOverlay').remove()">Închide</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(ov);
+
+  const box = document.getElementById("aiOutputBox");
+  let acc = "";
+  try {
+    for await (const chunk of callClaudeStream(messages, opts)) {
+      acc += chunk;
+      box.innerHTML = escAttr(acc).replace(/\n/g, "<br>") + '<span class="ai-cursor"></span>';
+      box.scrollTop = box.scrollHeight;
+    }
+    box.innerHTML = escAttr(acc).replace(/\n/g, "<br>");
+    window._lastAiOutput = acc;
+  } catch (e) {
+    box.innerHTML = `<span style="color:#ef4444">❌ Eroare: ${escAttr(e.message)}</span>`;
+  }
+}
+
+window.copyAiOutput = function() {
+  const txt = window._lastAiOutput || "";
+  if (!txt) { toast("err", "Nimic de copiat"); return; }
+  navigator.clipboard.writeText(txt).then(
+    () => toast("ok", "📋 Răspuns AI copiat"),
+    () => toast("err", "Copy eșuat")
+  );
+};
+
+// 🪄 AI pe card (analiză singulară)
+window.showAiAnalysis = function(symRaw) {
+  const sym = decodeURIComponent(symRaw);
+  const r = STATE.results.find(x => x.sym === sym);
+  if (!r) { toast("err", "Coin negăsit"); return; }
+  if (!STATE.aiCfg.apiKey) { toast("err", "Configurează API key în 🪄 AI"); window.openAiConfigModal(); return; }
+  const ctx = buildCoinContext(r);
+  streamAiToModal(
+    [{ role: "user", content: `Analizează acest setup LONG potential pentru un trade pe Pionex futures:\n\n${ctx}\n\nDă verdictul, riscul principal și recomandarea de execuție.` }],
+    { title: `🪄 Analiză ${shortName(r.sym)}`, subtitle: `Score ${r.score}/100 · ${r.verdict}`, maxTokens: 600 }
+  );
+};
+
+// 🪄 AI compare multi-coin
+window.showAiCompare = function() {
+  const syms = [...STATE.selectedSyms];
+  if (syms.length < 2) { toast("err", "Selectează cel puțin 2 coin-uri"); return; }
+  if (!STATE.aiCfg.apiKey) { toast("err", "Configurează API key în 🪄 AI"); window.openAiConfigModal(); return; }
+  const rows = syms.map(s => STATE.results.find(x => x.sym === s)).filter(Boolean);
+  if (rows.length < 2) { toast("err", "Date insuficiente — re-scanează"); return; }
+  const blocks = rows.map((r, i) => `### ${i+1}. ${shortName(r.sym)}\n${buildCoinContext(r)}`).join("\n\n");
+  streamAiToModal(
+    [{ role: "user", content: `Compară aceste ${rows.length} coin-uri pentru un LONG futures pe Pionex. Dă-mi un ranking 1-2-${rows.length} cu motiv concret pe rând și pe care l-ai alege primul:\n\n${blocks}` }],
+    { title: `🪄 Compare ${rows.length} coin-uri`, subtitle: rows.map(r => shortName(r.sym)).join(" vs "), maxTokens: 900 }
+  );
+  // Iese din select mode
+  exitSelectMode();
+};
+
+// Multi-select mode
+function toggleSelectMode() {
+  STATE.selectMode = !STATE.selectMode;
+  if (!STATE.selectMode) STATE.selectedSyms.clear();
+  updateSelectBtnUI();
+  render();
+}
+function exitSelectMode() {
+  STATE.selectMode = false;
+  STATE.selectedSyms.clear();
+  updateSelectBtnUI();
+  render();
+}
+function updateSelectBtnUI() {
+  const b = document.getElementById("selectBtn");
+  if (!b) return;
+  b.textContent = STATE.selectMode ? `📋 ${STATE.selectedSyms.size} sel.` : "📋 Select";
+  b.classList.toggle("primary", STATE.selectMode);
+  // Compare bar
+  document.getElementById("compareBar")?.remove();
+  if (STATE.selectMode && STATE.selectedSyms.size >= 1) {
+    const bar = document.createElement("div");
+    bar.id = "compareBar";
+    bar.className = "compare-bar";
+    bar.innerHTML = `
+      <span>📋 ${STATE.selectedSyms.size} selectate (max 5)</span>
+      <button onclick="window.aiClearSelection()">Curăță</button>
+      <button class="primary" onclick="window.showAiCompare()" ${STATE.selectedSyms.size < 2 ? "disabled style='opacity:.5'" : ""}>🪄 Compară</button>
+    `;
+    document.body.appendChild(bar);
+  }
+}
+window.aiClearSelection = function() {
+  STATE.selectedSyms.clear();
+  updateSelectBtnUI();
+  render();
+};
+
+window.toggleCardSelection = function(symRaw, ev) {
+  ev.stopPropagation();
+  if (!STATE.selectMode) return;
+  const sym = decodeURIComponent(symRaw);
+  if (STATE.selectedSyms.has(sym)) STATE.selectedSyms.delete(sym);
+  else if (STATE.selectedSyms.size < 5) STATE.selectedSyms.add(sym);
+  else { toast("err", "Maxim 5 coin-uri pentru comparație"); return; }
+  updateSelectBtnUI();
+  // Update doar card-ul afectat (mai eficient decât full render)
+  document.querySelectorAll(".stl-card").forEach(c => {
+    const cardSym = c.dataset.sym;
+    if (cardSym) c.classList.toggle("selected", STATE.selectedSyms.has(cardSym));
+  });
+};
+
+// AI bubble chat (floating)
+function renderAiBubble() {
+  document.getElementById("aiBubbleFab")?.remove();
+  document.getElementById("aiBubblePanel")?.remove();
+  if (!STATE.aiCfg.enabled || !STATE.aiCfg.apiKey) return;
+
+  const fab = document.createElement("button");
+  fab.id = "aiBubbleFab";
+  fab.className = "ai-bubble-fab";
+  fab.title = "Chat AI cu context din scan-ul curent";
+  fab.textContent = STATE.aiBubbleOpen ? "×" : "🪄";
+  fab.addEventListener("click", toggleAiBubble);
+  document.body.appendChild(fab);
+
+  if (STATE.aiBubbleOpen) {
+    const panel = document.createElement("div");
+    panel.id = "aiBubblePanel";
+    panel.className = "ai-bubble-panel";
+    const modelTag = STATE.aiCfg.model === AI_MODEL_PREMIUM ? "Opus 4.7" : "Sonnet 4.6";
+    panel.innerHTML = `
+      <div class="ai-bubble-head">
+        <h3>🪄 Trader AI Chat</h3>
+        <span class="ai-model-tag">${modelTag}</span>
+        <button class="ai-bubble-close" onclick="window.clearAiHistory()" title="Curăță istoricul">🗑</button>
+        <button class="ai-bubble-close" onclick="window.toggleAiBubble()">×</button>
+      </div>
+      <div class="ai-bubble-msgs" id="aiBubbleMsgs"></div>
+      <div class="ai-bubble-input">
+        <textarea id="aiBubbleInput" placeholder="Ex: care e cel mai bun setup acum?" rows="2"></textarea>
+        <button id="aiBubbleSend" onclick="window.sendAiBubbleMsg()">📤</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+    renderAiHistory();
+    const ta = document.getElementById("aiBubbleInput");
+    ta.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); window.sendAiBubbleMsg(); }
+    });
+    ta.focus();
+  }
+}
+
+window.toggleAiBubble = function() {
+  STATE.aiBubbleOpen = !STATE.aiBubbleOpen;
+  renderAiBubble();
+};
+
+function renderAiHistory() {
+  const box = document.getElementById("aiBubbleMsgs");
+  if (!box) return;
+  if (!STATE.aiHistory.length) {
+    box.innerHTML = `<div class="ai-msg-empty">
+      Pune o întrebare AI-ului. Are context din ${STATE.results.length} coin-uri scanate.<br>
+      <span style="color:var(--text-dim)">Ex: „top 3 LONG-uri acum?", „de ce X are score mic?", „explică Wyckoff Spring"</span>
+    </div>`;
+    return;
+  }
+  box.innerHTML = STATE.aiHistory.map(m => `<div class="ai-msg ${m.role}">${escAttr(m.text).replace(/\n/g, "<br>")}</div>`).join("");
+  box.scrollTop = box.scrollHeight;
+}
+
+window.clearAiHistory = function() {
+  STATE.aiHistory = [];
+  saveAiHistory();
+  renderAiHistory();
+};
+
+window.sendAiBubbleMsg = async function() {
+  const ta = document.getElementById("aiBubbleInput");
+  const text = (ta.value || "").trim();
+  if (!text) return;
+  ta.value = "";
+  ta.disabled = true;
+  document.getElementById("aiBubbleSend").disabled = true;
+
+  STATE.aiHistory.push({ role: "user", text });
+  renderAiHistory();
+
+  // Build context: top 15 results condensat (ca să nu trimitem mult)
+  const contextRows = STATE.results.slice(0, 15).map(r => {
+    const v = r.vwap;
+    return `${shortName(r.sym)} | score ${r.score} ${r.verdict} | RSI ${r.indicators.rsi.toFixed(0)} | ${v ? v.zone : "—"}${v ? " " + v.deviation.toFixed(1) + "σ" : ""} | R:R ${r.setup.rr2.toFixed(2)}`;
+  }).join("\n");
+  const ctxBlock = STATE.results.length
+    ? `Context: ${STATE.results.length} coin-uri scanate la ${new Date(STATE.lastScan || Date.now()).toLocaleTimeString("ro-RO")}. Top 15:\n${contextRows}\n\n`
+    : "Niciun scan încă.\n\n";
+
+  // Build messages from history (last 10 turns max ca să nu balonăm)
+  const historyMsgs = STATE.aiHistory.slice(-20).map(m => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
+  // Inject context la ultimul user message
+  if (historyMsgs.length && historyMsgs[historyMsgs.length - 1].role === "user") {
+    historyMsgs[historyMsgs.length - 1].content = ctxBlock + historyMsgs[historyMsgs.length - 1].content;
+  }
+
+  // Add empty bot msg ca placeholder
+  STATE.aiHistory.push({ role: "bot", text: "" });
+  renderAiHistory();
+
+  let acc = "";
+  try {
+    for await (const chunk of callClaudeStream(historyMsgs, { maxTokens: 700 })) {
+      acc += chunk;
+      STATE.aiHistory[STATE.aiHistory.length - 1].text = acc;
+      renderAiHistory();
+    }
+  } catch (e) {
+    STATE.aiHistory[STATE.aiHistory.length - 1] = { role: "err", text: "Eroare: " + e.message };
+    renderAiHistory();
+  } finally {
+    saveAiHistory();
+    ta.disabled = false;
+    document.getElementById("aiBubbleSend").disabled = false;
+    ta.focus();
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  TOAST + HELPERS
 // ═══════════════════════════════════════════════════════════════
 function toast(cls, html, ms = 3500) {
@@ -1713,6 +2319,7 @@ function init() {
   loadCfg();
   loadGridCfg();
   loadTgCfg();
+  loadAiCfg();
   loadResults();
   STATE.filter = localStorage.getItem(FILTER_KEY) || "all";
   STATE.sort = localStorage.getItem(SORT_KEY) || "score-desc";
@@ -1747,9 +2354,13 @@ function init() {
   document.getElementById("autoBtn").addEventListener("click", toggleAuto);
   document.getElementById("alertsBtn").addEventListener("click", toggleAlerts);
   document.getElementById("tgBtn").addEventListener("click", window.openTelegramModal);
+  document.getElementById("aiBtn").addEventListener("click", window.openAiConfigModal);
+  document.getElementById("selectBtn").addEventListener("click", toggleSelectMode);
   updateAutoBtnUI();
   updateAlertsBtnUI();
   updateTgBtnUI();
+  updateAiBtnUI();
+  renderAiBubble();
 
   // Resume auto-scan dacă era ON la închidere — respect convenția Pump Radar
   if (localStorage.getItem(AUTO_KEY) === "1") startAuto();
