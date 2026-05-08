@@ -17,6 +17,7 @@
     --events-1:#8b6fff; --events-2:#c89bff;
     --watch-1:#22c55e; --watch-2:#facc15;
     --pump-1:#ef4444; --pump-2:#facc15;
+    --legacy-1:#a16207; --legacy-2:#ca8a04;
     --ease: cubic-bezier(.4,0,.2,1);
   }
   html, body { height: 100%; }
@@ -81,6 +82,15 @@
   .card.events { --bar: linear-gradient(90deg, var(--events-1), var(--events-2)); --glow: rgba(139,111,255,.2); }
   .card.watch  { --bar: linear-gradient(90deg, var(--watch-1), var(--watch-2));   --glow: rgba(34,197,94,.2); }
   .card.pump   { --bar: linear-gradient(90deg, var(--pump-1), var(--pump-2));     --glow: rgba(239,68,68,.2); }
+  .card.legacy { --bar: linear-gradient(90deg, var(--legacy-1), var(--legacy-2)); --glow: rgba(202,138,4,.18); opacity:.92; }
+  .card.legacy:hover { opacity:1; }
+  .legacy-badge {
+    position:absolute; top:14px; right:14px;
+    background:rgba(202,138,4,.22); color:var(--gold);
+    border:1px solid rgba(202,138,4,.55);
+    padding:2px 8px; border-radius:4px;
+    font-size:9px; font-weight:800; letter-spacing:.6px;
+  }
 
   .card-icon {
     width: 56px; height: 56px; border-radius: 14px;
@@ -94,6 +104,7 @@
   .card.events .card-icon { background: linear-gradient(135deg, var(--events-1), var(--events-2)); box-shadow: 0 6px 20px rgba(139,111,255,.3); }
   .card.watch  .card-icon { background: linear-gradient(135deg, var(--watch-1), var(--watch-2));   box-shadow: 0 6px 20px rgba(34,197,94,.3); }
   .card.pump   .card-icon { background: linear-gradient(135deg, var(--pump-1), var(--pump-2));     box-shadow: 0 6px 20px rgba(239,68,68,.3); }
+  .card.legacy .card-icon { background: linear-gradient(135deg, var(--legacy-1), var(--legacy-2)); box-shadow: 0 6px 20px rgba(202,138,4,.25); }
 
   .card h2 {
     font-size: 22px; font-weight: 700; letter-spacing: -.3px;
@@ -223,6 +234,21 @@
           <li>Notificări desktop + 3-tone beep + linkuri Pionex/TV</li>
         </ul>
         <span class="card-cta">Deschide Pump Radar</span>
+      </a>
+
+      <a class="card legacy" href="https://mferent80-source.github.io/premarket_scanner.html/crypto-scanner/" target="_blank" rel="noopener">
+        <span class="legacy-badge">LEGACY</span>
+        <div class="card-icon">⚡</div>
+        <h2>Crypto Opportunity Scanner</h2>
+        <div class="card-sub">Versiunea v65 din premarket — feature-uri unice neportate încă</div>
+        <ul>
+          <li>🎯 Smart Trade Long signals (entry pre-confirmation)</li>
+          <li>📊 Futures Patterns (funding, OI surge, whale flows)</li>
+          <li>🤖 Grid Copy Trading (Pionex integration)</li>
+          <li>🪄 AI Multi-Scan + Premium filters</li>
+          <li>Migrarea în Scanner Hub e în curs — folosește pagina veche până atunci</li>
+        </ul>
+        <span class="card-cta">Deschide Crypto Opportunity</span>
       </a>
     </div>
 
