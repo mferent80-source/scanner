@@ -243,6 +243,25 @@
   </div>
 </div>
 
+<!-- Backup & Restore section -->
+<div class="section">
+  <h2 style="background:linear-gradient(90deg,#22c55e,#5bb0ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent">💾 Backup &amp; Restore</h2>
+  <div class="sub">Salvează tot configul (Telegram, AI, watchlist, presets, filtre) într-un JSON. Util când schimbi telefon/browser sau pentru safety înaintea unei deplasări mari.</div>
+
+  <div class="field">
+    <div id="backupStats" class="hint" style="background:var(--panel2);padding:8px 12px;border-radius:6px">se calculează…</div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" type="button" data-action="exportBackup">📥 Export JSON</button>
+    <label class="btn" style="text-align:center;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+      📤 Import JSON
+      <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+    </label>
+    <button class="btn" type="button" data-action="clearAll" style="background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4);color:var(--bear-s)">🗑️ Reset tot</button>
+  </div>
+</div>
+
 <!-- Quick links section -->
 <div class="section">
   <h2 style="background:linear-gradient(90deg,#facc15,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent">⚙️ Setări per-pagină (rămân pe pagina lor)</h2>
@@ -441,17 +460,125 @@
     }
   }
 
+  // ── Backup & Restore (export/import JSON cu toate setările scanner-related) ──
+  // Whitelist de prefixe ca să nu capturăm date din alte site-uri din același localStorage.
+  const BACKUP_KEY_PREFIXES = [
+    "tg_", "ai_", "scanner_", "watchlist_", "pump", "pumpradar_",
+    "stl_", "stlong_", "cs_", "pionex_", "global_watchlist", "msp_",
+    "futures_", "grid_copy", "telegram_cfg", "darkMode", "sortMode",
+    "catalyst_", "dash_", "pos_calc", "crypto_alerts", "crypto_last_seen",
+  ];
+  function isBackupKey(k) {
+    return BACKUP_KEY_PREFIXES.some(p => k === p || k.startsWith(p));
+  }
+  function collectBackupKeys() {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && isBackupKey(k)) keys.push(k);
+    }
+    return keys.sort();
+  }
+  function refreshBackupStats() {
+    try {
+      const keys = collectBackupKeys();
+      let totalBytes = 0;
+      keys.forEach(k => { totalBytes += (localStorage.getItem(k) || "").length; });
+      const kb = (totalBytes / 1024).toFixed(1);
+      const el = document.getElementById("backupStats");
+      if (el) el.innerHTML = `<b>${keys.length}</b> chei · <b>${kb} KB</b> total · ${keys.length ? "ready de export" : "nimic salvat încă"}`;
+    } catch (e) { console.warn("[backup] stats", e); }
+  }
+  function exportBackup() {
+    try {
+      const keys = collectBackupKeys();
+      if (!keys.length) { toast("err", "Nu există date de exportat"); return; }
+      const data = {};
+      keys.forEach(k => { data[k] = localStorage.getItem(k); });
+      const payload = {
+        _meta: {
+          app: "scanner-pro",
+          version: "v49",
+          exportedAt: new Date().toISOString(),
+          keyCount: keys.length,
+        },
+        data,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `scanner-pro-backup-${stamp}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast("ok", `📥 Export ${keys.length} chei (${(blob.size / 1024).toFixed(1)} KB)`);
+    } catch (e) {
+      toast("err", "Export eșuat: " + (e.message || e));
+      console.error("[backup] export", e);
+    }
+  }
+  function importBackup(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        // Acceptăm 2 formate: cel cu wrapper { _meta, data } sau direct { key: value }
+        const data = parsed.data && typeof parsed.data === "object" ? parsed.data : parsed;
+        const keys = Object.keys(data).filter(isBackupKey);
+        if (!keys.length) { toast("err", "Fișierul nu conține chei valide pentru Scanner Pro"); return; }
+        const ok = window.confirm(`Vei importa ${keys.length} chei din backup. Datele EXISTENTE pentru aceleași chei vor fi suprascrise. Continui?`);
+        if (!ok) return;
+        keys.forEach(k => { localStorage.setItem(k, data[k]); });
+        toast("ok", `📤 Importat ${keys.length} chei. Reîncarcă paginile pentru efect complet.`);
+        refreshBackupStats();
+        refreshTgUI();
+        refreshAiUI();
+      } catch (e) {
+        toast("err", "Import eșuat: " + (e.message || e));
+        console.error("[backup] import", e);
+      }
+    };
+    reader.readAsText(file);
+  }
+  function clearAllScannerData() {
+    const keys = collectBackupKeys();
+    if (!keys.length) { toast("err", "Nimic de șters"); return; }
+    const ok = window.confirm(`⚠️ ATENȚIE: Vei șterge ${keys.length} chei (${(JSON.stringify(keys).length / 1024).toFixed(1)} KB) — toate setările Scanner Pro (Telegram, AI, watchlist, presets, filtre). Asta nu poate fi anulat decât dacă ai un backup. Continui?`);
+    if (!ok) return;
+    keys.forEach(k => localStorage.removeItem(k));
+    tgCfg = { token: "", chatId: "" };
+    tgPages = { stl: false, watchlist: false, pump: false, pionex: false };
+    aiCfg = { apiKey: "", model: "claude-sonnet-4-6", enabled: false };
+    refreshTgUI();
+    refreshAiUI();
+    refreshBackupStats();
+    toast("ok", `🗑️ Reset complet. ${keys.length} chei șterse.`);
+  }
+
   // ── Wire-up: butoane via data-action (mai safe decât onclick inline) ──
   function wire() {
     const handlers = {
       testTg: testTelegram, saveTg: saveTelegram,
       testAi: testAi, saveAi: saveAi,
+      exportBackup: exportBackup,
+      clearAll: clearAllScannerData,
     };
     document.querySelectorAll("[data-action]").forEach(btn => {
       const action = btn.dataset.action;
       const handler = handlers[action];
       if (handler) btn.addEventListener("click", handler);
     });
+    // File input pentru Import (separat de data-action ca să gestioneze change)
+    const fileInput = document.getElementById("importFile");
+    if (fileInput) {
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) importBackup(file);
+        e.target.value = ""; // reset ca să poți reîncărca același fișier dacă vrei
+      });
+    }
     // Highlight pe radio model selectat (active class)
     document.querySelectorAll('input[name="aiModel"]').forEach(r => {
       r.addEventListener("change", () => {
@@ -468,6 +595,7 @@
       wire();
       refreshTgUI();
       refreshAiUI();
+      refreshBackupStats();
       console.log("[settings] OK init — tgCfg=", { hasToken: !!tgCfg.token, hasChat: !!tgCfg.chatId }, "aiCfg=", { hasKey: !!aiCfg.apiKey, model: aiCfg.model, enabled: aiCfg.enabled });
     } catch (e) {
       console.error("[settings] init failed", e);
