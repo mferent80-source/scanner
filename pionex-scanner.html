@@ -199,11 +199,14 @@
   .stat-sub { font-size: 10px; color: var(--muted); }
 
   /* === Results table === */
-  .scanner-wrap { overflow-x: auto; overflow-y: hidden; }
+  /* Sticky thead are nevoie de container scrollable pe Y. max-height + overflow:auto. */
+  .scanner-wrap { overflow: auto; max-height: calc(100vh - 320px); min-height: 250px; }
   table { width: 100%; border-collapse: collapse; font-size: 11px; }
   thead {
-    background: rgba(20,26,40,.55); position: sticky; top: 0; z-index: 2;
+    background: var(--panel); position: sticky; top: 0; z-index: 5;
+    box-shadow: 0 1px 0 var(--border); /* linie de delimitare la sticky */
   }
+  thead th { background: rgba(20,26,40,.95); }
   th {
     padding: 8px 6px; text-align: center; font-weight: 700; font-size: 10px;
     letter-spacing: .4px; text-transform: uppercase; cursor: pointer; user-select: none;
@@ -257,6 +260,15 @@
   }
   .pionex-link:hover { filter: brightness(1.08); }
 
+  /* Star button (watchlist toggle) — inline în coloana symbol */
+  .star-btn {
+    display: inline-block; cursor: pointer; font-size: 14px; color: var(--muted);
+    margin-right: 6px; line-height: 1; transition: color .12s var(--ease), transform .12s var(--ease);
+    user-select: none;
+  }
+  .star-btn:hover { color: var(--gold); transform: scale(1.15); }
+  .star-btn.on { color: var(--gold); text-shadow: 0 0 6px rgba(255,216,107,.5); }
+
   /* === Empty / loading === */
   .empty {
     padding: 40px 20px; text-align: center; color: var(--muted); font-size: 12px;
@@ -295,8 +307,14 @@
     body { padding: 8px; font-size: 12px; }
     header { padding: 8px 11px; gap: 6px; position: relative; top: 0; }
     header h1 { font-size: 12px; width: 100%; }
+    .nav-link { font-size: 10px; padding: 4px 8px; }
     th, td { padding: 5px 4px; font-size: 10px; }
-    .hide-mobile { display: none; }
+    .hide-mobile { display: none !important; }
+    .filter-bar { padding: 7px 10px; gap: 5px; }
+    .stats-strip { grid-template-columns: 1fr 1fr; }
+    .scanner-wrap { max-height: calc(100vh - 380px); }
+    .tab { padding: 6px 10px; font-size: 11px; }
+    .panel-head { padding: 8px 11px; }
   }
 </style>
 
@@ -309,11 +327,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
+<!-- Module shared (sincron, înaintea scriptului main pentru ca window.setupTelegramAlerts să fie disponibil) -->
+<script defer src="tg-alerts.js"></script>
 </head>
 <body>
 
 <header>
-  <h1>🤖 Pionex Scanner <span class="ver-badge" title="Versiune cache SW (debug deploy)">v45</span></h1>
+  <h1>🤖 Pionex Scanner <span class="ver-badge" title="Versiune cache SW (debug deploy)">v46</span></h1>
   <a href="scanner-hub.html" class="nav-link">🏠 Hub</a>
   <a href="scanner-crypto.html" class="nav-link">🪙 Crypto</a>
   <a href="crypto-events.html" class="nav-link">⚡ Events</a>
@@ -334,6 +355,16 @@
   </div>
   <button class="primary" id="scanBtn">↻ SCAN</button>
   <button id="pauseBtn" title="Oprește scanarea în curs">⏸ Stop</button>
+  <div class="ctl"><label>Auto:</label>
+    <select id="autoRefresh" title="Auto-scan periodic. Detectează PREMIUM nou între scan-uri și trimite alertă Telegram (dacă activ).">
+      <option value="0" selected>OFF</option>
+      <option value="300">5min</option>
+      <option value="600">10min</option>
+      <option value="1800">30min</option>
+    </select>
+  </div>
+  <button id="notifBtn" title="Notificări browser când apare PREMIUM nou la auto-scan">🔔</button>
+  <button id="tgBtn" title="Configurează Telegram alerts">📡 TG</button>
 </header>
 
 <!-- TAB BAR — Grid/Early/Spring active (F2); Premium = F3 -->
@@ -351,6 +382,7 @@
   <button class="chip bull" data-verdict="ready">🟢 READY</button>
   <button class="chip warn" data-verdict="mixed">🟡 MIXED</button>
   <button class="chip bear" data-verdict="skip">🔴 SKIP</button>
+  <button class="chip" data-wl="grid" title="Doar watchlist ⭐">⭐ WL</button>
   <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
   <span class="ctl"><label>Score min:</label><input type="number" id="minScore" value="50" min="0" max="100" step="5"></span>
   <span class="ctl"><label>ADX max:</label><input type="number" id="maxAdx" value="40" min="10" max="100" step="5"></span>
@@ -365,6 +397,7 @@
   <button class="chip active" data-early="all">Toate</button>
   <button class="chip bull" data-early="strong" title="Score ≥ 70">🚀 Strong</button>
   <button class="chip warn" data-early="medium" title="Score 50-69">📈 Medium</button>
+  <button class="chip" data-wl="early" title="Doar watchlist ⭐">⭐ WL</button>
   <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
   <span class="ctl"><label>Early Score min:</label><input type="number" id="minEarly" value="50" min="0" max="100" step="5"></span>
   <span class="ctl"><label>Chg24h min %:</label><input type="number" id="minChg24Early" value="0.3" min="-10" max="20" step="0.1"></span>
@@ -379,6 +412,7 @@
   <button class="chip active" data-spring="all">Toate Spring</button>
   <button class="chip bull" data-spring="strong" title="Spring score ≥ 65 + recovery confirmat">💎 Strong</button>
   <button class="chip warn" data-spring="medium" title="Spring score 45-64">📊 Medium</button>
+  <button class="chip" data-wl="spring" title="Doar watchlist ⭐">⭐ WL</button>
   <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
   <span class="ctl"><label>Spring Score min:</label><input type="number" id="minSpring" value="45" min="0" max="100" step="5"></span>
   <span class="ctl"><label>Recovery min %:</label><input type="number" id="minRecovery" value="1" min="0" max="20" step="0.5"></span>
@@ -393,6 +427,7 @@
   <button class="chip gold" data-premium="diamond" title="Toate 3 confluențe + score ≥75">💎 PREMIUM+</button>
   <button class="chip bull" data-premium="premium" title="2-3 confluențe + score ≥70">⭐ PREMIUM</button>
   <button class="chip warn" data-premium="good" title="2-3 confluențe + score 55-69">🌟 GOOD</button>
+  <button class="chip" data-wl="premium" title="Doar watchlist ⭐">⭐ WL</button>
   <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
   <span class="ctl"><label>Premium Score min:</label><input type="number" id="minPremium" value="55" min="0" max="100" step="5"></span>
   <span class="ctl"><label>Confluențe min:</label>
@@ -406,34 +441,8 @@
   <span class="filter-meta" id="resultCountPremium">—</span>
 </div>
 
-<!-- STATS STRIP -->
-<div class="stats-strip" id="statsStrip">
-  <div class="stat-tile">
-    <div class="stat-label">Universe Pionex</div>
-    <div class="stat-value" id="statUniverse">—</div>
-    <div class="stat-sub">whitelist verificată</div>
-  </div>
-  <div class="stat-tile">
-    <div class="stat-label">Scanate</div>
-    <div class="stat-value" id="statScanned">—</div>
-    <div class="stat-sub" id="statScannedSub">apasă SCAN</div>
-  </div>
-  <div class="stat-tile bull">
-    <div class="stat-label">🟢 READY</div>
-    <div class="stat-value" id="statReady">—</div>
-    <div class="stat-sub">grid candidate</div>
-  </div>
-  <div class="stat-tile warn">
-    <div class="stat-label">🟡 MIXED</div>
-    <div class="stat-value" id="statMixed">—</div>
-    <div class="stat-sub">verifică pe TV</div>
-  </div>
-  <div class="stat-tile bear">
-    <div class="stat-label">🔴 SKIP</div>
-    <div class="stat-value" id="statSkip">—</div>
-    <div class="stat-sub">trending sau zgomot</div>
-  </div>
-</div>
+<!-- STATS STRIP — generat dinamic per tab în updateStats() -->
+<div class="stats-strip" id="statsStrip"></div>
 
 <!-- RESULTS — header + tbody generate dinamic per tab -->
 <div class="panel-box scanner-wrap" id="resultsBox">
@@ -545,10 +554,112 @@ const filterState = {
   premium: { tier: 'all' },
 };
 
+// Watchlist ⭐ — persistă între sesiuni; filtrabilă cu chip-uri pe orice tab
+const LS_WATCHLIST = 'pionex_watchlist_v1';
+let watchlist = new Set();           // Set<base symbol>: BTC, SOL, etc.
+let onlyWatchlist = false;           // chip global toggle
+
+function loadWatchlist() {
+  try { watchlist = new Set(JSON.parse(localStorage.getItem(LS_WATCHLIST) || '[]')); }
+  catch (e) {}
+}
+function saveWatchlist() {
+  try { localStorage.setItem(LS_WATCHLIST, JSON.stringify([...watchlist])); }
+  catch (e) {}
+}
+window.toggleWatchlist = function (base) {
+  if (watchlist.has(base)) watchlist.delete(base);
+  else watchlist.add(base);
+  saveWatchlist();
+  renderResults();
+};
+function starButton(base) {
+  const on = watchlist.has(base);
+  return `<span class="star-btn ${on ? 'on' : ''}" onclick="event.stopPropagation();window.toggleWatchlist('${base}')" title="${on ? 'Scoate din' : 'Adaugă la'} watchlist">${on ? '★' : '☆'}</span>`;
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════════════════
 const $ = (id) => document.getElementById(id);
+
+// ═══════════════════════════════════════════════════════════════
+//  PERSISTENCE — salvează tab activ + filtere + sort între sesiuni
+// ═══════════════════════════════════════════════════════════════
+const LS_STATE = 'pionex_scanner_state_v1';
+const PERSIST_INPUTS = [
+  'minScore', 'maxAdx', 'minVol', 'rsiMin', 'rsiMax',                        // Grid
+  'minEarly', 'minChg24Early', 'maxChg24Early', 'rsiMinEarly', 'rsiMaxEarly', // Early
+  'minSpring', 'minRecovery', 'minVolRatio',                                  // Spring
+  'minPremium', 'minConfluence', 'reqSpring', 'reqGrid',                      // Premium
+  'universeSize',                                                              // header
+];
+
+function saveState() {
+  try {
+    const filters = {};
+    PERSIST_INPUTS.forEach(id => {
+      const el = $(id);
+      if (!el) return;
+      filters[id] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    localStorage.setItem(LS_STATE, JSON.stringify({
+      currentTab, sortState, filterState, filters, onlyWatchlist,
+      _ts: Date.now(),
+    }));
+  } catch (e) { /* localStorage poate fi full sau privat */ }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_STATE);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    // Tab activ — verific că nu e disabled
+    if (s.currentTab) {
+      const tabEl = document.querySelector(`.tab[data-tab="${s.currentTab}"]`);
+      if (tabEl && !tabEl.disabled) currentTab = s.currentTab;
+    }
+    if (s.sortState) Object.keys(sortState).forEach(k => {
+      if (s.sortState[k]) Object.assign(sortState[k], s.sortState[k]);
+    });
+    if (s.filterState) Object.keys(filterState).forEach(k => {
+      if (s.filterState[k]) Object.assign(filterState[k], s.filterState[k]);
+    });
+    if (s.filters) {
+      Object.entries(s.filters).forEach(([id, v]) => {
+        const el = $(id);
+        if (!el) return;
+        if (el.type === 'checkbox') el.checked = !!v;
+        else el.value = v;
+      });
+    }
+    if (typeof s.onlyWatchlist === 'boolean') onlyWatchlist = s.onlyWatchlist;
+  } catch (e) {}
+}
+
+// Aplic vizual starea încărcată: chip-urile active + tab vizibil + filter-bar
+function applyLoadedStateToUI() {
+  // Tab UI
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === currentTab));
+  $('gridFilters').style.display    = currentTab === 'grid'    ? '' : 'none';
+  $('earlyFilters').style.display   = currentTab === 'early'   ? '' : 'none';
+  $('springFilters').style.display  = currentTab === 'spring'  ? '' : 'none';
+  $('premiumFilters').style.display = currentTab === 'premium' ? '' : 'none';
+  // Chip-urile active per tab
+  const setActive = (selector, val) => {
+    document.querySelectorAll(selector).forEach(c => {
+      const k = c.dataset.verdict || c.dataset.early || c.dataset.spring || c.dataset.premium;
+      c.classList.toggle('active', k === val);
+    });
+  };
+  setActive('.chip[data-verdict]', filterState.grid.verdict);
+  setActive('.chip[data-early]',   filterState.early.quality);
+  setActive('.chip[data-spring]',  filterState.spring.quality);
+  setActive('.chip[data-premium]', filterState.premium.tier);
+  // Watchlist chip-uri ⭐ (sync state global)
+  document.querySelectorAll('.chip[data-wl]').forEach(c => c.classList.toggle('active', onlyWatchlist));
+}
 
 function setStatus(state, text) {
   const dot = $('statusDot');
@@ -1056,9 +1167,7 @@ async function runScan() {
       return;
     }
 
-    $('statUniverse').textContent = universe.length;
-    $('statScannedSub').textContent = `din ${universe.length}`;
-
+    // Stats strip se regenerează la fiecare renderResults; aici doar setup
     // Anti rate-limit Binance: pentru batch-uri mari mărim delay-ul între simboluri
     // (1200 weight/min limit; ~4 weight per simbol = ~300 max simboluri/min teoretic).
     // 100ms = 10 sym/s = 600 sym/min — risc 429. 200ms = 5 sym/s = 300 sym/min — safe.
@@ -1105,7 +1214,6 @@ async function runScan() {
         });
       }
       done++;
-      $('statScanned').textContent = done;
       $('progBar').style.width = `${(done / universe.length) * 100}%`;
       if (done % renderEvery === 0) renderResults();
       await new Promise(r => setTimeout(r, delayMs));
@@ -1116,6 +1224,8 @@ async function runScan() {
       setStatus('warn', `scan oprit la ${done}/${universe.length}`);
     } else {
       setStatus('ok', `gata · ${done} simboluri scanate`);
+      // Detect Premium-uri noi față de scan-ul anterior + notifică (Telegram + browser)
+      detectAndNotifyNewPremiums();
     }
     $('scannerSub').textContent = `${allResults.length} rezultate · ultima scanare la ${new Date().toLocaleTimeString('ro-RO')}`;
   } catch (e) {
@@ -1132,6 +1242,11 @@ async function runScan() {
 // ═══════════════════════════════════════════════════════════════
 //  FILTERS — câte una per tab
 // ═══════════════════════════════════════════════════════════════
+// Helper: aplică filtru watchlist global dacă e activ
+function applyWatchlistFilter(rows) {
+  return onlyWatchlist ? rows.filter(r => watchlist.has(r.base)) : rows;
+}
+
 function applyGridFilters(rows) {
   const minScore = parseFloat($('minScore').value) || 0;
   const maxAdx = parseFloat($('maxAdx').value) || 100;
@@ -1140,7 +1255,7 @@ function applyGridFilters(rows) {
   const rsiMax = parseFloat($('rsiMax').value) || 100;
   const v = filterState.grid.verdict;
 
-  let f = rows.filter(r =>
+  let f = applyWatchlistFilter(rows).filter(r =>
     (r.score || 0) >= minScore &&
     (r.adx || 0) <= maxAdx &&
     (r.dailyVolPct || 0) >= minVol &&
@@ -1160,7 +1275,7 @@ function applyEarlyFilters(rows) {
   const rMax = parseFloat($('rsiMaxEarly').value) || 100;
   const q = filterState.early.quality;
 
-  let f = rows.filter(r => {
+  let f = applyWatchlistFilter(rows).filter(r => {
     if ((r.earlyScore || 0) < minE) return false;
     if (!isNaN(minChg) && (r.chg24h == null || r.chg24h < minChg)) return false;
     if (!isNaN(maxChg) && (r.chg24h == null || r.chg24h > maxChg)) return false;
@@ -1178,7 +1293,7 @@ function applySpringFilters(rows) {
   const minVR = parseFloat($('minVolRatio').value) || 0;
   const q = filterState.spring.quality;
 
-  let f = rows.filter(r => {
+  let f = applyWatchlistFilter(rows).filter(r => {
     if (!r.isSpring) return false;
     if ((r.springScore || 0) < minS) return false;
     if (r.springInfo && parseFloat(r.springInfo.recoveryPct) < minRec) return false;
@@ -1197,7 +1312,7 @@ function applyPremiumFilters(rows) {
   const reqGrid = $('reqGrid').checked;
   const tier = filterState.premium.tier;
 
-  let f = rows.filter(r => {
+  let f = applyWatchlistFilter(rows).filter(r => {
     if (!r.premiumTier) return false;                 // doar cei calificați (passCount ≥ 2)
     if ((r.premiumScore || 0) < minP) return false;
     if ((r.passCount || 0) < minConfl) return false;
@@ -1308,21 +1423,65 @@ function renderResults() {
 }
 
 function updateStats() {
+  // === Tab badges (mereu calculate, indiferent de tab activ) ===
   const ready = allResults.filter(r => r.verdict === '🟢 GRID READY').length;
   const mixed = allResults.filter(r => r.verdict === '🟡 GRID MIXED').length;
   const skip  = allResults.filter(r => r.verdict === '🔴 GRID SKIP').length;
   const earlyStrong = allResults.filter(r => (r.earlyScore || 0) >= 70).length;
+  const earlyMedium = allResults.filter(r => (r.earlyScore || 0) >= 50 && (r.earlyScore || 0) < 70).length;
+  const earlyBullish = allResults.filter(r => (r.chg24h || 0) > 0).length;
   const springs = allResults.filter(r => r.isSpring).length;
-  // Premium counter: doar tier-urile premium+/premium (nu și GOOD, ca să nu inflăm badge-ul)
-  const premiums = allResults.filter(r => r.premiumTier === '💎 PREMIUM+' || r.premiumTier === '⭐ PREMIUM').length;
+  const springsStrong = allResults.filter(r => r.isSpring && (r.springScore || 0) >= 65).length;
+  const springsMedium = allResults.filter(r => r.isSpring && (r.springScore || 0) >= 45 && (r.springScore || 0) < 65).length;
+  const springsVolSpike = allResults.filter(r => r.isSpring && (r.volRatio || 0) >= 1.5).length;
+  const premiumsTop = allResults.filter(r => r.premiumTier === '💎 PREMIUM+').length;
+  const premiumsRegular = allResults.filter(r => r.premiumTier === '⭐ PREMIUM').length;
+  const premiumsGood = allResults.filter(r => r.premiumTier === '🌟 GOOD').length;
+  const premiumsCombo = allResults.filter(r => r.premiumTier && r.passes && r.passes.spring && r.passes.grid).length;
 
   $('gridCount').textContent = ready;
   $('earlyCount').textContent = earlyStrong;
   $('springCount').textContent = springs;
-  $('premiumCount').textContent = premiums;
-  $('statReady').textContent = ready;
-  $('statMixed').textContent = mixed;
-  $('statSkip').textContent = skip;
+  $('premiumCount').textContent = premiumsTop + premiumsRegular;
+
+  // === Stats strip per tab (regenerat) ===
+  const scannedCount = allResults.length;
+  const scannedSub = scanRunning ? 'în curs…' : (scannedCount ? `din ${PIONEX_WHITELIST.size}` : 'apasă SCAN');
+  const universeTile = `
+    <div class="stat-tile">
+      <div class="stat-label">Universe Pionex</div>
+      <div class="stat-value">${PIONEX_WHITELIST.size}</div>
+      <div class="stat-sub">whitelist verificată</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-label">Scanate</div>
+      <div class="stat-value">${scannedCount || '—'}</div>
+      <div class="stat-sub">${scannedSub}</div>
+    </div>`;
+
+  let html = universeTile;
+  if (currentTab === 'grid') {
+    html += `
+    <div class="stat-tile bull"><div class="stat-label">🟢 READY</div><div class="stat-value">${ready}</div><div class="stat-sub">grid candidate</div></div>
+    <div class="stat-tile warn"><div class="stat-label">🟡 MIXED</div><div class="stat-value">${mixed}</div><div class="stat-sub">verifică pe TV</div></div>
+    <div class="stat-tile bear"><div class="stat-label">🔴 SKIP</div><div class="stat-value">${skip}</div><div class="stat-sub">trending sau zgomot</div></div>`;
+  } else if (currentTab === 'early') {
+    html += `
+    <div class="stat-tile bull"><div class="stat-label">🚀 Strong</div><div class="stat-value">${earlyStrong}</div><div class="stat-sub">score ≥ 70</div></div>
+    <div class="stat-tile warn"><div class="stat-label">📈 Medium</div><div class="stat-value">${earlyMedium}</div><div class="stat-sub">score 50-69</div></div>
+    <div class="stat-tile gold"><div class="stat-label">📊 Bullish</div><div class="stat-value">${earlyBullish}</div><div class="stat-sub">chg24 > 0</div></div>`;
+  } else if (currentTab === 'spring') {
+    html += `
+    <div class="stat-tile bull"><div class="stat-label">💎 Detectate</div><div class="stat-value">${springs}</div><div class="stat-sub">spring confirmat</div></div>
+    <div class="stat-tile warn"><div class="stat-label">⭐ Strong</div><div class="stat-value">${springsStrong}</div><div class="stat-sub">score ≥ 65</div></div>
+    <div class="stat-tile gold"><div class="stat-label">🔊 Vol Spike</div><div class="stat-value">${springsVolSpike}</div><div class="stat-sub">vol ≥ 1.5×</div></div>`;
+  } else if (currentTab === 'premium') {
+    html += `
+    <div class="stat-tile gold"><div class="stat-label">💎 PREMIUM+</div><div class="stat-value">${premiumsTop}</div><div class="stat-sub">3/3 confluențe</div></div>
+    <div class="stat-tile bull"><div class="stat-label">⭐ PREMIUM</div><div class="stat-value">${premiumsRegular}</div><div class="stat-sub">2-3 conflu. ≥70</div></div>
+    <div class="stat-tile warn"><div class="stat-label">🤖 Spring+Grid</div><div class="stat-value">${premiumsCombo}</div><div class="stat-sub">combo high-prob</div></div>`;
+  }
+  $('statsStrip').innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1335,10 +1494,10 @@ function renderGrid() {
     <th data-sort="currentPrice">Preț</th>
     <th data-sort="adx" title="Sweet < 25">ADX</th>
     <th data-sort="rsi" title="Sweet 40-60">RSI</th>
-    <th data-sort="rangePct" title="Range 100h: 8-25%">Range%</th>
-    <th data-sort="bufferMin" title="Min top/bottom buffer ≥3-5%">Buffer</th>
-    <th data-sort="dailyVolPct" title="ATR/preț: 1.5-5%/zi">Vol/zi</th>
-    <th data-sort="mtfRangeCount">MTF</th>
+    <th data-sort="rangePct" class="hide-mobile" title="Range 100h: 8-25%">Range%</th>
+    <th data-sort="bufferMin" class="hide-mobile" title="Min top/bottom buffer ≥3-5%">Buffer</th>
+    <th data-sort="dailyVolPct" class="hide-mobile" title="ATR/preț: 1.5-5%/zi">Vol/zi</th>
+    <th data-sort="mtfRangeCount" class="hide-mobile">MTF</th>
     <th data-sort="score">Score</th>
     <th data-sort="verdict">Verdict</th>
     <th>Pionex</th>
@@ -1357,14 +1516,14 @@ function renderGrid() {
     const verdictCls = r.verdict.includes('READY') ? 'ready' : r.verdict.includes('MIXED') ? 'mixed' : 'skip';
     return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
       <td>${i + 1}</td>
-      <td class="left"><div class="sym-name">${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
+      <td class="left"><div class="sym-name">${starButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
       <td>${adxBadge(r.adx)}</td>
       <td>${rsiBadge(r.rsi)}</td>
-      <td>${fmtPct(r.rangePct)}</td>
-      <td>${fmtPct(r.bufferMin)}</td>
-      <td>${fmtPct(r.dailyVolPct, 2)}</td>
-      <td>${mtfDots(r)}</td>
+      <td class="hide-mobile">${fmtPct(r.rangePct)}</td>
+      <td class="hide-mobile">${fmtPct(r.bufferMin)}</td>
+      <td class="hide-mobile">${fmtPct(r.dailyVolPct, 2)}</td>
+      <td class="hide-mobile">${mtfDots(r)}</td>
       <td>${scoreBadge(r.score)}</td>
       <td class="verdict-cell ${verdictCls}" title="${(r.reasons || []).join('; ') || 'Toate criteriile aliniate'}">${r.verdict.split(' ').slice(1).join(' ')}</td>
       <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener" title="Pionex Futures Grid">Bot →</a></td>
@@ -1382,11 +1541,11 @@ function renderEarly() {
     <th data-sort="currentPrice">Preț</th>
     <th data-sort="chg24h" title="Sweet 0.5-3%">24h%</th>
     <th data-sort="rsi" title="Sweet 42-60">RSI</th>
-    <th data-sort="dailyVolPct">Vol/zi</th>
-    <th data-sort="adx">ADX</th>
-    <th>Spark 8h</th>
-    <th data-sort="earlyScore">Early Score</th>
-    <th>Stage</th>
+    <th data-sort="dailyVolPct" class="hide-mobile">Vol/zi</th>
+    <th data-sort="adx" class="hide-mobile">ADX</th>
+    <th class="hide-mobile">Spark 8h</th>
+    <th data-sort="earlyScore">Early</th>
+    <th class="hide-mobile">Stage</th>
     <th>Pionex</th>
   </tr>`;
   wireSortHandlers();
@@ -1408,15 +1567,15 @@ function renderEarly() {
     const stage = earlyStage(r);
     return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
       <td>${i + 1}</td>
-      <td class="left"><div class="sym-name">${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
+      <td class="left"><div class="sym-name">${starButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
       <td>${chgBadge(r.chg24h)}</td>
       <td>${rsiBadge(r.rsi)}</td>
-      <td>${fmtPct(r.dailyVolPct, 2)}</td>
-      <td>${adxBadge(r.adx)}</td>
-      <td>${sparklineSVG(r.sparkline)}</td>
+      <td class="hide-mobile">${fmtPct(r.dailyVolPct, 2)}</td>
+      <td class="hide-mobile">${adxBadge(r.adx)}</td>
+      <td class="hide-mobile">${sparklineSVG(r.sparkline)}</td>
       <td>${scoreBadge(r.earlyScore)}</td>
-      <td><span class="badge ${stage.cls}">${stage.txt}</span></td>
+      <td class="hide-mobile"><span class="badge ${stage.cls}">${stage.txt}</span></td>
       <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener">Bot →</a></td>
     </tr>`;
   }).join('');
@@ -1430,13 +1589,13 @@ function renderSpring() {
     <th data-sort="rank">#</th>
     <th data-sort="base" class="left">Symbol</th>
     <th data-sort="currentPrice">Preț</th>
-    <th title="Support range pe 70 bare anterioare">Support</th>
+    <th class="hide-mobile" title="Support range pe 70 bare anterioare">Support</th>
     <th title="Cât de adânc a coborât sub support (sweet 1-3%)">Undershoot</th>
     <th title="Recovery deasupra support după breakdown">Recovery</th>
-    <th data-sort="rsi" title="Sweet 40-58">RSI</th>
+    <th data-sort="rsi" class="hide-mobile" title="Sweet 40-58">RSI</th>
     <th data-sort="volRatio" title="Volum spike vs medie 30 bare">Vol×</th>
-    <th data-sort="springScore">Spring Score</th>
-    <th data-sort="chg24h">24h%</th>
+    <th data-sort="springScore">Spring</th>
+    <th data-sort="chg24h" class="hide-mobile">24h%</th>
     <th>Pionex</th>
   </tr>`;
   wireSortHandlers();
@@ -1460,15 +1619,15 @@ function renderSpring() {
     const recoveryCls = parseFloat(info.recoveryPct) >= 2 ? 'up' : 'warn';
     return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
       <td>${i + 1}</td>
-      <td class="left"><div class="sym-name">${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
+      <td class="left"><div class="sym-name">${starButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
-      <td><span class="badge neut">${fmtUSD(info.rangeSupport)}</span></td>
+      <td class="hide-mobile"><span class="badge neut">${fmtUSD(info.rangeSupport)}</span></td>
       <td><span class="badge ${undershootCls}">−${info.undershootPct}%</span></td>
       <td><span class="badge ${recoveryCls}">+${info.recoveryPct}%</span></td>
-      <td>${rsiBadge(r.rsi)}</td>
+      <td class="hide-mobile">${rsiBadge(r.rsi)}</td>
       <td><span class="badge ${(r.volRatio || 0) >= 1.5 ? 'gold' : 'neut'}">${(r.volRatio || 0).toFixed(2)}×</span></td>
       <td>${scoreBadge(r.springScore)}</td>
-      <td>${chgBadge(r.chg24h)}</td>
+      <td class="hide-mobile">${chgBadge(r.chg24h)}</td>
       <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener">Bot →</a></td>
     </tr>`;
   }).join('');
@@ -1484,11 +1643,11 @@ function renderPremium() {
     <th data-sort="currentPrice">Preț</th>
     <th data-sort="passCount" title="Câte din Grid/Early/Spring trec pragul individual">Conflu.</th>
     <th title="Indicator vizual: care confluențe trec">Mix</th>
-    <th data-sort="score" title="Grid score (6 criterii)">Grid</th>
-    <th data-sort="earlyScore" title="Early Buy score">Early</th>
-    <th data-sort="springScore" title="Spring score (0 dacă nu e spring)">Spring</th>
-    <th data-sort="rsi">RSI</th>
-    <th data-sort="chg24h">24h%</th>
+    <th data-sort="score" class="hide-mobile" title="Grid score (6 criterii)">Grid</th>
+    <th data-sort="earlyScore" class="hide-mobile" title="Early Buy score">Early</th>
+    <th data-sort="springScore" class="hide-mobile" title="Spring score (0 dacă nu e spring)">Spring</th>
+    <th data-sort="rsi" class="hide-mobile">RSI</th>
+    <th data-sort="chg24h" class="hide-mobile">24h%</th>
     <th data-sort="premiumScore">Premium</th>
     <th data-sort="premiumTier">Tier</th>
     <th>Pionex</th>
@@ -1514,15 +1673,15 @@ function renderPremium() {
                   : 'warn';
     return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
       <td>${i + 1}</td>
-      <td class="left"><div class="sym-name">${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
+      <td class="left"><div class="sym-name">${starButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
       <td><span class="badge ${r.passCount === 3 ? 'gold' : 'up'}">${r.passCount}/3</span></td>
       <td>${confluenceMix(r)}</td>
-      <td>${miniScore(r.score, r.passes && r.passes.grid)}</td>
-      <td>${miniScore(r.earlyScore, r.passes && r.passes.early)}</td>
-      <td>${miniScore(r.springScore, r.passes && r.passes.spring)}</td>
-      <td>${rsiBadge(r.rsi)}</td>
-      <td>${chgBadge(r.chg24h)}</td>
+      <td class="hide-mobile">${miniScore(r.score, r.passes && r.passes.grid)}</td>
+      <td class="hide-mobile">${miniScore(r.earlyScore, r.passes && r.passes.early)}</td>
+      <td class="hide-mobile">${miniScore(r.springScore, r.passes && r.passes.spring)}</td>
+      <td class="hide-mobile">${rsiBadge(r.rsi)}</td>
+      <td class="hide-mobile">${chgBadge(r.chg24h)}</td>
       <td>${scoreBadge(r.premiumScore)}</td>
       <td><span class="badge ${tierCls}" style="font-weight:800">${r.premiumTier}</span></td>
       <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener">Bot →</a></td>
@@ -1566,6 +1725,7 @@ function wireSortHandlers() {
       const s = sortState[currentTab];
       if (s.key === k) s.asc = !s.asc;
       else { s.key = k; s.asc = false; }
+      saveState();
       renderResults();
     });
   });
@@ -1616,80 +1776,154 @@ $('pauseBtn').disabled = true;
 // Sort handlers se atașează în wireSortHandlers() la fiecare re-render
 // (header-ul se regenerează per tab switch).
 
-// Filter chip-uri Grid (verdict)
-document.querySelectorAll('.chip[data-verdict]').forEach(chip => {
+// Helper pentru chip-uri filter (DRY) — actualizează state, marchează activ, persistă, re-randează
+function wireChipGroup(selector, filterKey, stateKey) {
+  document.querySelectorAll(selector).forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll(selector).forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      filterState[filterKey][stateKey] = chip.dataset[filterKey === 'grid' ? 'verdict' : filterKey === 'early' ? 'early' : filterKey === 'spring' ? 'spring' : 'premium'];
+      saveState();
+      renderResults();
+    });
+  });
+}
+wireChipGroup('.chip[data-verdict]', 'grid',    'verdict');
+wireChipGroup('.chip[data-early]',   'early',   'quality');
+wireChipGroup('.chip[data-spring]',  'spring',  'quality');
+wireChipGroup('.chip[data-premium]', 'premium', 'tier');
+
+// Watchlist chip-uri ⭐ (toggle global onlyWatchlist; sincronizat pe toate 4 tab-uri)
+document.querySelectorAll('.chip[data-wl]').forEach(chip => {
   chip.addEventListener('click', () => {
-    document.querySelectorAll('.chip[data-verdict]').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    filterState.grid.verdict = chip.dataset.verdict;
+    onlyWatchlist = !onlyWatchlist;
+    document.querySelectorAll('.chip[data-wl]').forEach(c => c.classList.toggle('active', onlyWatchlist));
+    saveState();
     renderResults();
   });
 });
 
-// Filter chip-uri Early Buy (calitate)
-document.querySelectorAll('.chip[data-early]').forEach(chip => {
-  chip.addEventListener('click', () => {
-    document.querySelectorAll('.chip[data-early]').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    filterState.early.quality = chip.dataset.early;
-    renderResults();
-  });
-});
-
-// Filter chip-uri Spring (calitate)
-document.querySelectorAll('.chip[data-spring]').forEach(chip => {
-  chip.addEventListener('click', () => {
-    document.querySelectorAll('.chip[data-spring]').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    filterState.spring.quality = chip.dataset.spring;
-    renderResults();
-  });
-});
-
-// Filter chip-uri Premium (tier)
-document.querySelectorAll('.chip[data-premium]').forEach(chip => {
-  chip.addEventListener('click', () => {
-    document.querySelectorAll('.chip[data-premium]').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    filterState.premium.tier = chip.dataset.premium;
-    renderResults();
-  });
-});
-
-// Inputs filtre — re-render la modificare (toate tab-urile)
-[
-  'minScore', 'maxAdx', 'minVol', 'rsiMin', 'rsiMax',                          // Grid
-  'minEarly', 'minChg24Early', 'maxChg24Early', 'rsiMinEarly', 'rsiMaxEarly',  // Early
-  'minSpring', 'minRecovery', 'minVolRatio',                                    // Spring
-  'minPremium', 'minConfluence', 'reqSpring', 'reqGrid',                        // Premium
-].forEach(id => {
+// Inputs filtre — re-render + persist la modificare
+PERSIST_INPUTS.forEach(id => {
   const el = $(id);
-  if (el) {
-    const evt = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
-    el.addEventListener(evt, renderResults);
-  }
+  if (!el) return;
+  const evt = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
+  el.addEventListener(evt, () => { saveState(); renderResults(); });
 });
 
-// Tab switch — schimbă filter-bar vizibil + re-render
+// Tab switch — schimbă filter-bar vizibil + re-render + persist
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     if (tab.disabled) return;
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     currentTab = tab.dataset.tab;
-    // Show/hide filter-bars
     $('gridFilters').style.display    = currentTab === 'grid'    ? '' : 'none';
     $('earlyFilters').style.display   = currentTab === 'early'   ? '' : 'none';
     $('springFilters').style.display  = currentTab === 'spring'  ? '' : 'none';
     $('premiumFilters').style.display = currentTab === 'premium' ? '' : 'none';
+    saveState();
     renderResults();
   });
 });
 
-// Init
-$('statUniverse').textContent = PIONEX_WHITELIST.size;
+// ═══════════════════════════════════════════════════════════════
+//  AUTO-REFRESH + ALERTS (Telegram via tg-alerts.js + browser notifications)
+//  Detectează PREMIUM (💎+/⭐) NOI între scan-uri și notifică.
+// ═══════════════════════════════════════════════════════════════
+let autoTimer = null;
+let lastPremiumIds = new Set();   // baza de comparație pentru detect "new"
+let notifEnabled = false;
+
+function startAutoRefresh(seconds) {
+  stopAutoRefresh();
+  if (seconds > 0) {
+    autoTimer = setInterval(() => { if (!scanRunning) runScan(); }, seconds * 1000);
+  }
+}
+function stopAutoRefresh() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+}
+
+// Apelat la sfârșitul fiecărui scan complet — detectează PREMIUM noi
+function detectAndNotifyNewPremiums() {
+  const currentIds = new Set(
+    allResults
+      .filter(r => r.premiumTier === '💎 PREMIUM+' || r.premiumTier === '⭐ PREMIUM')
+      .map(r => r.base)
+  );
+  // Skip prima rulare (lastPremiumIds e gol, nu avem baseline)
+  if (lastPremiumIds.size === 0) { lastPremiumIds = currentIds; return; }
+  const newOnes = [...currentIds].filter(id => !lastPremiumIds.has(id));
+  lastPremiumIds = currentIds;
+  if (!newOnes.length) return;
+
+  // Build mesaj cu detalii pentru fiecare premium nou
+  const lines = newOnes.map(b => {
+    const r = allResults.find(x => x.base === b);
+    if (!r) return `• ${b}`;
+    return `${r.premiumTier} <b>${b}</b> · score ${r.premiumScore}/100 · ${r.passCount}/3 conflu.`;
+  });
+  const msg = `<b>⭐ Pionex Scanner — Premium nou (${newOnes.length})</b>\n\n` + lines.join('\n');
+
+  // Telegram (dacă config OK + page enabled)
+  if (typeof window.sendTelegram === 'function') {
+    window.sendTelegram(msg).catch(e => console.warn('TG send failed:', e));
+  }
+  // Browser notification (dacă permission granted)
+  if (notifEnabled && 'Notification' in window && Notification.permission === 'granted') {
+    new Notification('Pionex Scanner — Premium nou', {
+      body: newOnes.join(', '),
+      icon: 'icon-192.png',
+      tag: 'pionex-premium', // replace dacă mai vine una rapid
+    });
+  }
+}
+
+// Wire auto-refresh dropdown + persist
+$('autoRefresh').addEventListener('change', (e) => {
+  const sec = parseInt(e.target.value, 10) || 0;
+  startAutoRefresh(sec);
+  saveState();
+});
+// Restore auto-refresh dacă era setat (după loadState a populat .value)
+const initialAutoSec = parseInt($('autoRefresh').value, 10) || 0;
+if (initialAutoSec > 0) startAutoRefresh(initialAutoSec);
+
+// Browser notification permission
+$('notifBtn').addEventListener('click', async () => {
+  if (!('Notification' in window)) { alert('Browser-ul nu suportă notificări.'); return; }
+  if (Notification.permission === 'granted') {
+    notifEnabled = !notifEnabled;
+    $('notifBtn').style.opacity = notifEnabled ? '1' : '.5';
+    setStatus(notifEnabled ? 'ok' : '', notifEnabled ? 'Notificări browser ON' : 'Notificări browser OFF');
+  } else {
+    const p = await Notification.requestPermission();
+    notifEnabled = p === 'granted';
+    $('notifBtn').style.opacity = notifEnabled ? '1' : '.5';
+    setStatus(notifEnabled ? 'ok' : 'err', notifEnabled ? 'Notificări permise' : 'Notificări refuzate');
+  }
+});
+$('notifBtn').style.opacity = '.5'; // initial OFF
+
+// Telegram alerts (modul shared tg-alerts.js)
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof window.setupTelegramAlerts === 'function') {
+    window.setupTelegramAlerts({
+      pageId: 'pionex',
+      pageLabel: 'Pionex Scanner',
+      btnId: 'tgBtn',
+      alertLabel: 'la PREMIUM/💎 nou',
+    });
+  }
+});
+
+// Init — load persisted state + sync UI + first render
+loadWatchlist();
+loadState();
+applyLoadedStateToUI();
 setStatus('', 'ready · apasă SCAN');
-// Populez header-ul Grid initial (înainte de primul scan) ca să avem coloane vizibile
+// Populez header-ul + stats strip (înainte de primul scan)
 renderResults();
 
 // Service Worker (PWA cache pentru shell)
