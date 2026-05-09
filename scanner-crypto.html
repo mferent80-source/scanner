@@ -8,70 +8,56 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    /* DARK THEME (default) — softer palette, less strain on long sessions */
-    --bg:#0a0d13; --bg-grad:radial-gradient(1400px 700px at 50% -200px, #11182a 0%, #0a0d13 60%);
-    --panel:#121826; --panel2:#1a2032; --panel3:#1f2638;
-    --border:#242b3e; --border-soft:#1b2133;
-    --text:#d6dde8; --text-dim:#aab3c2; --muted:#6b7487;
-    /* Semantic — slightly desaturated so green/red don't burn */
-    --bull-s:#1eb862; --bull:#2e8f54; --neut:#525c72;
-    --bear:#d64545; --bear-s:#e65757; --hot:#e87a2e; --warn:#b8802a;
-    --accent:#6a9ac9; --accent2:#8871c7; --gold:#d9b85a;
-    --focus:rgba(106,154,201,.25);
-    /* Theme-dependent tints (hover, zebra, shadows, header bg) */
-    --header-bg:linear-gradient(180deg,rgba(26,32,50,.92),rgba(18,24,38,.95));
-    --thead-bg:linear-gradient(180deg,rgba(30,40,65,.85),rgba(22,30,55,.9));
-    --row-hover:rgba(106,154,201,.05);
-    --row-hover-strong:rgba(106,154,201,.08);
+    /* === Paletă unificată cu crypto-events.html (orange/gold BTC) === */
+    --bg:#0b0f17;
+    --bg-grad:radial-gradient(1200px 600px at 50% -200px, #141c2e 0%, #0b0f17 55%);
+    --panel:#141a28; --panel2:#1d2537; --panel3:#222b40;
+    --border:#2a3247; --border-soft:#1f2638;
+    --text:#e8eef5; --text-dim:#c1c9d6; --muted:#8892a6;
+    /* Semantic colors */
+    --bull-s:#22d66b; --bull:#1ba858; --bull-bg:rgba(34,214,107,.12); --neut:#525c72;
+    --bear-s:#ff4d4d; --bear:#cc3434; --bear-bg:rgba(255,77,77,.12);
+    --hot:#e87a2e; --warn:#d4892c;
+    --accent:#5bb0ff; --accent2:#8b6fff; --gold:#ffd86b;
+    --crypto-1:#f7931a; --crypto-2:#ffd86b;
+    --focus:rgba(91,176,255,.25);
+    /* Tints + UI chrome */
+    --header-bg:linear-gradient(180deg,rgba(30,38,57,.85),rgba(20,26,40,.92));
+    --thead-bg:rgba(20,26,40,.55);
+    --row-hover:rgba(91,176,255,.05);
+    --row-hover-strong:rgba(91,176,255,.09);
     --row-zebra:rgba(255,255,255,.012);
     --divider-white:rgba(255,255,255,.2);
     --divider-white-soft:rgba(255,255,255,.06);
-    --fab-shadow:0 4px 12px rgba(0,0,0,.4);
-    --radius:10px; --radius-sm:6px;
+    --fab-shadow:0 4px 14px rgba(0,0,0,.4);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+    --shadow:0 4px 14px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.2);
+    --radius:12px; --radius-sm:8px;
     --ease:cubic-bezier(.4,0,.2,1);
     color-scheme:dark;
-  }
-  /* LIGHT THEME — high-contrast but warm, for daytime/office use */
-  html[data-theme="light"] {
-    --bg:#f4f6fa; --bg-grad:radial-gradient(1400px 700px at 50% -200px, #ffffff 0%, #eef1f6 60%);
-    --panel:#ffffff; --panel2:#f2f5fa; --panel3:#e7ecf3;
-    --border:#d6dce6; --border-soft:#e4e8ef;
-    --text:#1b2433; --text-dim:#4a5468; --muted:#7b8495;
-    /* Semantic colors stay saturated enough to be legible on white */
-    --bull-s:#12a558; --bull:#158144; --neut:#7a8599;
-    --bear:#d13838; --bear-s:#c42828; --hot:#dd6d15; --warn:#a36c1c;
-    --accent:#2e6bb5; --accent2:#6a4fc7; --gold:#a88423;
-    --focus:rgba(46,107,181,.25);
-    --header-bg:linear-gradient(180deg,rgba(255,255,255,.95),rgba(242,245,250,.92));
-    --thead-bg:linear-gradient(180deg,#eef2f8,#e4e9f1);
-    --row-hover:rgba(46,107,181,.06);
-    --row-hover-strong:rgba(46,107,181,.1);
-    --row-zebra:rgba(0,0,0,.018);
-    --divider-white:rgba(0,0,0,.15);
-    --divider-white-soft:rgba(0,0,0,.08);
-    --fab-shadow:0 4px 14px rgba(30,50,90,.15);
-    color-scheme:light;
   }
   html,body { height:100%; }
   body {
     font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
     background:var(--bg); background-image:var(--bg-grad); background-attachment:fixed;
-    color:var(--text); padding:10px; font-size:12px; min-height:100vh;
+    color:var(--text); padding:12px; font-size:13px; min-height:100vh;
     -webkit-font-smoothing:antialiased; line-height:1.4;
+    font-variant-numeric:tabular-nums;
     font-feature-settings:"cv11","ss01","tnum";
   }
-  /* Compact sticky header */
+  /* Sticky header — paletă crypto-events (orange BTC) */
   header {
-    display:flex; flex-wrap:wrap; align-items:center; gap:7px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px;
     background:var(--header-bg);
-    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-    padding:7px 12px; border-radius:var(--radius);
-    border:1px solid var(--border); margin-bottom:8px;
-    position:sticky; top:6px; z-index:50;
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    padding:11px 14px; border-radius:var(--radius);
+    border:1px solid var(--border); margin-bottom:10px;
+    box-shadow:var(--shadow);
+    position:sticky; top:8px; z-index:50;
   }
   header h1 {
-    font-size:13px; font-weight:700; letter-spacing:-.2px;
-    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    font-size:14px; font-weight:700; letter-spacing:-.2px;
+    background:linear-gradient(90deg,var(--crypto-1) 0%,var(--crypto-2) 100%);
     -webkit-background-clip:text; -webkit-text-fill-color:transparent;
     margin-right:auto; white-space:nowrap;
   }
@@ -79,20 +65,21 @@
   .ctl label { color:var(--muted); font-weight:500; }
   select, input, button {
     background:var(--panel2); color:var(--text); border:1px solid var(--border);
-    padding:4px 8px; border-radius:var(--radius-sm); font-size:11px; font-family:inherit;
-    transition:border-color .12s var(--ease), background .12s var(--ease);
+    padding:5px 9px; border-radius:var(--radius-sm); font-size:11px; font-family:inherit;
+    transition:all .15s var(--ease);
   }
   select:focus, input:focus {
     outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--focus);
   }
   button { cursor:pointer; font-weight:600; }
-  button:hover { background:var(--panel3); border-color:var(--accent); }
+  button:hover { background:var(--accent); border-color:var(--accent); color:#000; transform:translateY(-1px); }
   button.primary {
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    border-color:transparent; color:#fff;
+    background:linear-gradient(135deg,var(--crypto-1),var(--crypto-2));
+    border-color:transparent; color:#1a1a1a;
+    box-shadow:0 2px 8px rgba(247,147,26,.3);
   }
-  button.primary:hover { filter:brightness(1.12); }
-  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.primary:hover { filter:brightness(1.08); color:#1a1a1a; }
+  button:disabled { opacity:.45; cursor:not-allowed; transform:none; }
   .status-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--muted); margin-right:5px; }
   .status-dot.ok { background:var(--bull-s); box-shadow:0 0 5px var(--bull-s); }
   .status-dot.load { background:var(--warn); animation:pulse 1s infinite; }
@@ -109,13 +96,13 @@
   .mode-badge.crypto { background:linear-gradient(135deg,#d6831a,#e5bb5e); color:#000; }
   .mode-badge.stocks { background:linear-gradient(135deg,#3566a8,#6a9ac9); color:#fff; }
   .nav-link {
-    display:inline-flex; align-items:center; gap:3px;
+    display:inline-flex; align-items:center; gap:4px;
     background:var(--panel2); border:1px solid var(--border);
-    padding:3px 8px; border-radius:var(--radius-sm);
-    color:var(--text-dim); text-decoration:none; font-size:11px; font-weight:600;
-    transition:all .12s var(--ease);
+    padding:6px 11px; border-radius:var(--radius-sm);
+    color:var(--text); text-decoration:none; font-size:11px; font-weight:600;
+    transition:all .15s var(--ease);
   }
-  .nav-link:hover { background:var(--panel3); border-color:var(--accent); color:var(--text); }
+  .nav-link:hover { background:var(--accent); border-color:var(--accent); color:#000; transform:translateY(-1px); }
   .session-ind {
     display:inline-block; padding:3px 9px; border-radius:999px;
     font-size:10px; font-weight:700; letter-spacing:.2px;
@@ -131,9 +118,10 @@
   /* Ver-badge: arată CACHE_VERSION în header pentru debug cache SW */
   .ver-badge {
     display:inline-block; padding:2px 7px; margin-left:8px; border-radius:4px;
-    background:rgba(59,130,246,.15); color:#3b82f6; border:1px solid rgba(59,130,246,.4);
+    background:rgba(91,176,255,.15); color:#5bb0ff; border:1px solid rgba(91,176,255,.4);
     font-size:10px; font-weight:700; font-variant-numeric:tabular-nums;
     vertical-align:middle; letter-spacing:.3px;
+    -webkit-text-fill-color:#5bb0ff; /* reset, ca să nu moștenească transparent de la h1 cu gradient */
   }
   .header-stats span {
     padding:3px 7px; border-radius:var(--radius-sm); background:var(--panel2);
@@ -143,36 +131,74 @@
   .header-stats .bear-pill { color:var(--bear-s); border-color:rgba(214,69,69,.3); }
   .header-stats .mtf-pill { color:var(--accent); border-color:rgba(106,154,201,.3); }
 
-  /* Compact macro banner — flat, single-line, dense */
+  /* Macro banner — paritate cu sent-card din crypto-events */
   .macro-banner {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
-    gap:6px; margin-bottom:8px;
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:8px; margin-bottom:10px;
   }
   .macro-tile {
     background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
-    padding:8px 12px; position:relative; overflow:hidden;
+    padding:11px 14px; position:relative; overflow:hidden;
+    box-shadow:var(--shadow-sm);
   }
   .macro-tile::before {
-    content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--accent);
+    content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent);
   }
   .macro-tile.bull::before { background:var(--bull-s); }
   .macro-tile.bear::before { background:var(--bear-s); }
   .macro-tile.warn::before { background:var(--warn); }
   .macro-tile.hot::before  { background:var(--hot); }
   .macro-tile.gold::before { background:var(--gold); }
-  .macro-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:600; }
-  .macro-value { font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; margin:2px 0; letter-spacing:-.3px; }
-  .macro-sub { font-size:10px; color:var(--muted); }
+  .macro-label { font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; font-weight:600; margin-bottom:2px; }
+  .macro-value { font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.4px; }
+  .macro-sub { font-size:11px; color:var(--muted); margin-top:2px; }
 
-  /* Accordion panels (config, health, log, news, cal) — compact summary */
+  /* === Panel base (împrumutat din crypto-events) === */
+  .panel-box {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:var(--radius); box-shadow:var(--shadow-sm);
+    overflow:hidden; margin-bottom:10px;
+  }
+  .panel-head {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 14px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,rgba(29,37,55,.6),rgba(20,26,40,.4));
+  }
+  .panel-head h3 {
+    font-size:12px; font-weight:700; letter-spacing:.3px;
+    text-transform:uppercase; color:var(--text);
+  }
+  .panel-head .panel-sub { font-size:10.5px; color:var(--muted); margin-left:auto; }
+  .panel-head .icon { font-size:14px; }
+  .panel-head.bull { border-bottom-color:rgba(34,214,107,.3); }
+  .panel-head.bull h3 { color:var(--bull-s); }
+  .panel-head.bear { border-bottom-color:rgba(255,77,77,.3); }
+  .panel-head.bear h3 { color:var(--bear-s); }
+
+  /* === Pct pill / coin cell (paritate cu crypto-events) === */
+  .pct { font-weight:700; }
+  .pct.up { color:var(--bull-s); }
+  .pct.down { color:var(--bear-s); }
+  .pct-pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+  .pct-pill.up { background:var(--bull-bg); color:var(--bull-s); }
+  .pct-pill.down { background:var(--bear-bg); color:var(--bear-s); }
+  .coin { display:inline-flex; align-items:center; gap:8px; font-weight:600; }
+  .coin img { width:18px; height:18px; border-radius:50%; flex-shrink:0; background:var(--panel2); }
+  .coin .sym { color:var(--text); font-weight:700; }
+  .coin .name { color:var(--muted); font-weight:500; font-size:11px; }
+
+  /* Accordion panels (config, health, log, news, cal) — summary stilizat ca panel-head */
   .config, .health-box, .news-box, .cal-box, .log-box {
     background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
-    margin-bottom:8px; overflow:hidden;
+    margin-bottom:10px; overflow:hidden; box-shadow:var(--shadow-sm);
   }
   .config summary, .health-box summary, .news-box summary, .cal-box summary, .log-box summary {
-    padding:7px 12px; cursor:pointer; font-weight:600; user-select:none; font-size:11px;
-    display:flex; align-items:center; gap:6px; transition:background .12s var(--ease);
+    padding:10px 14px; cursor:pointer; font-weight:700; user-select:none; font-size:12px;
+    letter-spacing:.3px; text-transform:uppercase;
+    display:flex; align-items:center; gap:8px; transition:background .12s var(--ease);
     list-style:none;
+    background:linear-gradient(180deg,rgba(29,37,55,.6),rgba(20,26,40,.4));
+    border-bottom:1px solid transparent;
   }
   .config summary::-webkit-details-marker, .health-box summary::-webkit-details-marker,
   .news-box summary::-webkit-details-marker, .cal-box summary::-webkit-details-marker,
@@ -181,11 +207,13 @@
   .cal-box summary::before, .log-box summary::before {
     content:"▶"; font-size:8px; color:var(--muted); transition:transform .15s var(--ease); display:inline-block; width:10px;
   }
+  details[open] > summary { border-bottom-color:var(--border); }
   details[open] > summary::before { transform:rotate(90deg); }
   .config summary:hover, .health-box summary:hover, .news-box summary:hover,
-  .cal-box summary:hover, .log-box summary:hover { background:var(--panel2); }
+  .cal-box summary:hover, .log-box summary:hover { background:linear-gradient(180deg,rgba(40,50,72,.6),rgba(30,38,55,.4)); }
   .health-summary-meta, .news-meta, .cal-meta, .log-meta {
-    margin-left:auto; font-size:10px; color:var(--muted); font-weight:400;
+    margin-left:auto; font-size:10.5px; color:var(--muted); font-weight:500;
+    text-transform:none; letter-spacing:0;
   }
   .panel-content {
     padding:9px 12px; border-top:1px solid var(--border-soft);
@@ -197,32 +225,35 @@
   .sym-row label { font-size:10px; color:var(--muted); width:18px; font-variant-numeric:tabular-nums; }
   .sym-row input { flex:1; font-size:11px; padding:3px 7px; }
 
-  /* Risk panel — slim horizontal */
+  /* Risk panel — slim horizontal, aliniat cu paleta orange/gold */
   .risk-panel {
     background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
-    padding:8px 12px; margin-bottom:8px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;
+    padding:10px 14px; margin-bottom:10px; display:flex; flex-wrap:wrap; gap:14px; align-items:center;
+    box-shadow:var(--shadow-sm);
+    border-left:3px solid var(--gold);
   }
-  .risk-panel h3 { font-size:10px; color:var(--gold); letter-spacing:.6px; font-weight:700; text-transform:uppercase; }
-  .risk-input { display:flex; flex-direction:column; gap:2px; }
-  .risk-input label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; font-weight:600; }
-  .risk-input input { width:90px; font-variant-numeric:tabular-nums; }
-  .risk-sum { margin-left:auto; font-size:10px; color:var(--muted); }
-  .risk-sum strong { color:var(--gold); font-size:13px; font-variant-numeric:tabular-nums; }
+  .risk-panel h3 { font-size:11px; color:var(--gold); letter-spacing:.5px; font-weight:700; text-transform:uppercase; }
+  .risk-input { display:flex; flex-direction:column; gap:3px; }
+  .risk-input label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; font-weight:600; }
+  .risk-input input { width:95px; font-variant-numeric:tabular-nums; }
+  .risk-sum { margin-left:auto; font-size:11px; color:var(--muted); }
+  .risk-sum strong { color:var(--gold); font-size:14px; font-variant-numeric:tabular-nums; }
 
-  /* Stats strip — denser cards */
-  .stats-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(125px,1fr)); gap:6px; margin-bottom:8px; }
+  /* Stats strip — cards aerisite (sentiment-card style) */
+  .stats-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:8px; margin-bottom:10px; }
   .stat-tile {
     background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
-    padding:7px 11px; display:flex; flex-direction:column; gap:1px; position:relative; overflow:hidden;
+    padding:9px 13px; display:flex; flex-direction:column; gap:2px; position:relative; overflow:hidden;
+    box-shadow:var(--shadow-sm);
   }
-  .stat-tile::before { content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--accent); }
+  .stat-tile::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
   .stat-tile.bull::before { background:var(--bull-s); }
   .stat-tile.bear::before { background:var(--bear-s); }
   .stat-tile.neut::before { background:var(--warn); }
   .stat-tile.hot::before { background:var(--hot); }
-  .stat-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:600; }
-  .stat-value { font-size:16px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.3px; }
-  .stat-sub { font-size:9px; color:var(--muted); }
+  .stat-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; font-weight:600; }
+  .stat-value { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.3px; }
+  .stat-sub { font-size:10px; color:var(--muted); }
 
   /* Breadth */
   .breadth { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:7px 12px; margin-bottom:8px; }
@@ -230,27 +261,32 @@
   .breadth-bar { display:flex; height:16px; border-radius:4px; overflow:hidden; background:var(--panel2); }
   .breadth-seg { display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; }
 
-  /* Filter bar — denser */
+  /* Filter bar — aerisit, aliniat cu spiritul crypto-events */
   .filter-bar {
-    display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px; padding:6px 10px;
+    display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; padding:9px 14px;
     background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
-    align-items:center;
+    align-items:center; box-shadow:var(--shadow-sm);
   }
-  .filter-bar label { font-size:10px; color:var(--muted); margin-right:2px; font-weight:600; }
+  .filter-bar label { font-size:11px; color:var(--muted); margin-right:4px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
   .chip {
     background:var(--panel2); border:1px solid var(--border); color:var(--text-dim);
-    padding:3px 10px; border-radius:999px; font-size:10px; cursor:pointer;
-    transition:border-color .12s var(--ease), background .12s var(--ease), color .12s var(--ease);
-    font-weight:600;
+    padding:4px 11px; border-radius:999px; font-size:10.5px; cursor:pointer;
+    transition:all .15s var(--ease);
+    font-weight:700;
   }
-  .chip:hover { border-color:var(--accent); color:var(--text); }
-  .chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-  .chip.bull.active { background:var(--bull); border-color:var(--bull); color:#fff; }
-  .chip.bear.active { background:var(--bear); border-color:var(--bear); color:#fff; }
-  .chip.gold.active { background:var(--gold); border-color:var(--gold); color:#000; }
+  .chip:hover { border-color:var(--accent); color:var(--text); transform:translateY(-1px); }
+  .chip.active {
+    background:linear-gradient(135deg,var(--crypto-1),var(--crypto-2));
+    color:#1a1a1a; border-color:transparent;
+    box-shadow:0 2px 8px rgba(247,147,26,.3);
+  }
+  .chip.bull.active { background:var(--bull-s); border-color:var(--bull-s); color:#000; box-shadow:0 2px 8px rgba(34,214,107,.3); }
+  .chip.bear.active { background:var(--bear-s); border-color:var(--bear-s); color:#fff; box-shadow:0 2px 8px rgba(255,77,77,.3); }
+  .chip.gold.active { background:var(--gold); border-color:var(--gold); color:#000; box-shadow:0 2px 8px rgba(255,216,107,.35); }
 
-  /* Scanner table — denser rows, readable */
-  .scanner-wrap { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); overflow-x:auto; margin-bottom:8px; }
+  /* Scanner table — denser rows, readable. Wrapper-ul .scanner-wrap e acum
+     combinat cu .panel-box (background/border/radius vin de acolo). */
+  .scanner-wrap { overflow-x:auto; overflow-y:hidden; }
   table { width:100%; border-collapse:collapse; font-size:11px; }
   thead { background:var(--thead-bg); position:sticky; top:0; z-index:2; }
   th {
@@ -342,7 +378,8 @@
   .view-toggle { display:flex; gap:2px; background:var(--panel2); border-radius:var(--radius-sm); padding:2px; }
   .view-toggle button { padding:3px 9px; border:0; background:transparent; font-size:10px; color:var(--muted); border-radius:4px; }
   .view-toggle button.active { background:var(--accent); color:#fff; }
-  .heatmap { display:none; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:6px; padding:10px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; }
+  /* .heatmap = grid intern în #heatmapBox (panel-box cu panel-head deasupra) */
+  .heatmap { display:none; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:6px; padding:12px; }
   .heatmap.active { display:grid; }
   .scanner-wrap.hidden { display:none; }
   .heat-tile {
@@ -412,11 +449,19 @@
   .log-status.exp { background:var(--neut); color:#fff; }
   .log-actions { display:flex; gap:5px; padding:0 3px 8px; }
 
-  /* Trade plans — 2 columns stay, but tighter */
-  .trade-plans { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
-  .tp-box { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:9px 12px; }
-  .tp-title { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:7px; display:flex; justify-content:space-between; align-items:center; }
-  .tp-row { padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:10px; cursor:pointer; border-radius:4px; margin:0 -4px; padding-left:4px; padding-right:4px; }
+  /* Trade plans — header intern colorat (panel-head style) */
+  .trade-plans { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .tp-box { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:0; box-shadow:var(--shadow-sm); overflow:hidden; }
+  .tp-title {
+    font-size:12px; font-weight:700; letter-spacing:.3px; text-transform:uppercase;
+    margin:0; display:flex; justify-content:space-between; align-items:center;
+    padding:9px 14px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,rgba(29,37,55,.6),rgba(20,26,40,.4));
+    color:var(--gold);
+  }
+  .tp-box > .tp-row:first-of-type { margin-top:8px; }
+  .tp-box > .tp-row:last-of-type { margin-bottom:8px; }
+  .tp-row { padding:7px 12px; border-bottom:1px solid var(--border-soft); font-size:10px; cursor:pointer; transition:background .12s var(--ease); }
   .tp-row:last-child { border-bottom:0; }
   .tp-row:hover { background:var(--row-hover); }
   .tp-head { display:flex; justify-content:space-between; margin-bottom:5px; }
@@ -429,11 +474,16 @@
   .tp-cell.tp .v { color:var(--bull-s); }
   .tp-cell.sz .v { color:var(--gold); }
 
-  /* Movers */
-  .movers-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:7px; margin-bottom:8px; }
-  .mover-panel { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:8px 11px; }
-  .mover-title { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:5px; color:var(--muted); display:flex; justify-content:space-between; }
-  .mover-row { display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px solid var(--border-soft); cursor:pointer; font-size:10px; }
+  /* Movers — header intern (panel-head style) */
+  .movers-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-bottom:10px; }
+  .mover-panel { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:0; box-shadow:var(--shadow-sm); overflow:hidden; }
+  .mover-title {
+    font-size:12px; font-weight:700; letter-spacing:.3px; text-transform:uppercase;
+    margin:0; color:var(--text); display:flex; justify-content:space-between;
+    padding:9px 14px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,rgba(29,37,55,.6),rgba(20,26,40,.4));
+  }
+  .mover-row { display:flex; justify-content:space-between; align-items:center; padding:5px 14px; border-bottom:1px solid var(--border-soft); cursor:pointer; font-size:10px; }
   .mover-row:last-child { border-bottom:0; }
   .mover-row:hover { color:var(--accent); }
   .mover-sym { font-weight:700; }
@@ -481,8 +531,7 @@
 
   <!-- PWA metadata -->
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#0a0d13" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#f4f6fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b0f17">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Scanner Pro">
@@ -493,9 +542,15 @@
 <body>
 
 <header>
-  <h1>🔍 Scanner Pro — 25/200 Assets + MTF + Risk Mgmt<span class="ver-badge" title="Versiune cache SW (debug deploy)">v41</span></h1>
-  <div class="ctl"><span><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span></div>
-  <div class="header-stats" id="headerStats"></div>
+  <h1>🪙 Crypto Scanner <span style="opacity:.7;font-weight:500;font-size:11px;-webkit-text-fill-color:initial;color:var(--muted);">— 25 Assets + MTF + Div</span><span class="ver-badge" title="Versiune cache SW (debug deploy)">v42</span></h1>
+  <a href="scanner-hub.html" class="nav-link">🏠 Hub</a>
+  <a href="crypto-events.html" class="nav-link">⚡ Events</a>
+  <a href="news.html" class="nav-link">📰 News</a>
+  <a href="watchlist.html" class="nav-link">👁️ Watchlist</a>
+  <a href="pump-radar.html" class="nav-link" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#ef4444">🚨 Pump</a>
+  <a href="smart-trade-long.html" class="nav-link">🎯 Smart</a>
+  <a href="settings.html" class="nav-link">⚙️</a>
+  <span class="ctl"><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span>
   <div class="ctl"><label>TF:</label>
     <select id="timeframe">
       <option value="15m">15m</option>
@@ -514,7 +569,6 @@
   </div>
   <button class="primary" id="refreshBtn">↻ SCAN</button>
   <button id="retryBtn" title="Reîncearcă doar simbolurile eșuate">⟲ Retry</button>
-  <button id="themeToggle" title="Comută între dark și light mode" aria-label="Toggle theme">🌙</button>
   <button id="modeToggle" title="Comută între crypto și stocks scanner" aria-label="Toggle mode">🪙</button>
   <div class="ctl alerts-row">
     <label>🔔</label>
@@ -533,6 +587,7 @@
     <input type="password" id="tdKey" placeholder="TD key (dacă alegi TD)" style="width:150px" title="twelvedata.com/signup">
     <button id="saveKey">💾</button>
   </div>
+  <div class="header-stats" id="headerStats"></div>
 </header>
 
 <!-- MACRO BANNER -->
@@ -634,10 +689,18 @@
 </div>
 
 <!-- HEATMAP VIEW -->
-<div class="heatmap" id="heatmap"></div>
+<div class="panel-box heatmap-box" id="heatmapBox" style="display:none">
+  <div class="panel-head"><span class="icon">🔥</span><h3>Heatmap simboluri</h3>
+    <span class="panel-sub">scor + Δ% pe TF curent</span>
+  </div>
+  <div class="heatmap" id="heatmap"></div>
+</div>
 
 <!-- SCANNER TABLE -->
-<div class="scanner-wrap">
+<div class="panel-box scanner-wrap">
+  <div class="panel-head"><span class="icon">📊</span><h3>Scanner — semnale &amp; setup-uri</h3>
+    <span class="panel-sub" id="scannerSub">click pe rând pentru TradingView</span>
+  </div>
   <table>
     <thead>
       <tr>
@@ -2811,14 +2874,19 @@ function renderHeatmap() {
 function applyViewMode() {
   const table = document.querySelector(".scanner-wrap");
   const hm = document.getElementById("heatmap");
+  // #heatmapBox e wrapper-ul panel-box adăugat la reskin v42 (panel-head + grid).
+  // Îl toggle-uim cu hm-ul ca să arate panel-head-ul doar când heatmap-ul e activ.
+  const hmBox = document.getElementById("heatmapBox");
   if (VIEW_MODE === "heatmap") {
     table.classList.add("hidden");
     hm.classList.add("active");
+    if (hmBox) hmBox.style.display = "";
     document.getElementById("viewTable").classList.remove("active");
     document.getElementById("viewHeatmap").classList.add("active");
   } else {
     table.classList.remove("hidden");
     hm.classList.remove("active");
+    if (hmBox) hmBox.style.display = "none";
     document.getElementById("viewTable").classList.add("active");
     document.getElementById("viewHeatmap").classList.remove("active");
   }
@@ -4049,30 +4117,20 @@ function updateSessionIndicator() {
 // ═══════════════════════════════════════════════════════════════
 
 function initModeUI() {
-  // Update header title + mode badge
-  const h1 = document.querySelector("header h1");
-  if (h1) {
-    h1.innerHTML = IS_CRYPTO
-      ? '🪙 <span class="mode-badge crypto">CRYPTO</span> Scanner — 25 Assets + MTF + Div'
-      : '📈 <span class="mode-badge stocks">STOCKS</span> Scanner — Pre/Regular/Post + MTF + Div';
-  }
-
-  // Inject "back to hub" link + (stocks only) session indicator into header.
-  // The mode toggle button (#modeToggle) replaces the old "switch scanner" link
-  // because it works regardless of hosting/filename visibility.
-  const header = document.querySelector("header");
-  if (header) {
-    const nav = document.createElement("div");
-    nav.className = "ctl";
-    nav.style.cssText = "margin-left:0;gap:6px;align-items:center";
-    nav.innerHTML = `
-      <a href="scanner-hub.html" class="nav-link" title="Back to hub">🏠</a>
-      <a href="watchlist.html" class="nav-link" title="Watchlist Monitor (auto-scan 60s + alerte LONG)" style="background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.4);color:#22c55e">👁️ Watchlist</a>
-      <a href="pump-radar.html" class="nav-link" title="Pump Radar — detecție pump/dump/vol/mom pe 5m" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#ef4444">🚨 Pump</a>
-      ${IS_STOCKS ? '<span id="sessionInd" class="session-ind neut">—</span>' : ''}
-    `;
-    // Insert right after the H1
-    header.insertBefore(nav, header.children[1] || null);
+  // La reskin v42 titlul + nav-link-urile sunt statice în HTML (header sticky cu paleta orange/gold).
+  // Aici doar injectăm session indicator pentru stocks (la crypto nu există sesiune de bursă).
+  if (IS_STOCKS) {
+    const header = document.querySelector("header");
+    if (header && !document.getElementById("sessionInd")) {
+      const sess = document.createElement("span");
+      sess.id = "sessionInd";
+      sess.className = "session-ind neut";
+      sess.textContent = "—";
+      // Inserează lângă status (după primele 8 nav-link-uri statice)
+      const statusEl = header.querySelector(".ctl");
+      if (statusEl) statusEl.appendChild(sess);
+      else header.appendChild(sess);
+    }
   }
 
   // Hide mode-irrelevant controls
@@ -4143,33 +4201,11 @@ if (_fab) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  THEME (dark ↔ light) — shared key, persists across crypto + stocks pages.
-//  Respects prefers-color-scheme on first visit, then user choice wins.
+//  THEME — locked to dark (paleta crypto-events / orange BTC)
+//  Light theme eliminat la reskin v42; păstrăm data-theme="dark" pentru
+//  compatibilitate cu eventual cod legacy care îl interogheză.
 // ═══════════════════════════════════════════════════════════════
-const _THEME_KEY = "msp_shared_theme";
-function applyTheme(t) {
-  document.documentElement.setAttribute("data-theme", t);
-  const btn = document.getElementById("themeToggle");
-  if (btn) {
-    btn.textContent = t === "light" ? "☀️" : "🌙";
-    btn.title = t === "light" ? "Light theme — click pentru dark" : "Dark theme — click pentru light";
-  }
-}
-(function initTheme() {
-  let t = localStorage.getItem(_THEME_KEY);
-  if (!t) {
-    // First visit: honor OS preference if set; otherwise default to dark.
-    t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
-      ? "light" : "dark";
-  }
-  applyTheme(t);
-})();
-document.getElementById("themeToggle")?.addEventListener("click", () => {
-  const cur = document.documentElement.getAttribute("data-theme") || "dark";
-  const next = cur === "dark" ? "light" : "dark";
-  localStorage.setItem(_THEME_KEY, next);
-  applyTheme(next);
-});
+document.documentElement.setAttribute("data-theme", "dark");
 
 // ═══════════════════════════════════════════════════════════════
 //  MODE TOGGLE — switches between crypto and stocks scanner.
