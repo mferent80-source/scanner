@@ -423,7 +423,7 @@
 <body>
 
 <header>
-  <h1>🤖 Pionex Scanner <span class="ver-badge" title="Versiune cache SW (debug deploy)">v48</span></h1>
+  <h1>🤖 Pionex Scanner <span class="ver-badge" title="Versiune cache SW (debug deploy)">v49</span></h1>
   <a href="scanner-hub.html" class="nav-link">🏠 Hub</a>
   <a href="scanner-crypto.html" class="nav-link">🪙 Crypto</a>
   <a href="crypto-events.html" class="nav-link">⚡ Events</a>
@@ -704,6 +704,9 @@ window.toggleWatchlist = function (base) {
 function starButton(base) {
   const on = watchlist.has(base);
   return `<span class="star-btn ${on ? 'on' : ''}" onclick="event.stopPropagation();window.toggleWatchlist('${base}')" title="${on ? 'Scoate din' : 'Adaugă la'} watchlist">${on ? '★' : '☆'}</span>`;
+}
+function chartButton(base) {
+  return `<span class="info-btn" onclick="event.stopPropagation();window.openMiniChart('${base}')" title="Chart 50h cu candlestick + volume" style="margin-right:4px">📊</span>`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1525,6 +1528,123 @@ function tvUrl(symbol) {
 //  QUICK-TRADE MODAL — setup grid pre-completat din scanner data
 // ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
+//  MINI CHART POPUP — render rapid SVG line chart din date deja în memorie
+//  (highs/lows/closes/volumes deja calculate de gridScanSymbol — zero fetch)
+// ═══════════════════════════════════════════════════════════════
+window.openMiniChart = function (base) {
+  const r = allResults.find(x => x.base === base);
+  if (!r || !r.closes) { alert('Date chart indisponibile pentru ' + base); return; }
+
+  document.getElementById('chartModalOverlay')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'chartModalOverlay';
+  ov.className = 'modal-overlay';
+  ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+
+  const closes = r.closes.slice(-50); // ultimele 50 bare 1h ≈ 2 zile
+  const highs = r.highs.slice(-50);
+  const lows = r.lows.slice(-50);
+  const volumes = r.volumes ? r.volumes.slice(-50) : null;
+  const min = Math.min(...lows), max = Math.max(...highs);
+  const range = max - min || 1;
+
+  const W = 480, H = 220, padL = 50, padR = 10, padT = 10, padB = 25;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const barW = chartW / closes.length;
+
+  // Build candlestick rectangles + wicks + close line
+  let candles = '', wicks = '';
+  for (let i = 0; i < closes.length; i++) {
+    const open = i === 0 ? closes[0] : closes[i - 1];
+    const close = closes[i];
+    const high = highs[i], low = lows[i];
+    const x = padL + i * barW + barW * 0.15;
+    const w = barW * 0.7;
+    const isUp = close >= open;
+    const color = isUp ? '#22d66b' : '#ff4d4d';
+    const yOpen = padT + ((max - open) / range) * chartH;
+    const yClose = padT + ((max - close) / range) * chartH;
+    const yHigh = padT + ((max - high) / range) * chartH;
+    const yLow = padT + ((max - low) / range) * chartH;
+    const bodyTop = Math.min(yOpen, yClose);
+    const bodyH = Math.max(1, Math.abs(yOpen - yClose));
+    wicks += `<line x1="${x + w/2}" y1="${yHigh}" x2="${x + w/2}" y2="${yLow}" stroke="${color}" stroke-width="1"/>`;
+    candles += `<rect x="${x}" y="${bodyTop}" width="${w}" height="${bodyH}" fill="${color}" opacity="${isUp ? 1 : .85}"/>`;
+  }
+
+  // Y-axis labels (5 valori echispațiate)
+  let yLabels = '';
+  for (let k = 0; k <= 4; k++) {
+    const v = max - (range * k / 4);
+    const y = padT + (chartH * k / 4);
+    yLabels += `<text x="${padL - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#8892a6">${fmtUSD(v).replace('$', '')}</text>`;
+    yLabels += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#1f2638" stroke-width="0.5" stroke-dasharray="2,3"/>`;
+  }
+
+  // Marker pentru rangeSupport (Spring) dacă există
+  let supportLine = '';
+  if (r.springInfo && r.springInfo.rangeSupport) {
+    const supp = r.springInfo.rangeSupport;
+    if (supp >= min && supp <= max) {
+      const y = padT + ((max - supp) / range) * chartH;
+      supportLine = `
+        <line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#ffd86b" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="${W - padR}" y="${y - 3}" text-anchor="end" font-size="9" fill="#ffd86b" font-weight="700">SUPPORT (Spring)</text>
+      `;
+    }
+  }
+
+  // Volume bars (în partea de jos, suprapus)
+  let volBars = '';
+  if (volumes) {
+    const volMax = Math.max(...volumes) || 1;
+    const volH = 30;
+    for (let i = 0; i < volumes.length; i++) {
+      const x = padL + i * barW + barW * 0.15;
+      const w = barW * 0.7;
+      const h = (volumes[i] / volMax) * volH;
+      const isUp = i > 0 && closes[i] >= closes[i - 1];
+      volBars += `<rect x="${x}" y="${H - padB - h}" width="${w}" height="${h}" fill="${isUp ? '#22d66b' : '#ff4d4d'}" opacity=".25"/>`;
+    }
+  }
+
+  ov.innerHTML = `
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-head">
+        <div>
+          <h3>📊 ${r.base}/USDT — last 50h (1h klines)</h3>
+          <div class="sub">Preț: ${fmtUSD(r.currentPrice)} · ADX ${r.adx?.toFixed(1)} · RSI ${r.rsi?.toFixed(1)} · range ${r.rangePct?.toFixed(1)}%</div>
+        </div>
+        <button class="modal-close" type="button" data-close>×</button>
+      </div>
+      <div style="background:var(--panel2);border-radius:8px;padding:8px;border:1px solid var(--border-soft)">
+        <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block">
+          ${yLabels}
+          ${supportLine}
+          ${volBars}
+          ${wicks}
+          ${candles}
+        </svg>
+      </div>
+      <div class="modal-actions">
+        <button type="button" data-action="tv">📈 Open TradingView</button>
+        <button type="button" class="modal-primary" data-action="setup">🤖 Setup grid</button>
+        <button type="button" data-close>OK</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(ov);
+  ov.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => ov.remove()));
+  ov.querySelector('[data-action="tv"]').addEventListener('click', () => {
+    window.open(tvUrl(r.symbol), '_blank', 'noopener');
+  });
+  ov.querySelector('[data-action="setup"]').addEventListener('click', () => {
+    ov.remove();
+    window.openTradeSetup(base);
+  });
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  AI EXPLAINER — modal cu Claude API direct (non-stream)
 //  Folosește ai_cfg_v1 din Settings central; explică concret de ce e Premium
 // ═══════════════════════════════════════════════════════════════
@@ -1935,7 +2055,7 @@ function renderGrid() {
     const verdictCls = r.verdict.includes('READY') ? 'ready' : r.verdict.includes('MIXED') ? 'mixed' : 'skip';
     return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
       <td>${i + 1}</td>
-      <td class="left"><div class="sym-name">${starButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
+      <td class="left"><div class="sym-name">${starButton(r.base)}${chartButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
       <td>${adxBadge(r.adx)}</td>
       <td>${rsiBadge(r.rsi)}</td>
@@ -1986,7 +2106,7 @@ function renderEarly() {
     const stage = earlyStage(r);
     return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
       <td>${i + 1}</td>
-      <td class="left"><div class="sym-name">${starButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
+      <td class="left"><div class="sym-name">${starButton(r.base)}${chartButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
       <td>${chgBadge(r.chg24h)}</td>
       <td>${rsiBadge(r.rsi)}</td>
@@ -2038,7 +2158,7 @@ function renderSpring() {
     const recoveryCls = parseFloat(info.recoveryPct) >= 2 ? 'up' : 'warn';
     return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
       <td>${i + 1}</td>
-      <td class="left"><div class="sym-name">${starButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
+      <td class="left"><div class="sym-name">${starButton(r.base)}${chartButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
       <td class="hide-mobile"><span class="badge neut">${fmtUSD(info.rangeSupport)}</span></td>
       <td><span class="badge ${undershootCls}">−${info.undershootPct}%</span></td>
@@ -2092,7 +2212,7 @@ function renderPremium() {
                   : 'warn';
     return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
       <td>${i + 1}</td>
-      <td class="left"><div class="sym-name">${starButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
+      <td class="left"><div class="sym-name">${starButton(r.base)}${chartButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
       <td><span class="badge ${r.passCount === 3 ? 'gold' : 'up'}">${r.passCount}/3</span></td>
       <td>${confluenceMix(r)}</td>
