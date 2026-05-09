@@ -313,7 +313,7 @@
 <body>
 
 <header>
-  <h1>🤖 Pionex Scanner <span class="ver-badge" title="Versiune cache SW (debug deploy)">v43</span></h1>
+  <h1>🤖 Pionex Scanner <span class="ver-badge" title="Versiune cache SW (debug deploy)">v44</span></h1>
   <a href="scanner-hub.html" class="nav-link">🏠 Hub</a>
   <a href="scanner-crypto.html" class="nav-link">🪙 Crypto</a>
   <a href="crypto-events.html" class="nav-link">⚡ Events</a>
@@ -336,15 +336,15 @@
   <button id="pauseBtn" title="Oprește scanarea în curs">⏸ Stop</button>
 </header>
 
-<!-- TAB BAR (4 setup-uri — F1: doar Grid activ) -->
+<!-- TAB BAR — Grid/Early/Spring active (F2); Premium = F3 -->
 <div class="tab-bar">
   <button class="tab active" data-tab="grid">🤖 Futures Grid <span class="tab-count" id="gridCount">—</span></button>
-  <button class="tab" data-tab="early" disabled title="Vine în Faza 2">🌱 Early Buy <span class="badge-soon">F2</span></button>
-  <button class="tab" data-tab="spring" disabled title="Vine în Faza 2">💎 Spring <span class="badge-soon">F2</span></button>
+  <button class="tab" data-tab="early">🌱 Early Buy <span class="tab-count" id="earlyCount">—</span></button>
+  <button class="tab" data-tab="spring">💎 Spring <span class="tab-count" id="springCount">—</span></button>
   <button class="tab" data-tab="premium" disabled title="Vine în Faza 3">⭐ Premium <span class="badge-soon">F3</span></button>
 </div>
 
-<!-- FILTER BAR (specific Grid; alte tab-uri vor avea filtre proprii) -->
+<!-- FILTER BAR Grid -->
 <div class="filter-bar" id="gridFilters">
   <label>Verdict:</label>
   <button class="chip active" data-verdict="all">Toate</button>
@@ -357,6 +357,33 @@
   <span class="ctl"><label>Vol/zi min %:</label><input type="number" id="minVol" value="1" min="0" max="20" step="0.5"></span>
   <span class="ctl"><label>RSI:</label><input type="number" id="rsiMin" value="30" min="0" max="100" step="5" style="width:50px"><span style="color:var(--muted);font-weight:500">–</span><input type="number" id="rsiMax" value="70" min="0" max="100" step="5" style="width:50px"></span>
   <span class="filter-meta" id="resultCount">—</span>
+</div>
+
+<!-- FILTER BAR Early Buy -->
+<div class="filter-bar" id="earlyFilters" style="display:none">
+  <label>Calitate:</label>
+  <button class="chip active" data-early="all">Toate</button>
+  <button class="chip bull" data-early="strong" title="Score ≥ 70">🚀 Strong</button>
+  <button class="chip warn" data-early="medium" title="Score 50-69">📈 Medium</button>
+  <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
+  <span class="ctl"><label>Early Score min:</label><input type="number" id="minEarly" value="50" min="0" max="100" step="5"></span>
+  <span class="ctl"><label>Chg24h min %:</label><input type="number" id="minChg24Early" value="0.3" min="-10" max="20" step="0.1"></span>
+  <span class="ctl"><label>Chg24h max %:</label><input type="number" id="maxChg24Early" value="8" min="0" max="50" step="0.5"></span>
+  <span class="ctl"><label>RSI:</label><input type="number" id="rsiMinEarly" value="38" min="0" max="100" step="2" style="width:50px"><span style="color:var(--muted);font-weight:500">–</span><input type="number" id="rsiMaxEarly" value="68" min="0" max="100" step="2" style="width:50px"></span>
+  <span class="filter-meta" id="resultCountEarly">—</span>
+</div>
+
+<!-- FILTER BAR Spring (Wyckoff) -->
+<div class="filter-bar" id="springFilters" style="display:none">
+  <label>Calitate:</label>
+  <button class="chip active" data-spring="all">Toate Spring</button>
+  <button class="chip bull" data-spring="strong" title="Spring score ≥ 65 + recovery confirmat">💎 Strong</button>
+  <button class="chip warn" data-spring="medium" title="Spring score 45-64">📊 Medium</button>
+  <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
+  <span class="ctl"><label>Spring Score min:</label><input type="number" id="minSpring" value="45" min="0" max="100" step="5"></span>
+  <span class="ctl"><label>Recovery min %:</label><input type="number" id="minRecovery" value="1" min="0" max="20" step="0.5"></span>
+  <span class="ctl"><label>Vol Ratio min:</label><input type="number" id="minVolRatio" value="1" min="0" max="10" step="0.1"></span>
+  <span class="filter-meta" id="resultCountSpring">—</span>
 </div>
 
 <!-- STATS STRIP -->
@@ -388,33 +415,18 @@
   </div>
 </div>
 
-<!-- RESULTS -->
+<!-- RESULTS — header + tbody generate dinamic per tab -->
 <div class="panel-box scanner-wrap" id="resultsBox">
-  <div class="panel-head"><span class="icon">🤖</span><h3>Pionex Futures Grid — top oportunități</h3>
+  <div class="panel-head"><span class="icon" id="panelIcon">🤖</span><h3 id="panelTitle">Pionex Futures Grid — top oportunități</h3>
     <span class="panel-sub" id="scannerSub">apasă ↻ SCAN ca să detectezi</span>
   </div>
   <table>
-    <thead>
-      <tr>
-        <th data-sort="rank">#</th>
-        <th data-sort="symbol" class="left">Symbol</th>
-        <th data-sort="currentPrice">Preț</th>
-        <th data-sort="adx" title="Sweet spot pentru grid: ADX < 25">ADX</th>
-        <th data-sort="rsi" title="Sweet spot 40-60">RSI</th>
-        <th data-sort="rangePct" title="Range 100h: sweet 8-25%">Range%</th>
-        <th data-sort="bufferMin" title="Min top/bottom buffer: 3-5%+">Buffer</th>
-        <th data-sort="dailyVolPct" title="ATR/preț: sweet 1.5-5%/zi">Vol/zi</th>
-        <th data-sort="mtfRangeCount" title="MTF range count (15m/1h/4h)">MTF</th>
-        <th data-sort="score" class="sorted">Score</th>
-        <th data-sort="verdict">Verdict</th>
-        <th>Pionex</th>
-      </tr>
-    </thead>
+    <thead id="resultsHead"></thead>
     <tbody id="resultsBody">
       <tr><td colspan="12" class="empty">
         <div class="empty-icon">🤖</div>
         <div class="empty-title">Apasă ↻ SCAN ca să detectezi oportunități</div>
-        <div class="empty-sub">Scanner-ul fetch-uiește klines 1h pentru top simboluri Pionex de pe Binance Futures, calculează ADX/RSI/Range/Buffer/Vol/MTF și marchează cele mai potrivite pentru grid trading.</div>
+        <div class="empty-sub">Scanner-ul fetch-uiește klines 1h pentru top simboluri Pionex de pe Binance Futures, calculează 6 criterii (Grid) + Early Buy + Spring (Wyckoff) într-o singură pasă.</div>
       </td></tr>
     </tbody>
   </table>
@@ -494,13 +506,22 @@ const isOnPionex = (coin) => PIONEX_WHITELIST.has(coin.toUpperCase().replace('US
 // ═══════════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════════
-let allResults = [];           // [{ symbol, currentPrice, adx, rsi, rangePct, bufferMin, dailyVolPct, mtfRangeCount, mtfTotal, score, verdict, ... }]
+let allResults = [];           // toate rezultatele (folosit de toate 3 tab-uri)
 let currentTab = 'grid';
 let scanRunning = false;
 let scanAborted = false;
-let sortKey = 'score';
-let sortAsc = false;
-let filterVerdict = 'all';
+// Sort state per tab (persistă între switch-uri)
+const sortState = {
+  grid:   { key: 'score',       asc: false },
+  early:  { key: 'earlyScore',  asc: false },
+  spring: { key: 'springScore', asc: false },
+};
+// Filter state per tab
+const filterState = {
+  grid:   { verdict: 'all' },
+  early:  { quality: 'all' },
+  spring: { quality: 'all' },
+};
 
 // ═══════════════════════════════════════════════════════════════
 //  HELPERS
@@ -698,11 +719,18 @@ async function gridScanSymbol(symbol) {
       if (v !== null) { mtfTotal++; if (v === 1) mtfRangeCount++; }
     });
 
+    // Volumes pentru detecția spike-urilor (Spring volume confirmation)
+    const volumes = d.map(k => parseFloat(k[5]));
+    // Sparkline 8 bare pentru Early Buy (acceleration check)
+    const sparkline = closes.slice(-8);
+
     return {
       symbol, currentPrice, adx, rsi,
       rangePct, bufferMin, bufHighPct, bufLowPct,
       dailyVolPct, finalHigh, finalLow,
       mtfRangeCount, mtfTotal, mtfRaw,
+      // Date brute pentru Early/Spring scoring
+      highs, lows, closes, volumes, sparkline,
       ts: Date.now()
     };
   } catch (e) { return null; }
@@ -773,6 +801,7 @@ function gridScanScore(d) {
 
 // ═══════════════════════════════════════════════════════════════
 //  UNIVERSE BUILDER — Pionex ∩ Binance Futures USDT, sortat după volum.
+//  Returnează și ticker24 (chg24h, high24, low24) folosit de Early Buy.
 //  maxSize = 0 → returnează TOATE (~200-300 simboluri).
 // ═══════════════════════════════════════════════════════════════
 async function buildUniverse(maxSize) {
@@ -784,11 +813,149 @@ async function buildUniverse(maxSize) {
       symbol: t.symbol,
       base: t.symbol.replace(/USDT$/, ''),
       quoteVolume: parseFloat(t.quoteVolume),
+      chg24h: parseFloat(t.priceChangePercent),
+      high24: parseFloat(t.highPrice),
+      low24: parseFloat(t.lowPrice),
+      lastPrice: parseFloat(t.lastPrice),
     }))
     .filter(t => !isNaN(t.quoteVolume) && isOnPionex(t.base))
     .sort((a, b) => b.quoteVolume - a.quoteVolume);
   // 0 = no slice = toate
   return maxSize > 0 ? candidates.slice(0, maxSize) : candidates;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EARLY BUY SCORE — port adaptat din premarket_scanner v65
+//  Detectează coin-uri în prima fază de creștere (chg24 mic pozitiv,
+//  RSI neutru, accelerare în ultimele ore din sparkline klines 1h).
+// ═══════════════════════════════════════════════════════════════
+function calcEarlyScore(d) {
+  const chg = d.chg24h;
+  const rsi = d.rsi;
+  if (chg == null || isNaN(chg) || chg < 0) return 0;
+  if (rsi == null) return 0;
+  let score = 0;
+
+  // Factor 1: chg24h sweet spot crypto (+0.5..+3% = ideal early)
+  if (chg >= 0.5 && chg <= 3)        score += 25;
+  else if (chg > 3 && chg <= 6)      score += 15;
+  else if (chg > 6 && chg <= 10)     score += 8;
+  else if (chg > 10)                 score -= 10; // deja pompat
+  else if (chg >= 0)                 score += 5;  // flat pozitiv
+
+  // Factor 2: RSI zona neutră 42-60 (sweet)
+  if (rsi >= 42 && rsi <= 60)        score += 22;
+  else if (rsi >= 38 && rsi < 42)    score += 12; // oversold mild — poate renaște
+  else if (rsi > 60 && rsi <= 65)    score += 8;
+  else if (rsi > 65 && rsi <= 72)    score -= 8;
+  else if (rsi > 72)                 score -= 18; // overbought
+  else if (rsi < 38)                 score -= 5;  // OS extrem
+
+  // Factor 3: Sparkline accelerare (folosim ultimele 8 close-uri din klines 1h)
+  // wFull = primul vs ultimul (8 ore complete); w3 = ultimele 3 ore
+  if (d.sparkline && d.sparkline.length >= 4) {
+    const sp = d.sparkline;
+    const len = sp.length;
+    const wFull = (sp[len - 1] - sp[0]) / sp[0] * 100;
+    const w3 = (sp[len - 1] - sp[Math.max(0, len - 4)]) / sp[Math.max(0, len - 4)] * 100;
+    if (wFull >= -12 && wFull <= 5 && w3 >= 2)        score += 25; // reversal timpuriu
+    else if (wFull > 5 && wFull <= 25 && w3 >= 1)     score += 15; // uptrend incipient
+    else if (wFull > 25 && w3 >= 0)                   score += 6;  // deja în trend
+    else if (wFull < -12)                             score -= 10; // downtrend activ
+    else if (w3 < -2 && wFull < 0)                    score -= 6;  // bearish acceleration
+  }
+
+  // Factor 4: Range 24h sănătos (5-30%)
+  const range24Pct = (d.high24 && d.low24 && d.lastPrice)
+    ? (d.high24 - d.low24) / d.lastPrice * 100 : null;
+  if (range24Pct != null) {
+    if (range24Pct >= 5 && range24Pct <= 30)  score += 8;
+    else if (range24Pct > 30)                 score -= 5; // prea volatil
+  }
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SPRING SCORE (Wyckoff) — port simplificat din scanner-crypto.html
+//  False breakdown sub support apoi recuperare rapidă deasupra (high-prob LONG).
+//  Folosim klines 1h × 100 (≈4 zile): range pe primele 70 bare, spring în ultimele 30.
+// ═══════════════════════════════════════════════════════════════
+function calcSpringScore(d) {
+  if (!d.highs || !d.lows || !d.closes || d.closes.length < 80) {
+    return { springScore: 0, isSpring: false, springInfo: null };
+  }
+  const highs = d.highs, lows = d.lows, closes = d.closes;
+  const n = closes.length;
+  const closeNow = closes[n - 1];
+
+  // Range support pe primele 70 bare (excludem ultimele 30 unde căutăm spring-ul)
+  const rangeSlice = lows.slice(Math.max(0, n - 100), n - 30);
+  if (!rangeSlice.length) return { springScore: 0, isSpring: false, springInfo: null };
+  const rMin = Math.min(...rangeSlice);
+  const rMax = Math.max(...highs.slice(Math.max(0, n - 100), n - 30));
+
+  // Recent lows în ultimele 30 bare (≈ 30 ore = 1.25 zile)
+  const recentLows = lows.slice(-30, -1); // exclud bara curentă (mai stabil)
+  const minRecent = recentLows.length ? Math.min(...recentLows) : null;
+
+  // Spring: undershoot sub rMin + recovery deasupra rMin
+  const undershoot = minRecent != null && minRecent < rMin;
+  const recovered = closeNow > rMin * 1.005; // recovery min 0.5% peste support
+  const isSpring = undershoot && recovered;
+
+  if (!isSpring) return { springScore: 0, isSpring: false, springInfo: null };
+
+  let score = 0;
+  // 1. Recovery strength: cât de sus a închis vs minRecent (max 30 pts)
+  const recoveryPct = (closeNow - minRecent) / minRecent * 100;
+  if (recoveryPct >= 4)        score += 30;
+  else if (recoveryPct >= 2.5) score += 22;
+  else if (recoveryPct >= 1.5) score += 14;
+  else                         score += 6;
+
+  // 2. Undershoot magnitudine — sweet 1-3% sub support (prea adânc = trend break)
+  const undershootPct = (rMin - minRecent) / rMin * 100;
+  if (undershootPct >= 1 && undershootPct <= 3)        score += 20;
+  else if (undershootPct > 3 && undershootPct <= 6)    score += 12;
+  else if (undershootPct < 1)                          score += 8;
+  else                                                  score -= 5; // > 6% = breakdown real
+
+  // 3. RSI confluență — neutru/recuperare e best (40-58)
+  if (d.rsi >= 40 && d.rsi <= 58)        score += 18;
+  else if (d.rsi >= 35 && d.rsi <= 65)   score += 10;
+  else if (d.rsi > 70)                   score -= 8;
+  else if (d.rsi < 30)                   score += 5; // OS = bounce realist
+
+  // 4. Volume spike pe spring/recovery (vs medie 30 bare)
+  if (d.volumes && d.volumes.length >= 30) {
+    const volNow = d.volumes[d.volumes.length - 1];
+    const volAvg30 = d.volumes.slice(-31, -1).reduce((a, b) => a + b, 0) / 30;
+    const volRatio = volAvg30 > 0 ? volNow / volAvg30 : 1;
+    if (volRatio >= 2)        score += 20;
+    else if (volRatio >= 1.5) score += 12;
+    else if (volRatio >= 1)   score += 5;
+    else                      score -= 5;
+    d.volRatio = volRatio;
+  }
+
+  // 5. Range quality — un range bine definit (rMax/rMin ratio rezonabil)
+  const rangeQuality = (rMax - rMin) / rMin * 100;
+  if (rangeQuality >= 5 && rangeQuality <= 20)        score += 12;
+  else if (rangeQuality >= 3 && rangeQuality <= 30)   score += 6;
+
+  score = Math.max(0, Math.min(100, score));
+
+  return {
+    springScore: score,
+    isSpring: true,
+    springInfo: {
+      undershootPct: undershootPct.toFixed(2),
+      recoveryPct: recoveryPct.toFixed(2),
+      rangeSupport: rMin,
+      minRecent,
+    },
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -831,8 +998,28 @@ async function runScan() {
       if (scanAborted) break;
       const data = await gridScanSymbol(c.symbol);
       if (data) {
-        const result = gridScanScore(data);
-        allResults.push({ ...data, ...result, base: c.base, quoteVolume: c.quoteVolume });
+        // Combinăm date din ticker24 (chg24h, high24, low24) cu klines
+        const enriched = {
+          ...data,
+          base: c.base, quoteVolume: c.quoteVolume,
+          chg24h: c.chg24h, high24: c.high24, low24: c.low24, lastPrice: c.lastPrice,
+        };
+        // Grid score (verdict: 🟢/🟡/🔴)
+        const grid = gridScanScore(enriched);
+        // Early Buy score (0-100)
+        const earlyScore = calcEarlyScore(enriched);
+        // Spring (Wyckoff) — score + flag isSpring
+        const spring = calcSpringScore(enriched);
+
+        allResults.push({
+          ...enriched,
+          // Grid props
+          score: grid.score, verdict: grid.verdict, reasons: grid.reasons,
+          // Early props
+          earlyScore,
+          // Spring props
+          springScore: spring.springScore, isSpring: spring.isSpring, springInfo: spring.springInfo,
+        });
       }
       done++;
       $('statScanned').textContent = done;
@@ -860,32 +1047,68 @@ async function runScan() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  FILTERS + RENDER
+//  FILTERS — câte una per tab
 // ═══════════════════════════════════════════════════════════════
-function applyFilters(rows) {
+function applyGridFilters(rows) {
   const minScore = parseFloat($('minScore').value) || 0;
   const maxAdx = parseFloat($('maxAdx').value) || 100;
   const minVol = parseFloat($('minVol').value) || 0;
   const rsiMin = parseFloat($('rsiMin').value) || 0;
   const rsiMax = parseFloat($('rsiMax').value) || 100;
+  const v = filterState.grid.verdict;
 
-  let filtered = rows.filter(r =>
+  let f = rows.filter(r =>
     (r.score || 0) >= minScore &&
     (r.adx || 0) <= maxAdx &&
     (r.dailyVolPct || 0) >= minVol &&
     r.rsi >= rsiMin && r.rsi <= rsiMax
   );
-
-  if (filterVerdict === 'ready') filtered = filtered.filter(r => r.verdict === '🟢 GRID READY');
-  else if (filterVerdict === 'mixed') filtered = filtered.filter(r => r.verdict === '🟡 GRID MIXED');
-  else if (filterVerdict === 'skip')  filtered = filtered.filter(r => r.verdict === '🔴 GRID SKIP');
-
-  return filtered;
+  if (v === 'ready') f = f.filter(r => r.verdict === '🟢 GRID READY');
+  else if (v === 'mixed') f = f.filter(r => r.verdict === '🟡 GRID MIXED');
+  else if (v === 'skip')  f = f.filter(r => r.verdict === '🔴 GRID SKIP');
+  return f;
 }
 
-function sortRows(rows) {
-  const key = sortKey;
-  const asc = sortAsc;
+function applyEarlyFilters(rows) {
+  const minE = parseFloat($('minEarly').value) || 0;
+  const minChg = parseFloat($('minChg24Early').value);
+  const maxChg = parseFloat($('maxChg24Early').value);
+  const rMin = parseFloat($('rsiMinEarly').value) || 0;
+  const rMax = parseFloat($('rsiMaxEarly').value) || 100;
+  const q = filterState.early.quality;
+
+  let f = rows.filter(r => {
+    if ((r.earlyScore || 0) < minE) return false;
+    if (!isNaN(minChg) && (r.chg24h == null || r.chg24h < minChg)) return false;
+    if (!isNaN(maxChg) && (r.chg24h == null || r.chg24h > maxChg)) return false;
+    if (r.rsi == null || r.rsi < rMin || r.rsi > rMax) return false;
+    return true;
+  });
+  if (q === 'strong')      f = f.filter(r => (r.earlyScore || 0) >= 70);
+  else if (q === 'medium') f = f.filter(r => (r.earlyScore || 0) >= 50 && (r.earlyScore || 0) < 70);
+  return f;
+}
+
+function applySpringFilters(rows) {
+  const minS = parseFloat($('minSpring').value) || 0;
+  const minRec = parseFloat($('minRecovery').value) || 0;
+  const minVR = parseFloat($('minVolRatio').value) || 0;
+  const q = filterState.spring.quality;
+
+  let f = rows.filter(r => {
+    if (!r.isSpring) return false;
+    if ((r.springScore || 0) < minS) return false;
+    if (r.springInfo && parseFloat(r.springInfo.recoveryPct) < minRec) return false;
+    if ((r.volRatio || 0) < minVR) return false;
+    return true;
+  });
+  if (q === 'strong')      f = f.filter(r => (r.springScore || 0) >= 65);
+  else if (q === 'medium') f = f.filter(r => (r.springScore || 0) >= 45 && (r.springScore || 0) < 65);
+  return f;
+}
+
+function sortRows(rows, tab) {
+  const { key, asc } = sortState[tab];
   return [...rows].sort((a, b) => {
     let va = a[key], vb = b[key];
     if (key === 'verdict') {
@@ -950,38 +1173,82 @@ function tvUrl(symbol) {
   return `https://www.tradingview.com/chart/?symbol=BINANCE:${symbol}.P`;
 }
 
-function renderResults() {
-  const tbody = $('resultsBody');
-  const filtered = applyFilters(allResults);
-  const sorted = sortRows(filtered);
+// ═══════════════════════════════════════════════════════════════
+//  TAB-AWARE RENDER ORCHESTRATOR
+// ═══════════════════════════════════════════════════════════════
+const TAB_META = {
+  grid:   { icon: '🤖', title: 'Pionex Futures Grid — top oportunități' },
+  early:  { icon: '🌱', title: 'Early Buy — coin-uri în prima fază de creștere' },
+  spring: { icon: '💎', title: 'Wyckoff Spring — false breakdown + recuperare' },
+};
 
-  // Update stats (calculate pe TOATE rezultatele, nu doar filtrate)
+function renderResults() {
+  // Update stats (calculate pe TOATE rezultatele, indiferent de tab activ)
+  updateStats();
+  // Update panel-head per tab
+  $('panelIcon').textContent = TAB_META[currentTab].icon;
+  $('panelTitle').textContent = TAB_META[currentTab].title;
+
+  if (currentTab === 'grid')      renderGrid();
+  else if (currentTab === 'early') renderEarly();
+  else if (currentTab === 'spring') renderSpring();
+  // premium e disabled în F2
+
+  // Sort indicator pe header curent
+  document.querySelectorAll('#resultsHead th[data-sort]').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.sort === sortState[currentTab].key);
+    th.classList.toggle('asc', th.dataset.sort === sortState[currentTab].key && sortState[currentTab].asc);
+  });
+}
+
+function updateStats() {
   const ready = allResults.filter(r => r.verdict === '🟢 GRID READY').length;
   const mixed = allResults.filter(r => r.verdict === '🟡 GRID MIXED').length;
   const skip  = allResults.filter(r => r.verdict === '🔴 GRID SKIP').length;
+  const earlyStrong = allResults.filter(r => (r.earlyScore || 0) >= 70).length;
+  const springs = allResults.filter(r => r.isSpring).length;
+
+  $('gridCount').textContent = ready;
+  $('earlyCount').textContent = earlyStrong;
+  $('springCount').textContent = springs;
   $('statReady').textContent = ready;
   $('statMixed').textContent = mixed;
   $('statSkip').textContent = skip;
-  $('gridCount').textContent = ready;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER: GRID tab (port din F1, refactorizat ca să folosească sortState)
+// ═══════════════════════════════════════════════════════════════
+function renderGrid() {
+  $('resultsHead').innerHTML = `<tr>
+    <th data-sort="rank">#</th>
+    <th data-sort="base" class="left">Symbol</th>
+    <th data-sort="currentPrice">Preț</th>
+    <th data-sort="adx" title="Sweet < 25">ADX</th>
+    <th data-sort="rsi" title="Sweet 40-60">RSI</th>
+    <th data-sort="rangePct" title="Range 100h: 8-25%">Range%</th>
+    <th data-sort="bufferMin" title="Min top/bottom buffer ≥3-5%">Buffer</th>
+    <th data-sort="dailyVolPct" title="ATR/preț: 1.5-5%/zi">Vol/zi</th>
+    <th data-sort="mtfRangeCount">MTF</th>
+    <th data-sort="score">Score</th>
+    <th data-sort="verdict">Verdict</th>
+    <th>Pionex</th>
+  </tr>`;
+  wireSortHandlers();
+
+  const filtered = applyGridFilters(allResults);
+  const sorted = sortRows(filtered, 'grid');
   $('resultCount').textContent = `${sorted.length}/${allResults.length} rezultate`;
 
   if (!sorted.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="empty">
-      <div class="empty-icon">🤖</div>
-      <div class="empty-title">${allResults.length ? 'Niciun rezultat după filtre' : 'Apasă ↻ SCAN ca să detectezi'}</div>
-      <div class="empty-sub">${allResults.length ? 'Relaxează filtrele (Score min, ADX max) sau alege „Toate" la verdict.' : 'Scanner-ul calculează 6 criterii (ADX, RSI, Range%, Buffer, Vol/zi, MTF) și marchează cele mai potrivite pentru grid trading pe Pionex.'}</div>
-    </td></tr>`;
+    $('resultsBody').innerHTML = emptyRow('🤖', allResults.length ? 'Niciun rezultat după filtre' : 'Apasă ↻ SCAN', 12);
     return;
   }
-
-  tbody.innerHTML = sorted.map((r, i) => {
+  $('resultsBody').innerHTML = sorted.map((r, i) => {
     const verdictCls = r.verdict.includes('READY') ? 'ready' : r.verdict.includes('MIXED') ? 'mixed' : 'skip';
     return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
       <td>${i + 1}</td>
-      <td class="left">
-        <div class="sym-name">${r.base}</div>
-        <div class="sym-sub">${r.symbol}</div>
-      </td>
+      <td class="left"><div class="sym-name">${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
       <td>${adxBadge(r.adx)}</td>
       <td>${rsiBadge(r.rsi)}</td>
@@ -991,15 +1258,163 @@ function renderResults() {
       <td>${mtfDots(r)}</td>
       <td>${scoreBadge(r.score)}</td>
       <td class="verdict-cell ${verdictCls}" title="${(r.reasons || []).join('; ') || 'Toate criteriile aliniate'}">${r.verdict.split(' ').slice(1).join(' ')}</td>
-      <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener" title="Deschide bot Pionex Futures Grid">Bot →</a></td>
+      <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener" title="Pionex Futures Grid">Bot →</a></td>
     </tr>`;
   }).join('');
+}
 
-  // Update sort indicator pe header
-  document.querySelectorAll('th[data-sort]').forEach(th => {
-    th.classList.toggle('sorted', th.dataset.sort === sortKey);
-    th.classList.toggle('asc', th.dataset.sort === sortKey && sortAsc);
+// ═══════════════════════════════════════════════════════════════
+//  RENDER: EARLY BUY tab
+// ═══════════════════════════════════════════════════════════════
+function renderEarly() {
+  $('resultsHead').innerHTML = `<tr>
+    <th data-sort="rank">#</th>
+    <th data-sort="base" class="left">Symbol</th>
+    <th data-sort="currentPrice">Preț</th>
+    <th data-sort="chg24h" title="Sweet 0.5-3%">24h%</th>
+    <th data-sort="rsi" title="Sweet 42-60">RSI</th>
+    <th data-sort="dailyVolPct">Vol/zi</th>
+    <th data-sort="adx">ADX</th>
+    <th>Spark 8h</th>
+    <th data-sort="earlyScore">Early Score</th>
+    <th>Stage</th>
+    <th>Pionex</th>
+  </tr>`;
+  wireSortHandlers();
+
+  const filtered = applyEarlyFilters(allResults);
+  const sorted = sortRows(filtered, 'early');
+  $('resultCountEarly').textContent = `${sorted.length}/${allResults.length} rezultate`;
+
+  if (!sorted.length) {
+    $('resultsBody').innerHTML = emptyRow('🌱',
+      allResults.length ? 'Niciun setup Early Buy după filtre' : 'Apasă ↻ SCAN',
+      11,
+      'Early Buy = coin-uri cu chg24 mic pozitiv (+0.5-3%), RSI neutru (42-60) și accelerare în ultimele ore. Relaxează filtrele dacă piața e volatilă.'
+    );
+    return;
+  }
+
+  $('resultsBody').innerHTML = sorted.map((r, i) => {
+    const stage = earlyStage(r);
+    return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
+      <td>${i + 1}</td>
+      <td class="left"><div class="sym-name">${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
+      <td>${fmtUSD(r.currentPrice)}</td>
+      <td>${chgBadge(r.chg24h)}</td>
+      <td>${rsiBadge(r.rsi)}</td>
+      <td>${fmtPct(r.dailyVolPct, 2)}</td>
+      <td>${adxBadge(r.adx)}</td>
+      <td>${sparklineSVG(r.sparkline)}</td>
+      <td>${scoreBadge(r.earlyScore)}</td>
+      <td><span class="badge ${stage.cls}">${stage.txt}</span></td>
+      <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener">Bot →</a></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER: SPRING (Wyckoff) tab
+// ═══════════════════════════════════════════════════════════════
+function renderSpring() {
+  $('resultsHead').innerHTML = `<tr>
+    <th data-sort="rank">#</th>
+    <th data-sort="base" class="left">Symbol</th>
+    <th data-sort="currentPrice">Preț</th>
+    <th title="Support range pe 70 bare anterioare">Support</th>
+    <th title="Cât de adânc a coborât sub support (sweet 1-3%)">Undershoot</th>
+    <th title="Recovery deasupra support după breakdown">Recovery</th>
+    <th data-sort="rsi" title="Sweet 40-58">RSI</th>
+    <th data-sort="volRatio" title="Volum spike vs medie 30 bare">Vol×</th>
+    <th data-sort="springScore">Spring Score</th>
+    <th data-sort="chg24h">24h%</th>
+    <th>Pionex</th>
+  </tr>`;
+  wireSortHandlers();
+
+  const filtered = applySpringFilters(allResults);
+  const sorted = sortRows(filtered, 'spring');
+  $('resultCountSpring').textContent = `${sorted.length}/${allResults.length} rezultate`;
+
+  if (!sorted.length) {
+    $('resultsBody').innerHTML = emptyRow('💎',
+      allResults.length ? 'Niciun spring detectat după filtre' : 'Apasă ↻ SCAN',
+      11,
+      'Spring (Wyckoff) = false breakdown sub support apoi recuperare rapidă. Setup high-prob LONG. Detecția cere ≥80 klines 1h. Relaxează Spring Score min dacă piața e calmă.'
+    );
+    return;
+  }
+
+  $('resultsBody').innerHTML = sorted.map((r, i) => {
+    const info = r.springInfo || {};
+    const undershootCls = parseFloat(info.undershootPct) <= 3 ? 'up' : 'warn';
+    const recoveryCls = parseFloat(info.recoveryPct) >= 2 ? 'up' : 'warn';
+    return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
+      <td>${i + 1}</td>
+      <td class="left"><div class="sym-name">${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
+      <td>${fmtUSD(r.currentPrice)}</td>
+      <td><span class="badge neut">${fmtUSD(info.rangeSupport)}</span></td>
+      <td><span class="badge ${undershootCls}">−${info.undershootPct}%</span></td>
+      <td><span class="badge ${recoveryCls}">+${info.recoveryPct}%</span></td>
+      <td>${rsiBadge(r.rsi)}</td>
+      <td><span class="badge ${(r.volRatio || 0) >= 1.5 ? 'gold' : 'neut'}">${(r.volRatio || 0).toFixed(2)}×</span></td>
+      <td>${scoreBadge(r.springScore)}</td>
+      <td>${chgBadge(r.chg24h)}</td>
+      <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener">Bot →</a></td>
+    </tr>`;
+  }).join('');
+}
+
+// === Helpers UI ===
+function emptyRow(icon, title, cols, sub) {
+  return `<tr><td colspan="${cols}" class="empty">
+    <div class="empty-icon">${icon}</div>
+    <div class="empty-title">${title}</div>
+    <div class="empty-sub">${sub || 'Apasă ↻ SCAN ca să populezi.'}</div>
+  </td></tr>`;
+}
+
+function wireSortHandlers() {
+  // Re-wire pentru noile th-uri (sunt regenerate la fiecare tab switch)
+  document.querySelectorAll('#resultsHead th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.sort;
+      const s = sortState[currentTab];
+      if (s.key === k) s.asc = !s.asc;
+      else { s.key = k; s.asc = false; }
+      renderResults();
+    });
   });
+}
+
+function chgBadge(chg) {
+  if (chg == null || isNaN(chg)) return '—';
+  const cls = chg >= 0 ? 'up' : 'down';
+  const sign = chg >= 0 ? '+' : '';
+  return `<span class="badge ${cls}">${sign}${chg.toFixed(2)}%</span>`;
+}
+
+function earlyStage(r) {
+  if (r.chg24h == null || r.rsi == null) return { cls: 'neut', txt: '—' };
+  if (r.chg24h >= 0.5 && r.chg24h <= 4 && r.rsi >= 42 && r.rsi <= 62) return { cls: 'up', txt: '🌱 Early' };
+  if (r.chg24h > 4 || r.rsi > 62) return { cls: 'gold', txt: '🚀 Momentum' };
+  return { cls: 'warn', txt: '⏳ Building' };
+}
+
+// Mini sparkline SVG inline (8 close-uri din klines 1h)
+function sparklineSVG(sp) {
+  if (!sp || sp.length < 4) return '<span style="color:var(--muted)">—</span>';
+  const w = 60, h = 18, pad = 1;
+  const min = Math.min(...sp), max = Math.max(...sp);
+  const range = max - min || 1;
+  const pts = sp.map((v, i) => {
+    const x = pad + (i / (sp.length - 1)) * (w - 2 * pad);
+    const y = h - pad - ((v - min) / range) * (h - 2 * pad);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const last = sp[sp.length - 1], first = sp[0];
+  const stroke = last >= first ? 'var(--bull-s)' : 'var(--bear-s)';
+  return `<svg width="${w}" height="${h}" style="vertical-align:middle"><polyline points="${pts}" fill="none" stroke="${stroke}" stroke-width="1.5"/></svg>`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1014,38 +1429,60 @@ $('pauseBtn').onclick = () => {
 };
 $('pauseBtn').disabled = true;
 
-// Sort coloane
-document.querySelectorAll('th[data-sort]').forEach(th => {
-  th.addEventListener('click', () => {
-    const k = th.dataset.sort;
-    if (sortKey === k) sortAsc = !sortAsc;
-    else { sortKey = k; sortAsc = false; }
-    renderResults();
-  });
-});
+// Sort handlers se atașează în wireSortHandlers() la fiecare re-render
+// (header-ul se regenerează per tab switch).
 
-// Filter chip-uri (verdict)
+// Filter chip-uri Grid (verdict)
 document.querySelectorAll('.chip[data-verdict]').forEach(chip => {
   chip.addEventListener('click', () => {
     document.querySelectorAll('.chip[data-verdict]').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');
-    filterVerdict = chip.dataset.verdict;
+    filterState.grid.verdict = chip.dataset.verdict;
     renderResults();
   });
 });
 
-// Inputs filtre — re-render la modificare
-['minScore', 'maxAdx', 'minVol', 'rsiMin', 'rsiMax'].forEach(id => {
-  $(id).addEventListener('input', renderResults);
+// Filter chip-uri Early Buy (calitate)
+document.querySelectorAll('.chip[data-early]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip[data-early]').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    filterState.early.quality = chip.dataset.early;
+    renderResults();
+  });
 });
 
-// Tab switch (placeholdere pentru Faza 2/3)
+// Filter chip-uri Spring (calitate)
+document.querySelectorAll('.chip[data-spring]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip[data-spring]').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    filterState.spring.quality = chip.dataset.spring;
+    renderResults();
+  });
+});
+
+// Inputs filtre — re-render la modificare (toate tab-urile)
+[
+  'minScore', 'maxAdx', 'minVol', 'rsiMin', 'rsiMax',                    // Grid
+  'minEarly', 'minChg24Early', 'maxChg24Early', 'rsiMinEarly', 'rsiMaxEarly', // Early
+  'minSpring', 'minRecovery', 'minVolRatio',                              // Spring
+].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener('input', renderResults);
+});
+
+// Tab switch — schimbă filter-bar vizibil + re-render
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     if (tab.disabled) return;
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     currentTab = tab.dataset.tab;
+    // Show/hide filter-bars
+    $('gridFilters').style.display   = currentTab === 'grid'   ? '' : 'none';
+    $('earlyFilters').style.display  = currentTab === 'early'  ? '' : 'none';
+    $('springFilters').style.display = currentTab === 'spring' ? '' : 'none';
     renderResults();
   });
 });
@@ -1053,6 +1490,8 @@ document.querySelectorAll('.tab').forEach(tab => {
 // Init
 $('statUniverse').textContent = PIONEX_WHITELIST.size;
 setStatus('', 'ready · apasă SCAN');
+// Populez header-ul Grid initial (înainte de primul scan) ca să avem coloane vizibile
+renderResults();
 
 // Service Worker (PWA cache pentru shell)
 if ('serviceWorker' in navigator) {
