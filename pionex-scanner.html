@@ -423,7 +423,7 @@
 <body>
 
 <header>
-  <h1>🤖 Pionex Scanner <span class="ver-badge" title="Versiune cache SW (debug deploy)">v50</span></h1>
+  <h1>🤖 Pionex Scanner <span class="ver-badge" title="Versiune cache SW (debug deploy)">v51</span></h1>
   <a href="scanner-hub.html" class="nav-link">🏠 Hub</a>
   <a href="scanner-crypto.html" class="nav-link">🪙 Crypto</a>
   <a href="crypto-events.html" class="nav-link">⚡ Events</a>
@@ -1002,6 +1002,12 @@ async function gridScanSymbol(symbol) {
 
 function gridScanScore(d) {
   if (!d) return { score: 0, verdict: 'ERROR', reasons: ['Date lipsă'] };
+  // FIX bug: dacă vreun indicator e null, .toFixed() de mai jos aruncă TypeError.
+  // În plus, comparațiile cu null se coercie la 0 → scoring eronat. Skip explicit.
+  if (d.adx == null || d.rsi == null || d.rangePct == null ||
+      d.bufferMin == null || d.dailyVolPct == null) {
+    return { score: 0, verdict: '🔴 GRID SKIP', reasons: ['Indicatori incompleți (klines insuficient)'] };
+  }
   let score = 0;
   const reasons = [];
 
@@ -1130,8 +1136,10 @@ function calcEarlyScore(d) {
   }
 
   // Factor 4: Range 24h sănătos (5-30%)
-  const range24Pct = (d.high24 && d.low24 && d.lastPrice)
-    ? (d.high24 - d.low24) / d.lastPrice * 100 : null;
+  // FIX bug: normalizez la midPrice (centrul range-ului), nu la lastPrice care poate fi
+  // la high sau low → distorsiune. Folosim (high+low)/2 ca midPrice.
+  const range24Pct = (d.high24 && d.low24 && d.high24 > d.low24)
+    ? (d.high24 - d.low24) / ((d.high24 + d.low24) / 2) * 100 : null;
   if (range24Pct != null) {
     if (range24Pct >= 5 && range24Pct <= 30)  score += 8;
     else if (range24Pct > 30)                 score -= 5; // prea volatil
@@ -1147,7 +1155,7 @@ function calcEarlyScore(d) {
 // ═══════════════════════════════════════════════════════════════
 function calcSpringScore(d) {
   if (!d.highs || !d.lows || !d.closes || d.closes.length < 80) {
-    return { springScore: 0, isSpring: false, springInfo: null };
+    return { springScore: 0, isSpring: false, volRatio: null, springInfo: null };
   }
   const highs = d.highs, lows = d.lows, closes = d.closes;
   const n = closes.length;
@@ -1168,7 +1176,7 @@ function calcSpringScore(d) {
   const recovered = closeNow > rMin * 1.005; // recovery min 0.5% peste support
   const isSpring = undershoot && recovered;
 
-  if (!isSpring) return { springScore: 0, isSpring: false, springInfo: null };
+  if (!isSpring) return { springScore: 0, isSpring: false, volRatio: null, springInfo: null };
 
   let score = 0;
   // 1. Recovery strength: cât de sus a închis vs minRecent (max 30 pts)
@@ -1186,21 +1194,24 @@ function calcSpringScore(d) {
   else                                                  score -= 5; // > 6% = breakdown real
 
   // 3. RSI confluență — neutru/recuperare e best (40-58)
-  if (d.rsi >= 40 && d.rsi <= 58)        score += 18;
-  else if (d.rsi >= 35 && d.rsi <= 65)   score += 10;
-  else if (d.rsi > 70)                   score -= 8;
-  else if (d.rsi < 30)                   score += 5; // OS = bounce realist
+  // FIX bug: explicit null check ca să evităm null < 30 → true (coercie la 0) → bonus eronat
+  if (d.rsi != null) {
+    if (d.rsi >= 40 && d.rsi <= 58)        score += 18;
+    else if (d.rsi >= 35 && d.rsi <= 65)   score += 10;
+    else if (d.rsi > 70)                   score -= 8;
+    else if (d.rsi < 30)                   score += 5; // OS = bounce realist
+  }
 
   // 4. Volume spike pe spring/recovery (vs medie 30 bare)
+  let volRatio = null;
   if (d.volumes && d.volumes.length >= 30) {
     const volNow = d.volumes[d.volumes.length - 1];
     const volAvg30 = d.volumes.slice(-31, -1).reduce((a, b) => a + b, 0) / 30;
-    const volRatio = volAvg30 > 0 ? volNow / volAvg30 : 1;
+    volRatio = volAvg30 > 0 ? volNow / volAvg30 : 1;
     if (volRatio >= 2)        score += 20;
     else if (volRatio >= 1.5) score += 12;
     else if (volRatio >= 1)   score += 5;
     else                      score -= 5;
-    d.volRatio = volRatio;
   }
 
   // 5. Range quality — un range bine definit (rMax/rMin ratio rezonabil)
@@ -1213,6 +1224,7 @@ function calcSpringScore(d) {
   return {
     springScore: score,
     isSpring: true,
+    volRatio, // returnat explicit (FIX bug side-effect mutation)
     springInfo: {
       undershootPct: undershootPct.toFixed(2),
       recoveryPct: recoveryPct.toFixed(2),
@@ -1332,7 +1344,8 @@ async function runScan() {
           ...enriched,
           score: grid.score, verdict: grid.verdict, reasons: grid.reasons,
           earlyScore,
-          springScore: spring.springScore, isSpring: spring.isSpring, springInfo: spring.springInfo,
+          springScore: spring.springScore, isSpring: spring.isSpring,
+          volRatio: spring.volRatio, springInfo: spring.springInfo,
         };
         // Premium = multi-confluence Grid + Early + Spring
         const premium = calcPremiumScore(partial);
@@ -1386,12 +1399,17 @@ function applyGridFilters(rows) {
   const rsiMax = parseFloat($('rsiMax').value) || 100;
   const v = filterState.grid.verdict;
 
-  let f = applyWatchlistFilter(rows).filter(r =>
-    (r.score || 0) >= minScore &&
-    (r.adx || 0) <= maxAdx &&
-    (r.dailyVolPct || 0) >= minVol &&
-    r.rsi >= rsiMin && r.rsi <= rsiMax
-  );
+  let f = applyWatchlistFilter(rows).filter(r => {
+    // Score min
+    if ((r.score || 0) < minScore) return false;
+    // ADX max — fail-closed: dacă ADX null/undefined, exclude (nu „trece" cu 0)
+    if (r.adx == null || r.adx > maxAdx) return false;
+    // Vol min — fail-closed similar
+    if (r.dailyVolPct == null || r.dailyVolPct < minVol) return false;
+    // RSI range — null deja eșuează la comparison NaN propagation, dar explicit clarity
+    if (r.rsi == null || r.rsi < rsiMin || r.rsi > rsiMax) return false;
+    return true;
+  });
   if (v === 'ready') f = f.filter(r => r.verdict === '🟢 GRID READY');
   else if (v === 'mixed') f = f.filter(r => r.verdict === '🟡 GRID MIXED');
   else if (v === 'skip')  f = f.filter(r => r.verdict === '🔴 GRID SKIP');
@@ -2490,9 +2508,10 @@ function applyPreset(value) {
 }
 
 function saveCurrentAsPreset() {
-  const name = window.prompt('Numele preset-ului (max 60 caractere):', '');
+  const name = window.prompt('Numele preset-ului (max 60 caractere; nu folosi „::"):', '');
   if (!name || !name.trim()) return;
-  const trimmed = name.trim().slice(0, 60);
+  // FIX bug: interzic „::" în nume ca să nu rupă parsing-ul value-urilor `default::name`/`user::name`
+  const trimmed = name.trim().slice(0, 60).replace(/::/g, ':');
   if (DEFAULT_PRESETS[trimmed]) { alert('Acest nume e folosit de un preset default. Alege altul.'); return; }
 
   // Collect filtre curente per tab
