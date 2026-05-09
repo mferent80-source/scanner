@@ -367,6 +367,18 @@
   <button id="tgBtn" title="Configurează Telegram alerts">📡 TG</button>
 </header>
 
+<!-- PRESET BAR — switching rapid între seturi de filtre pre-configurate -->
+<div class="filter-bar" id="presetBar" style="background:linear-gradient(135deg,rgba(247,147,26,.08),rgba(255,216,107,.04))">
+  <label>🎯 Preset:</label>
+  <select id="presetSelect" style="min-width:220px;font-size:11px">
+    <option value="">— Custom (filtre manuale) —</option>
+  </select>
+  <button id="presetApplyBtn" title="Aplică preset-ul selectat (schimbă tab + filtre)" class="primary">↪ Apply</button>
+  <button id="presetSaveBtn" title="Salvează filtrele curente ca preset nou">💾 Save as…</button>
+  <button id="presetDeleteBtn" title="Șterge preset-ul user (default-urile nu pot fi șterse)" style="opacity:.7">🗑️</button>
+  <span class="filter-meta" id="presetInfo">selectează un preset sau salvează filtre curente</span>
+</div>
+
 <!-- TAB BAR — Grid/Early/Spring active (F2); Premium = F3 -->
 <div class="tab-bar">
   <button class="tab active" data-tab="grid">🤖 Futures Grid <span class="tab-count" id="gridCount">—</span></button>
@@ -1855,6 +1867,183 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+//  FILTER PRESETS — seturi pre-configurate de filtre, persistente
+//  Stocate în `pionex_filter_presets_v1` cu format { name: { tab, filters: {id: value} } }
+// ═══════════════════════════════════════════════════════════════
+const LS_PRESETS = 'pionex_filter_presets_v1';
+
+// Default presets — read-only, nu pot fi șterse
+const DEFAULT_PRESETS = {
+  '🤖 Range Grid (high-prob bots)': {
+    tab: 'grid',
+    filters: { minScore: '70', maxAdx: '25', minVol: '1.5', rsiMin: '40', rsiMax: '60' },
+    chips: { 'data-verdict': 'ready' },
+  },
+  '🌱 Bull early entry (sweet spot)': {
+    tab: 'early',
+    filters: { minEarly: '60', minChg24Early: '0.5', maxChg24Early: '4', rsiMinEarly: '42', rsiMaxEarly: '60' },
+    chips: { 'data-early': 'strong' },
+  },
+  '💎 Spring conservativ (high R:R)': {
+    tab: 'spring',
+    filters: { minSpring: '65', minRecovery: '2', minVolRatio: '1.5' },
+    chips: { 'data-spring': 'strong' },
+  },
+  '⭐ Premium 3/3 confluențe (rare)': {
+    tab: 'premium',
+    filters: { minPremium: '75', minConfluence: '3', reqSpring: false, reqGrid: false },
+    chips: { 'data-premium': 'diamond' },
+  },
+  '🤖+💎 Spring → Grid (post-spring grid)': {
+    tab: 'premium',
+    filters: { minPremium: '60', minConfluence: '2', reqSpring: true, reqGrid: true },
+    chips: { 'data-premium': 'all' },
+  },
+};
+
+function loadUserPresets() {
+  try { return JSON.parse(localStorage.getItem(LS_PRESETS) || '{}'); }
+  catch (e) { return {}; }
+}
+function saveUserPresets(presets) {
+  try { localStorage.setItem(LS_PRESETS, JSON.stringify(presets)); } catch (e) {}
+}
+
+function rebuildPresetSelect() {
+  const sel = $('presetSelect');
+  if (!sel) return;
+  // Salvăm valoarea curent selectată ca să o restaurăm dacă mai există
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Custom (filtre manuale) —</option>';
+  // Default presets (group)
+  const optDefault = document.createElement('optgroup');
+  optDefault.label = 'Default (read-only)';
+  Object.keys(DEFAULT_PRESETS).forEach(name => {
+    const o = document.createElement('option');
+    o.value = `default::${name}`; o.textContent = name;
+    optDefault.appendChild(o);
+  });
+  sel.appendChild(optDefault);
+  // User presets (group)
+  const userPresets = loadUserPresets();
+  if (Object.keys(userPresets).length) {
+    const optUser = document.createElement('optgroup');
+    optUser.label = 'My presets';
+    Object.keys(userPresets).forEach(name => {
+      const o = document.createElement('option');
+      o.value = `user::${name}`; o.textContent = '⭐ ' + name;
+      optUser.appendChild(o);
+    });
+    sel.appendChild(optUser);
+  }
+  if (prev) sel.value = prev;
+}
+
+function getPresetByValue(value) {
+  if (!value) return null;
+  const [type, name] = value.split('::');
+  if (type === 'default') return DEFAULT_PRESETS[name];
+  if (type === 'user') return loadUserPresets()[name];
+  return null;
+}
+
+function applyPreset(value) {
+  const preset = getPresetByValue(value);
+  if (!preset) { $('presetInfo').textContent = 'selectează un preset valid'; return; }
+
+  // 1. Switch la tab-ul targetat (dacă e diferit)
+  if (preset.tab && preset.tab !== currentTab) {
+    const tabBtn = document.querySelector(`.tab[data-tab="${preset.tab}"]`);
+    if (tabBtn && !tabBtn.disabled) tabBtn.click();
+  }
+
+  // 2. Setează inputurile (filtre)
+  if (preset.filters) {
+    Object.entries(preset.filters).forEach(([id, v]) => {
+      const el = $(id);
+      if (!el) return;
+      if (el.type === 'checkbox') el.checked = !!v;
+      else el.value = v;
+    });
+  }
+
+  // 3. Setează chip-urile active (verdict/quality/tier)
+  if (preset.chips) {
+    Object.entries(preset.chips).forEach(([attr, val]) => {
+      document.querySelectorAll(`.chip[${attr}]`).forEach(c => {
+        c.classList.toggle('active', c.dataset[attr.replace('data-', '')] === val);
+      });
+      // Update filterState
+      if (attr === 'data-verdict') filterState.grid.verdict = val;
+      else if (attr === 'data-early') filterState.early.quality = val;
+      else if (attr === 'data-spring') filterState.spring.quality = val;
+      else if (attr === 'data-premium') filterState.premium.tier = val;
+    });
+  }
+
+  saveState();
+  renderResults();
+  $('presetInfo').textContent = `aplicat: ${value.split('::')[1]}`;
+}
+
+function saveCurrentAsPreset() {
+  const name = window.prompt('Numele preset-ului (max 60 caractere):', '');
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim().slice(0, 60);
+  if (DEFAULT_PRESETS[trimmed]) { alert('Acest nume e folosit de un preset default. Alege altul.'); return; }
+
+  // Collect filtre curente per tab
+  const activeFilterIds = {
+    grid: ['minScore', 'maxAdx', 'minVol', 'rsiMin', 'rsiMax'],
+    early: ['minEarly', 'minChg24Early', 'maxChg24Early', 'rsiMinEarly', 'rsiMaxEarly'],
+    spring: ['minSpring', 'minRecovery', 'minVolRatio'],
+    premium: ['minPremium', 'minConfluence', 'reqSpring', 'reqGrid'],
+  };
+  const filters = {};
+  (activeFilterIds[currentTab] || []).forEach(id => {
+    const el = $(id);
+    if (el) filters[id] = el.type === 'checkbox' ? el.checked : el.value;
+  });
+  // Chip activ pe tab-ul curent
+  const chipAttrMap = { grid: 'verdict', early: 'early', spring: 'spring', premium: 'premium' };
+  const chips = {};
+  const attr = chipAttrMap[currentTab];
+  if (attr) {
+    const activeChip = document.querySelector(`.chip[data-${attr}].active`);
+    if (activeChip) chips[`data-${attr}`] = activeChip.dataset[attr];
+  }
+
+  const userPresets = loadUserPresets();
+  userPresets[trimmed] = { tab: currentTab, filters, chips };
+  saveUserPresets(userPresets);
+  rebuildPresetSelect();
+  $('presetSelect').value = `user::${trimmed}`;
+  $('presetInfo').textContent = `salvat: ${trimmed} (tab: ${currentTab})`;
+}
+
+function deleteCurrentPreset() {
+  const value = $('presetSelect').value;
+  if (!value) { alert('Niciun preset selectat'); return; }
+  const [type, name] = value.split('::');
+  if (type === 'default') { alert('Default presets nu pot fi șterse.'); return; }
+  if (!window.confirm(`Sigur vrei să ștergi preset-ul „${name}"?`)) return;
+  const userPresets = loadUserPresets();
+  delete userPresets[name];
+  saveUserPresets(userPresets);
+  rebuildPresetSelect();
+  $('presetSelect').value = '';
+  $('presetInfo').textContent = `șters: ${name}`;
+}
+
+// Wire preset bar
+$('presetApplyBtn')?.addEventListener('click', () => applyPreset($('presetSelect').value));
+$('presetSelect')?.addEventListener('change', (e) => {
+  if (e.target.value) applyPreset(e.target.value);
+});
+$('presetSaveBtn')?.addEventListener('click', saveCurrentAsPreset);
+$('presetDeleteBtn')?.addEventListener('click', deleteCurrentPreset);
+
+// ═══════════════════════════════════════════════════════════════
 //  AUTO-REFRESH + ALERTS (Telegram via tg-alerts.js + browser notifications)
 //  Detectează PREMIUM (💎+/⭐) NOI între scan-uri și notifică.
 // ═══════════════════════════════════════════════════════════════
@@ -1948,6 +2137,7 @@ window.addEventListener('DOMContentLoaded', () => {
 // Init — load persisted state + sync UI + first render
 loadWatchlist();
 loadState();
+rebuildPresetSelect();
 applyLoadedStateToUI();
 setStatus('', 'ready · apasă SCAN');
 // Populez header-ul + stats strip (înainte de primul scan)
