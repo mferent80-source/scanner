@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pionex Scanner — Opportunity Hub</title>
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23f7931a'/><stop offset='1' stop-color='%23ffd86b'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='%230b0f17'/><circle cx='32' cy='32' r='18' fill='none' stroke='url(%23g)' stroke-width='4'/><circle cx='32' cy='32' r='5' fill='%23ffd86b'/><path d='M14 32 L26 32 M38 32 L50 32 M32 14 L32 26 M32 38 L32 50' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0b0f17;
+    --bg-grad:radial-gradient(1200px 600px at 50% -200px, #141c2e 0%, #0b0f17 55%);
+    --panel:#141a28; --panel2:#1d2537; --panel3:#222b40;
+    --border:#2a3247; --border-soft:#1f2638;
+    --text:#e8eef5; --text-dim:#c1c9d6; --muted:#8892a6;
+    --bull-s:#22d66b; --bull:#1ba858; --bull-bg:rgba(34,214,107,.12);
+    --bear-s:#ff4d4d; --bear:#cc3434; --bear-bg:rgba(255,77,77,.12);
+    --warn:#d4892c; --warn-bg:rgba(212,137,44,.15);
+    --hot:#e87a2e;
+    --accent:#5bb0ff; --accent2:#8b6fff; --gold:#ffd86b;
+    --crypto-1:#f7931a; --crypto-2:#ffd86b;
+    --focus:rgba(91,176,255,.25);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+    --shadow:0 4px 14px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.2);
+    --radius:12px; --radius-sm:8px;
+    --ease:cubic-bezier(.4,0,.2,1);
+    color-scheme:dark;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); background-image: var(--bg-grad);
+    background-attachment: fixed;
+    color: var(--text); padding: 12px;
+    font-size: 13px; min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+  }
+
+  /* === Header === */
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    background: linear-gradient(180deg, rgba(30,38,57,.85), rgba(20,26,40,.92));
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    padding: 11px 14px; border-radius: var(--radius);
+    border: 1px solid var(--border); margin-bottom: 10px;
+    box-shadow: var(--shadow);
+    position: sticky; top: 8px; z-index: 50;
+  }
+  header h1 {
+    font-size: 14px; font-weight: 700; letter-spacing: -.2px;
+    background: linear-gradient(90deg, var(--crypto-1) 0%, var(--crypto-2) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-right: auto; white-space: nowrap;
+  }
+  .ver-badge {
+    display: inline-block; padding: 2px 7px; margin-left: 8px; border-radius: 4px;
+    background: rgba(91,176,255,.15); color: #5bb0ff; border: 1px solid rgba(91,176,255,.4);
+    font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+    vertical-align: middle; letter-spacing: .3px;
+    -webkit-text-fill-color: #5bb0ff; /* reset peste gradientul h1 */
+  }
+  .nav-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--panel2); border: 1px solid var(--border);
+    padding: 6px 11px; border-radius: var(--radius-sm);
+    color: var(--text); text-decoration: none; font-size: 11px; font-weight: 600;
+    transition: all .15s var(--ease);
+  }
+  .nav-link:hover { background: var(--accent); border-color: var(--accent); color: #000; transform: translateY(-1px); }
+
+  button, select, input {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    padding: 5px 9px; border-radius: var(--radius-sm); font-size: 11px; font-family: inherit;
+    transition: all .15s var(--ease);
+  }
+  button { cursor: pointer; font-weight: 600; }
+  button:hover { background: var(--accent); border-color: var(--accent); color: #000; transform: translateY(-1px); }
+  button.primary {
+    background: linear-gradient(135deg, var(--crypto-1), var(--crypto-2));
+    border-color: transparent; color: #1a1a1a;
+    box-shadow: 0 2px 8px rgba(247,147,26,.3);
+  }
+  button.primary:hover { filter: brightness(1.08); color: #1a1a1a; }
+  button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  select:focus, input:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--focus);
+  }
+
+  .ctl { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; }
+  .ctl label { color: var(--muted); font-weight: 500; }
+  .status-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); margin-right: 5px;
+  }
+  .status-dot.ok { background: var(--bull-s); box-shadow: 0 0 6px var(--bull-s); }
+  .status-dot.load { background: var(--warn); animation: pulse 1s infinite; }
+  .status-dot.err { background: var(--bear-s); }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  /* === Panel base === */
+  .panel-box {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow-sm);
+    overflow: hidden; margin-bottom: 10px;
+  }
+  .panel-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(29,37,55,.6), rgba(20,26,40,.4));
+  }
+  .panel-head h3 {
+    font-size: 12px; font-weight: 700; letter-spacing: .3px;
+    text-transform: uppercase; color: var(--text);
+  }
+  .panel-head .panel-sub { font-size: 10.5px; color: var(--muted); margin-left: auto; }
+  .panel-head .icon { font-size: 14px; }
+
+  /* === Tab bar === */
+  .tab-bar {
+    display: flex; flex-wrap: wrap; gap: 4px; padding: 6px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 10px; box-shadow: var(--shadow-sm);
+  }
+  .tab {
+    background: transparent; border: 1px solid transparent; color: var(--text-dim);
+    padding: 8px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: all .15s var(--ease);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tab:hover:not(:disabled) { background: var(--panel2); color: var(--text); border-color: var(--border); transform: none; }
+  .tab.active {
+    background: linear-gradient(135deg, var(--crypto-1), var(--crypto-2));
+    color: #1a1a1a; border-color: transparent;
+    box-shadow: 0 2px 8px rgba(247,147,26,.3);
+  }
+  .tab:disabled {
+    opacity: .55; cursor: not-allowed;
+    background: transparent; color: var(--muted);
+  }
+  .tab-count {
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+    background: rgba(91,176,255,.15); color: #5bb0ff; min-width: 22px; text-align: center;
+  }
+  .tab.active .tab-count { background: rgba(0,0,0,.18); color: #1a1a1a; }
+  .badge-soon {
+    font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 3px;
+    background: var(--panel3); color: var(--muted); letter-spacing: .3px; text-transform: uppercase;
+  }
+
+  /* === Filter bar === */
+  .filter-bar {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 9px 14px; margin-bottom: 10px; box-shadow: var(--shadow-sm);
+  }
+  .filter-bar label {
+    font-size: 11px; color: var(--muted); margin-right: 4px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .4px;
+  }
+  .chip {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text-dim);
+    padding: 4px 11px; border-radius: 999px; font-size: 10.5px; cursor: pointer;
+    transition: all .15s var(--ease); font-weight: 700;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--text); transform: translateY(-1px); }
+  .chip.active {
+    background: linear-gradient(135deg, var(--crypto-1), var(--crypto-2));
+    color: #1a1a1a; border-color: transparent;
+    box-shadow: 0 2px 8px rgba(247,147,26,.3);
+  }
+  .chip.bull.active { background: var(--bull-s); border-color: var(--bull-s); color: #000; box-shadow: 0 2px 8px rgba(34,214,107,.3); }
+  .chip.bear.active { background: var(--bear-s); border-color: var(--bear-s); color: #fff; box-shadow: 0 2px 8px rgba(255,77,77,.3); }
+  .chip.warn.active { background: var(--warn); border-color: var(--warn); color: #000; box-shadow: 0 2px 8px rgba(212,137,44,.35); }
+  .filter-bar .ctl input { width: 60px; }
+  .filter-meta {
+    margin-left: auto; font-size: 11px; color: var(--muted); font-weight: 600;
+  }
+
+  /* === Stats strip === */
+  .stats-strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: 8px; margin-bottom: 10px;
+  }
+  .stat-tile {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 14px; display: flex; flex-direction: column; gap: 2px;
+    position: relative; overflow: hidden; box-shadow: var(--shadow-sm);
+  }
+  .stat-tile::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent);
+  }
+  .stat-tile.bull::before { background: var(--bull-s); }
+  .stat-tile.warn::before { background: var(--warn); }
+  .stat-tile.bear::before { background: var(--bear-s); }
+  .stat-tile.gold::before { background: var(--gold); }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
+  .stat-value { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.3px; }
+  .stat-sub { font-size: 10px; color: var(--muted); }
+
+  /* === Results table === */
+  .scanner-wrap { overflow-x: auto; overflow-y: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  thead {
+    background: rgba(20,26,40,.55); position: sticky; top: 0; z-index: 2;
+  }
+  th {
+    padding: 8px 6px; text-align: center; font-weight: 700; font-size: 10px;
+    letter-spacing: .4px; text-transform: uppercase; cursor: pointer; user-select: none;
+    border-bottom: 1px solid var(--border); color: var(--muted);
+  }
+  th:hover { background: rgba(91,176,255,.08); color: var(--text); }
+  th.sorted { color: var(--accent); }
+  th.sorted::after { content: ' ▼'; color: var(--accent); }
+  th.sorted.asc::after { content: ' ▲'; color: var(--accent); }
+  th.left { text-align: left; padding-left: 14px; }
+  tbody tr { cursor: pointer; border-bottom: 1px solid var(--border-soft); transition: background .12s var(--ease); }
+  tbody tr:hover { background: rgba(91,176,255,.05); }
+  tbody tr:nth-child(even) { background: rgba(255,255,255,.012); }
+  tbody tr:nth-child(even):hover { background: rgba(91,176,255,.08); }
+  td { padding: 6px 6px; text-align: center; vertical-align: middle; }
+  td.left { text-align: left; padding-left: 14px; }
+
+  .sym-name { font-weight: 700; font-size: 12px; letter-spacing: -.2px; }
+  .sym-sub { color: var(--muted); font-size: 10px; }
+  .badge {
+    display: inline-block; padding: 2px 7px; border-radius: 4px; font-weight: 700; font-size: 10px;
+    letter-spacing: .2px; font-variant-numeric: tabular-nums;
+  }
+  .badge.up    { background: var(--bull-bg); color: var(--bull-s); border: 1px solid rgba(34,214,107,.35); }
+  .badge.down  { background: var(--bear-bg); color: var(--bear-s); border: 1px solid rgba(255,77,77,.35); }
+  .badge.warn  { background: var(--warn-bg); color: var(--warn);   border: 1px solid rgba(212,137,44,.35); }
+  .badge.neut  { background: var(--panel2);  color: var(--muted);  border: 1px solid var(--border); }
+  .badge.gold  { background: rgba(255,216,107,.15); color: var(--gold); border: 1px solid rgba(255,216,107,.4); }
+  .badge.score-hi { background: linear-gradient(135deg, var(--crypto-1), var(--crypto-2)); color: #1a1a1a; }
+  .verdict-cell { font-size: 10.5px; font-weight: 700; letter-spacing: .2px; }
+  .verdict-cell.ready { color: var(--bull-s); }
+  .verdict-cell.mixed { color: var(--warn); }
+  .verdict-cell.skip  { color: var(--bear-s); }
+
+  .mtf-dots { display: inline-flex; gap: 3px; align-items: center; justify-content: center; }
+  .mtf-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .mtf-dot.range    { background: var(--bull-s); }
+  .mtf-dot.trending { background: var(--bear-s); }
+  .mtf-dot.mixed    { background: var(--warn); }
+  .mtf-dot.unknown  { background: var(--panel3); border: 1px solid var(--border); }
+
+  .open-btn {
+    background: transparent; border: 1px solid var(--accent); color: var(--accent);
+    padding: 2px 8px; font-size: 10px; font-weight: 700; border-radius: 4px;
+  }
+  .open-btn:hover { background: var(--accent); color: #fff; }
+  .pionex-link {
+    display: inline-block; padding: 2px 7px; border-radius: 4px;
+    background: linear-gradient(135deg, var(--crypto-1), var(--crypto-2));
+    color: #1a1a1a; font-weight: 700; font-size: 10px; text-decoration: none;
+  }
+  .pionex-link:hover { filter: brightness(1.08); }
+
+  /* === Empty / loading === */
+  .empty {
+    padding: 40px 20px; text-align: center; color: var(--muted); font-size: 12px;
+  }
+  .empty-icon { font-size: 38px; margin-bottom: 10px; opacity: .55; }
+  .empty-title { font-size: 14px; font-weight: 700; color: var(--text-dim); margin-bottom: 5px; }
+  .empty-sub { font-size: 11px; line-height: 1.5; max-width: 480px; margin: 0 auto; }
+
+  /* === Progress bar === */
+  .progress {
+    height: 3px; background: var(--panel2); border-radius: 2px; overflow: hidden; margin-top: 6px;
+  }
+  .progress-bar {
+    height: 100%; background: linear-gradient(90deg, var(--crypto-1), var(--crypto-2));
+    transition: width .3s var(--ease); width: 0%;
+  }
+
+  /* === Footer === */
+  footer {
+    margin-top: 14px; padding: 10px 14px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 10.5px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* === Scrollbars === */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* === Mobile === */
+  @media (max-width: 760px) {
+    body { padding: 8px; font-size: 12px; }
+    header { padding: 8px 11px; gap: 6px; position: relative; top: 0; }
+    header h1 { font-size: 12px; width: 100%; }
+    th, td { padding: 5px 4px; font-size: 10px; }
+    .hide-mobile { display: none; }
+  }
+</style>
+
+<!-- PWA metadata -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b0f17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pionex Scanner">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+</head>
+<body>
+
+<header>
+  <h1>🤖 Pionex Scanner <span class="ver-badge" title="Versiune cache SW (debug deploy)">v43</span></h1>
+  <a href="scanner-hub.html" class="nav-link">🏠 Hub</a>
+  <a href="scanner-crypto.html" class="nav-link">🪙 Crypto</a>
+  <a href="crypto-events.html" class="nav-link">⚡ Events</a>
+  <a href="news.html" class="nav-link">📰 News</a>
+  <a href="watchlist.html" class="nav-link">👁️ Watchlist</a>
+  <a href="pump-radar.html" class="nav-link" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#ef4444">🚨 Pump</a>
+  <a href="smart-trade-long.html" class="nav-link">🎯 Smart</a>
+  <a href="settings.html" class="nav-link">⚙️</a>
+  <span class="ctl"><span class="status-dot" id="statusDot"></span><span id="statusText">Ready</span></span>
+  <div class="ctl"><label>Universe:</label>
+    <select id="universeSize" title="Câte simboluri Pionex (sortate după volum) intră la scanare. „Toate" = TOT ce e Pionex+Binance Futures (~200-300, durează 2-3 min).">
+      <option value="30">Top 30</option>
+      <option value="50" selected>Top 50</option>
+      <option value="100">Top 100</option>
+      <option value="200">Top 200</option>
+      <option value="0">Toate (lent)</option>
+    </select>
+  </div>
+  <button class="primary" id="scanBtn">↻ SCAN</button>
+  <button id="pauseBtn" title="Oprește scanarea în curs">⏸ Stop</button>
+</header>
+
+<!-- TAB BAR (4 setup-uri — F1: doar Grid activ) -->
+<div class="tab-bar">
+  <button class="tab active" data-tab="grid">🤖 Futures Grid <span class="tab-count" id="gridCount">—</span></button>
+  <button class="tab" data-tab="early" disabled title="Vine în Faza 2">🌱 Early Buy <span class="badge-soon">F2</span></button>
+  <button class="tab" data-tab="spring" disabled title="Vine în Faza 2">💎 Spring <span class="badge-soon">F2</span></button>
+  <button class="tab" data-tab="premium" disabled title="Vine în Faza 3">⭐ Premium <span class="badge-soon">F3</span></button>
+</div>
+
+<!-- FILTER BAR (specific Grid; alte tab-uri vor avea filtre proprii) -->
+<div class="filter-bar" id="gridFilters">
+  <label>Verdict:</label>
+  <button class="chip active" data-verdict="all">Toate</button>
+  <button class="chip bull" data-verdict="ready">🟢 READY</button>
+  <button class="chip warn" data-verdict="mixed">🟡 MIXED</button>
+  <button class="chip bear" data-verdict="skip">🔴 SKIP</button>
+  <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
+  <span class="ctl"><label>Score min:</label><input type="number" id="minScore" value="50" min="0" max="100" step="5"></span>
+  <span class="ctl"><label>ADX max:</label><input type="number" id="maxAdx" value="40" min="10" max="100" step="5"></span>
+  <span class="ctl"><label>Vol/zi min %:</label><input type="number" id="minVol" value="1" min="0" max="20" step="0.5"></span>
+  <span class="ctl"><label>RSI:</label><input type="number" id="rsiMin" value="30" min="0" max="100" step="5" style="width:50px"><span style="color:var(--muted);font-weight:500">–</span><input type="number" id="rsiMax" value="70" min="0" max="100" step="5" style="width:50px"></span>
+  <span class="filter-meta" id="resultCount">—</span>
+</div>
+
+<!-- STATS STRIP -->
+<div class="stats-strip" id="statsStrip">
+  <div class="stat-tile">
+    <div class="stat-label">Universe Pionex</div>
+    <div class="stat-value" id="statUniverse">—</div>
+    <div class="stat-sub">whitelist verificată</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-label">Scanate</div>
+    <div class="stat-value" id="statScanned">—</div>
+    <div class="stat-sub" id="statScannedSub">apasă SCAN</div>
+  </div>
+  <div class="stat-tile bull">
+    <div class="stat-label">🟢 READY</div>
+    <div class="stat-value" id="statReady">—</div>
+    <div class="stat-sub">grid candidate</div>
+  </div>
+  <div class="stat-tile warn">
+    <div class="stat-label">🟡 MIXED</div>
+    <div class="stat-value" id="statMixed">—</div>
+    <div class="stat-sub">verifică pe TV</div>
+  </div>
+  <div class="stat-tile bear">
+    <div class="stat-label">🔴 SKIP</div>
+    <div class="stat-value" id="statSkip">—</div>
+    <div class="stat-sub">trending sau zgomot</div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="panel-box scanner-wrap" id="resultsBox">
+  <div class="panel-head"><span class="icon">🤖</span><h3>Pionex Futures Grid — top oportunități</h3>
+    <span class="panel-sub" id="scannerSub">apasă ↻ SCAN ca să detectezi</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th data-sort="rank">#</th>
+        <th data-sort="symbol" class="left">Symbol</th>
+        <th data-sort="currentPrice">Preț</th>
+        <th data-sort="adx" title="Sweet spot pentru grid: ADX < 25">ADX</th>
+        <th data-sort="rsi" title="Sweet spot 40-60">RSI</th>
+        <th data-sort="rangePct" title="Range 100h: sweet 8-25%">Range%</th>
+        <th data-sort="bufferMin" title="Min top/bottom buffer: 3-5%+">Buffer</th>
+        <th data-sort="dailyVolPct" title="ATR/preț: sweet 1.5-5%/zi">Vol/zi</th>
+        <th data-sort="mtfRangeCount" title="MTF range count (15m/1h/4h)">MTF</th>
+        <th data-sort="score" class="sorted">Score</th>
+        <th data-sort="verdict">Verdict</th>
+        <th>Pionex</th>
+      </tr>
+    </thead>
+    <tbody id="resultsBody">
+      <tr><td colspan="12" class="empty">
+        <div class="empty-icon">🤖</div>
+        <div class="empty-title">Apasă ↻ SCAN ca să detectezi oportunități</div>
+        <div class="empty-sub">Scanner-ul fetch-uiește klines 1h pentru top simboluri Pionex de pe Binance Futures, calculează ADX/RSI/Range/Buffer/Vol/MTF și marchează cele mai potrivite pentru grid trading.</div>
+      </td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PROGRESS BAR -->
+<div class="progress"><div class="progress-bar" id="progBar"></div></div>
+
+<footer>
+  <span>Surse: <a href="https://www.binance.com" target="_blank" rel="noopener">Binance Futures</a> (klines 1h/4h/15m) · whitelist Pionex Apr 2026</span>
+  <span id="footerRight">~430 coin-uri în whitelist · click pe rând → TradingView</span>
+</footer>
+
+<script>
+"use strict";
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+const BIN_FUT = 'https://fapi.binance.com/fapi/v1';
+const FETCH_TIMEOUT_MS = 8000;
+const SCAN_DELAY_MS = 100;       // pauză între simboluri (rate limit safety)
+const MTF_DELAY_MS = 50;          // pauză între request-uri MTF (15m/1h/4h)
+
+// ═══════════════════════════════════════════════════════════════
+//  PIONEX WHITELIST — ~430 coin-uri suportate (futures grid + spot)
+//  Extras din premarket_scanner v65 (Apr 2026)
+// ═══════════════════════════════════════════════════════════════
+const PIONEX_WHITELIST = new Set([
+  '1INCH','A','AAVE','ACE','ACH','ACT','ACU','ADA','AERO','AEVO',
+  'AGLD','AGT','AIN','AIO','AIXBT','AKE','AKT','ALCH','ALGO','ALL',
+  'ALLO','ALPINE','ALT','ANIME','ANKR','APE','API3','APR','APT','AR',
+  'ARB','ARC','ARIA','ARK','ARKM','ARPA','ASR','ASTER','ASTR','AT',
+  'ATH','ATOM','AUCTION','AVAX','AVNT','AWE','AXL','AXS','AZTEC','B',
+  'BABY','BAN','BANANA','BANANAS31','BAND','BANK','BARD','BAS','BASED','BAT',
+  'BB','BCH','BEAMX','BEAT','BEL','BERA','BICO','BIGTIME','BIO','BIRB',
+  'BLESS','BLUAI','BLUR','BNB','BOME','BR','BRETT','BREV','BSB','BSV',
+  'BTC','BTR','BULLA','C98','CAKE','CATI','CC','CETUS','CFG','CFX',
+  'CHIP','CHZ','CKB','CLANKER','CLO','COAI','COLLECT','COMP','COOKIE','COTI',
+  'COW','CROSS','CRV','CVX','CYBER','CYS','DASH','DIA','DOGE','DOGS',
+  'DOLO','DOT','DRIFT','DUSK','DYM','EDGE','EDU','EGLD','EIGEN','ELSA',
+  'ENA','ENJ','ENS','ENSO','ESP','ESPORTS','ETC','ETH','ETHFI','EUL',
+  'EVAA','F','FARTCOIN','FET','FF','FHE','FIGHT','FIL','FLOCK','FLUID',
+  'FOGO','FOLKS','FRAX','GALA','GAS','GENIUS','GIGGLE','GMT','GMX','GOAT',
+  'GPS','GRASS','GRIFFAIN','GRT','GUA','GUN','GWEI','H','HAEDAL','HANA',
+  'HBAR','HEMI','HFT','HIGH','HMSTR','HOLO','HOME','HUMA','HYPE','ICNT',
+  'ICP','IDOL','ILV','IMX','IN','INIT','INJ','INX','IO','IOST',
+  'IOTA','IP','IRYS','JASMY','JELLYJELLY','JTO','JUP','KAIA','KAITO','KAS',
+  'KAT','KAVA','KERNEL','KGEN','KITE','KMNO','KNC','LA','LAB','LAYER',
+  'LDO','LIGHT','LINEA','LINK','LISTA','LPT','LQTY','LSK','LTC','LUNA2',
+  'LYN','MAGIC','MAGMA','MANA','MANTA','MANTRA','MASK','MAV','MBOX','ME',
+  'MEGA','MELANIA','MEME','MERL','MET','METIS','MEW','MINA','MITO','MLN',
+  'MMT','MON','MOODENG','MOVE','MOVR','MTL','MUBARAK','MYX','NAORIS','NEAR',
+  'NEO','NFP','NIGHT','NIL','NMR','NOM','NOT','NXPC','OG','OGN',
+  'ON','ONDO','ONG','ONT','OP','OPEN','OPG','OPN','ORCA','ORDER',
+  'ORDI','PARTI','PAXG','PENDLE','PENGU','PEOPLE','PHA','PHB','PIEVERSE','PIPPIN',
+  'PIXEL','PLAY','PLUME','PNUT','POL','POLYX','POPCAT','PORTAL','POWER','POWR',
+  'PRL','PROMPT','PROVE','PTB','PYTH','Q','QNT','QTUM','RARE','RAVE',
+  'RECALL','RENDER','RESOLV','REZ','RIF','RIVER','RLC','ROBO','ROSE','RPL',
+  'RSR','RUNE','RVN','S','SAGA','SAHARA','SAND','SAPIEN','SCR','SCRT',
+  'SEI','SENT','SFP','SHELL','SIREN','SKL','SKR','SKY','SKYAI','SLP',
+  'SNX','SOL','SOLV','SOMI','SOON','SOPH','SPACE','SPELL','SPK','SPORTFUN',
+  'SPX','SQD','SSV','STABLE','STBL','STG','STO','STORJ','STRK','STX',
+  'SUI','SUN','SUPER','SUSHI','SXT','SYRUP','SYS','T','TA','TAC',
+  'TAIKO','TAKE','TAO','THE','THETA','TIA','TLM','TNSR','TON','TOSHI',
+  'TOWNS','TRADOOR','TRB','TREE','TRIA','TRUMP','TRUST','TRUTH','TRX','TST',
+  'TURBO','TURTLE','TUT','TWT','UAI','UB','UMA','UNI','US','USDC',
+  'USELESS','USTC','USUAL','VANRY','VELODROME','VET','VIRTUAL','VVV','W','WAL',
+  'WCT','WIF','WLD','WLFI','WOO','XAI','XAN','XAUT','XLM','XMR',
+  'XNY','XPIN','XPL','XRP','XTZ','XVG','XVS','YB','YFI','YGG',
+  'ZAMA','ZBT','ZEC','ZEN','ZEREBRO','ZETA','ZIL','ZKC','ZKP','ZORA',
+  'ZRO','ZRX'
+]);
+
+const isOnPionex = (coin) => PIONEX_WHITELIST.has(coin.toUpperCase().replace('USDT', ''));
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+let allResults = [];           // [{ symbol, currentPrice, adx, rsi, rangePct, bufferMin, dailyVolPct, mtfRangeCount, mtfTotal, score, verdict, ... }]
+let currentTab = 'grid';
+let scanRunning = false;
+let scanAborted = false;
+let sortKey = 'score';
+let sortAsc = false;
+let filterVerdict = 'all';
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════
+const $ = (id) => document.getElementById(id);
+
+function setStatus(state, text) {
+  const dot = $('statusDot');
+  dot.className = 'status-dot' + (state ? ' ' + state : '');
+  $('statusText').textContent = text;
+}
+
+function fmtUSD(n) {
+  if (n == null || isNaN(n)) return '—';
+  if (n >= 1)        return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (n >= 0.01)     return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  if (n >= 0.0001)   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 6 });
+  return '$' + n.toExponential(2);
+}
+
+function fmtPct(n, decimals = 1) {
+  if (n == null || isNaN(n)) return '—';
+  return n.toFixed(decimals) + '%';
+}
+
+async function fetchSafe(url, ms = FETCH_TIMEOUT_MS) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Trim ultima bară (live, încă deschisă) ca să folosim doar bare închise (mai robuste pentru indicatori).
+function trimLiveBar(klines) {
+  if (!Array.isArray(klines) || klines.length < 2) return klines;
+  return klines.slice(0, -1);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INDICATORS — port direct din premarket_scanner v65
+// ═══════════════════════════════════════════════════════════════
+function calcEMA(arr, period) {
+  if (!arr || arr.length < period) return null;
+  const k = 2 / (period + 1);
+  let ema = arr.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < arr.length; i++) ema = arr[i] * k + ema * (1 - k);
+  return ema;
+}
+
+function calcRSI(closes, period = 14) {
+  if (!closes || closes.length < period + 1) return null;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const ch = closes[i] - closes[i - 1];
+    if (ch >= 0) gains += ch; else losses -= ch;
+  }
+  let avgGain = gains / period, avgLoss = losses / period;
+  for (let i = period + 1; i < closes.length; i++) {
+    const ch = closes[i] - closes[i - 1];
+    avgGain = (avgGain * (period - 1) + (ch > 0 ? ch : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (ch < 0 ? -ch : 0)) / period;
+  }
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
+}
+
+// Wilder ADX simplificat
+function calcADX(highs, lows, closes, period = 14) {
+  if (!highs || highs.length < period * 2) return null;
+  const plusDM = [], minusDM = [], tr = [];
+  for (let i = 1; i < highs.length; i++) {
+    const upMove = highs[i] - highs[i - 1];
+    const dnMove = lows[i - 1] - lows[i];
+    plusDM.push(upMove > dnMove && upMove > 0 ? upMove : 0);
+    minusDM.push(dnMove > upMove && dnMove > 0 ? dnMove : 0);
+    const tr1 = highs[i] - lows[i];
+    const tr2 = Math.abs(highs[i] - closes[i - 1]);
+    const tr3 = Math.abs(lows[i] - closes[i - 1]);
+    tr.push(Math.max(tr1, tr2, tr3));
+  }
+  const smooth = (arr, p) => {
+    let s = arr.slice(0, p).reduce((a, b) => a + b, 0);
+    const out = [s];
+    for (let i = p; i < arr.length; i++) {
+      s = s - s / p + arr[i];
+      out.push(s);
+    }
+    return out;
+  };
+  const trS = smooth(tr, period);
+  const pdmS = smooth(plusDM, period);
+  const mdmS = smooth(minusDM, period);
+  const dx = [];
+  for (let i = 0; i < trS.length; i++) {
+    const pdi = 100 * pdmS[i] / trS[i];
+    const mdi = 100 * mdmS[i] / trS[i];
+    const sum = pdi + mdi;
+    dx.push(sum === 0 ? 0 : 100 * Math.abs(pdi - mdi) / sum);
+  }
+  if (dx.length < period) return null;
+  let adx = dx.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < dx.length; i++) adx = (adx * (period - 1) + dx[i]) / period;
+  return adx;
+}
+
+function calcATR(highs, lows, closes, period = 14) {
+  if (!highs || highs.length < period + 1) return null;
+  const tr = [];
+  for (let i = 1; i < highs.length; i++) {
+    const tr1 = highs[i] - lows[i];
+    const tr2 = Math.abs(highs[i] - closes[i - 1]);
+    const tr3 = Math.abs(lows[i] - closes[i - 1]);
+    tr.push(Math.max(tr1, tr2, tr3));
+  }
+  if (tr.length < period) return null;
+  let atr = tr.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < tr.length; i++) atr = (atr * (period - 1) + tr[i]) / period;
+  return atr;
+}
+
+// MTF check pe TF dat: 1 = range, -1 = trending, 0 = mixed/neutru
+async function fetchMTFRange(symbol, interval) {
+  try {
+    const r = await fetchSafe(`${BIN_FUT}/klines?symbol=${symbol}&interval=${interval}&limit=50`);
+    let d = await r.json();
+    if (!d || d.length < 25) return null;
+    d = trimLiveBar(d);
+    const closes = d.map(k => parseFloat(k[4]));
+    const ema9 = calcEMA(closes, 9);
+    const ema21 = calcEMA(closes, 21);
+    if (ema9 == null || ema21 == null) return null;
+    const trendStr = Math.abs(ema9 - ema21) / ema21 * 100;
+    const last20 = closes.slice(-20);
+    const high20 = Math.max(...last20), low20 = Math.min(...last20);
+    const range20Pct = (high20 - low20) / low20 * 100;
+    if (range20Pct < 10 && trendStr < 2) return 1;   // range
+    if (trendStr > 3) return -1;                     // trending
+    return 0;                                         // neutru/mixed
+  } catch (e) { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GRID SCANNER — port direct din premarket_scanner v65
+//  6 criterii: ADX (25 pts), RSI (15), Range% (15), Buffer (15), Vol (10), MTF (20)
+// ═══════════════════════════════════════════════════════════════
+async function gridScanSymbol(symbol) {
+  try {
+    const r = await fetchSafe(`${BIN_FUT}/klines?symbol=${symbol}&interval=1h&limit=100`);
+    let d = await r.json();
+    if (!d || d.length < 50) return null;
+    d = trimLiveBar(d);
+
+    const highs = d.map(k => parseFloat(k[2]));
+    const lows = d.map(k => parseFloat(k[3]));
+    const closes = d.map(k => parseFloat(k[4]));
+    const currentPrice = closes[closes.length - 1];
+
+    const adx = calcADX(highs, lows, closes, 14);
+    const rsi = calcRSI(closes, 14);
+
+    // Range pe ultimele 100 bare
+    const high100 = Math.max(...highs);
+    const low100 = Math.min(...lows);
+    const midPrice = (high100 + low100) / 2;
+    const rangePct = (high100 - low100) / midPrice * 100;
+
+    // Buffer adaptiv (mirror Bridge Pine logic): cu cât ADX e mai mare, cu atât ne extindem buffer-ul
+    const adxBufMult = adx < 25 ? 1.0 : adx < 40 ? 1.5 : adx < 60 ? 2.5 : 4.0;
+    const finalHigh = Math.max(currentPrice * (1 + 0.02 * adxBufMult), Math.min(high100, midPrice + (high100 - low100) * 0.4));
+    const finalLow = Math.min(currentPrice * 0.98, Math.max(low100, midPrice - (high100 - low100) * 0.4));
+    const bufHighPct = (finalHigh - currentPrice) / currentPrice * 100;
+    const bufLowPct = (currentPrice - finalLow) / currentPrice * 100;
+    const bufferMin = Math.min(bufHighPct, bufLowPct);
+
+    const atr = calcATR(highs, lows, closes, 14);
+    const dailyVolPct = atr ? atr / currentPrice * 100 : 0;
+
+    // MTF (15m, 1h, 4h)
+    await new Promise(r => setTimeout(r, MTF_DELAY_MS));
+    const mtf15 = await fetchMTFRange(symbol, '15m');
+    await new Promise(r => setTimeout(r, MTF_DELAY_MS));
+    const mtf1h = await fetchMTFRange(symbol, '1h');
+    await new Promise(r => setTimeout(r, MTF_DELAY_MS));
+    const mtf4h = await fetchMTFRange(symbol, '4h');
+
+    let mtfRangeCount = 0, mtfTotal = 0;
+    const mtfRaw = { '15m': mtf15, '1h': mtf1h, '4h': mtf4h };
+    [mtf15, mtf1h, mtf4h].forEach(v => {
+      if (v !== null) { mtfTotal++; if (v === 1) mtfRangeCount++; }
+    });
+
+    return {
+      symbol, currentPrice, adx, rsi,
+      rangePct, bufferMin, bufHighPct, bufLowPct,
+      dailyVolPct, finalHigh, finalLow,
+      mtfRangeCount, mtfTotal, mtfRaw,
+      ts: Date.now()
+    };
+  } catch (e) { return null; }
+}
+
+function gridScanScore(d) {
+  if (!d) return { score: 0, verdict: 'ERROR', reasons: ['Date lipsă'] };
+  let score = 0;
+  const reasons = [];
+
+  // 1. ADX (max 25 pts) — sweet < 20
+  if (d.adx < 20)        score += 25;
+  else if (d.adx < 25)   score += 20;
+  else if (d.adx < 30) { score += 10; reasons.push('ADX ' + d.adx.toFixed(1) + ' (slab trending)'); }
+  else if (d.adx < 40) { score += 0;  reasons.push('ADX ' + d.adx.toFixed(1) + ' (trending)'); }
+  else if (d.adx < 60) { score -= 10; reasons.push('ADX ' + d.adx.toFixed(1) + ' (strong trend)'); }
+  else                 { score -= 20; reasons.push('ADX ' + d.adx.toFixed(1) + ' (extreme trend ⛔)'); }
+
+  // 2. RSI (max 15 pts) — sweet 40-60
+  if (d.rsi >= 40 && d.rsi <= 60)      score += 15;
+  else if (d.rsi >= 35 && d.rsi <= 65) score += 10;
+  else if (d.rsi >= 30 && d.rsi <= 70){ score += 5;  reasons.push('RSI ' + d.rsi.toFixed(1) + ' (margin)'); }
+  else if (d.rsi > 70)                { score -= 5;  reasons.push('RSI ' + d.rsi.toFixed(1) + ' OB ⚠'); }
+  else                                { score -= 5;  reasons.push('RSI ' + d.rsi.toFixed(1) + ' OS ⚠'); }
+
+  // 3. Range% (max 15 pts) — sweet 8-25%
+  if (d.rangePct >= 8 && d.rangePct <= 25)      score += 15;
+  else if (d.rangePct >= 5 && d.rangePct <= 40) score += 10;
+  else if (d.rangePct < 3) { score -= 10; reasons.push('Range ' + d.rangePct.toFixed(1) + '% (prea mic)'); }
+  else if (d.rangePct > 50){ score -= 5;  reasons.push('Range ' + d.rangePct.toFixed(1) + '% (prea mare)'); }
+  else score += 5;
+
+  // 4. Buffer (max 15 pts) — min 3-5%
+  if (d.bufferMin >= 5)        score += 15;
+  else if (d.bufferMin >= 3)   score += 10;
+  else if (d.bufferMin >= 2) { score += 0;  reasons.push('Buffer min ' + d.bufferMin.toFixed(1) + '% (slab)'); }
+  else                       { score -= 10; reasons.push('Buffer min ' + d.bufferMin.toFixed(1) + '% ⛔'); }
+
+  // 5. Daily volatility (max 10 pts) — sweet 1.5-5%/zi
+  if (d.dailyVolPct >= 1.5 && d.dailyVolPct <= 5)      score += 10;
+  else if (d.dailyVolPct >= 1 && d.dailyVolPct <= 7)   score += 5;
+  else if (d.dailyVolPct < 1) reasons.push('Vol ' + d.dailyVolPct.toFixed(1) + '%/zi (mort)');
+  else reasons.push('Vol ' + d.dailyVolPct.toFixed(1) + '%/zi (extrem)');
+
+  // 6. MTF confluence (max 20 pts)
+  if (d.mtfTotal > 0) {
+    const ratio = d.mtfRangeCount / d.mtfTotal;
+    if (ratio === 1)         score += 20;
+    else if (ratio >= 0.66)  score += 12;
+    else if (ratio >= 0.33){ score += 5;  reasons.push('MTF ' + d.mtfRangeCount + '/' + d.mtfTotal + ' (mixt)'); }
+    else                   { score -= 5; reasons.push('MTF ' + d.mtfRangeCount + '/' + d.mtfTotal + ' (trending)'); }
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  // Verdict — combinație score + criterii dure (ADX + buffer + MTF)
+  let verdict;
+  if (score >= 75 && d.adx < 25 && d.bufferMin >= 3 && d.mtfRangeCount >= Math.max(1, Math.floor(d.mtfTotal * 0.66))) {
+    verdict = '🟢 GRID READY';
+  } else if (score >= 60) {
+    verdict = '🟡 GRID MIXED';
+  } else {
+    verdict = '🔴 GRID SKIP';
+  }
+
+  return { score, verdict, reasons };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UNIVERSE BUILDER — Pionex ∩ Binance Futures USDT, sortat după volum.
+//  maxSize = 0 → returnează TOATE (~200-300 simboluri).
+// ═══════════════════════════════════════════════════════════════
+async function buildUniverse(maxSize) {
+  const r = await fetchSafe(`${BIN_FUT}/ticker/24hr`, 12000);
+  const all = await r.json();
+  const candidates = all
+    .filter(t => t.symbol.endsWith('USDT'))
+    .map(t => ({
+      symbol: t.symbol,
+      base: t.symbol.replace(/USDT$/, ''),
+      quoteVolume: parseFloat(t.quoteVolume),
+    }))
+    .filter(t => !isNaN(t.quoteVolume) && isOnPionex(t.base))
+    .sort((a, b) => b.quoteVolume - a.quoteVolume);
+  // 0 = no slice = toate
+  return maxSize > 0 ? candidates.slice(0, maxSize) : candidates;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SCAN ORCHESTRATOR
+// ═══════════════════════════════════════════════════════════════
+async function runScan() {
+  if (scanRunning) return;
+  scanRunning = true;
+  scanAborted = false;
+  $('scanBtn').disabled = true;
+  $('pauseBtn').disabled = false;
+  setStatus('load', 'construiesc universe…');
+  $('progBar').style.width = '0%';
+
+  try {
+    // 0 = toate; altfel top N după volum
+    const maxSize = parseInt($('universeSize').value, 10);
+    const universe = await buildUniverse(isNaN(maxSize) ? 50 : maxSize);
+
+    if (!universe.length) {
+      setStatus('err', 'niciun simbol Pionex găsit pe Binance Futures');
+      return;
+    }
+
+    $('statUniverse').textContent = universe.length;
+    $('statScannedSub').textContent = `din ${universe.length}`;
+
+    // Anti rate-limit Binance: pentru batch-uri mari mărim delay-ul între simboluri
+    // (1200 weight/min limit; ~4 weight per simbol = ~300 max simboluri/min teoretic).
+    // 100ms = 10 sym/s = 600 sym/min — risc 429. 200ms = 5 sym/s = 300 sym/min — safe.
+    const delayMs = universe.length > 100 ? 220 : universe.length > 50 ? 150 : SCAN_DELAY_MS;
+    // Render progresiv mai rar pentru batch-uri mari (DOM update e costisitor pe lista lungă)
+    const renderEvery = universe.length > 100 ? 15 : universe.length > 50 ? 10 : 5;
+    setStatus('load', `scanez ${universe.length} simboluri (delay ${delayMs}ms)…`);
+
+    allResults = [];
+    let done = 0;
+
+    for (const c of universe) {
+      if (scanAborted) break;
+      const data = await gridScanSymbol(c.symbol);
+      if (data) {
+        const result = gridScanScore(data);
+        allResults.push({ ...data, ...result, base: c.base, quoteVolume: c.quoteVolume });
+      }
+      done++;
+      $('statScanned').textContent = done;
+      $('progBar').style.width = `${(done / universe.length) * 100}%`;
+      if (done % renderEvery === 0) renderResults();
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+
+    renderResults();
+    if (scanAborted) {
+      setStatus('warn', `scan oprit la ${done}/${universe.length}`);
+    } else {
+      setStatus('ok', `gata · ${done} simboluri scanate`);
+    }
+    $('scannerSub').textContent = `${allResults.length} rezultate · ultima scanare la ${new Date().toLocaleTimeString('ro-RO')}`;
+  } catch (e) {
+    console.error('Scan error:', e);
+    setStatus('err', 'eroare: ' + (e.message || 'unknown'));
+  } finally {
+    scanRunning = false;
+    scanAborted = false;
+    $('scanBtn').disabled = false;
+    $('pauseBtn').disabled = true;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FILTERS + RENDER
+// ═══════════════════════════════════════════════════════════════
+function applyFilters(rows) {
+  const minScore = parseFloat($('minScore').value) || 0;
+  const maxAdx = parseFloat($('maxAdx').value) || 100;
+  const minVol = parseFloat($('minVol').value) || 0;
+  const rsiMin = parseFloat($('rsiMin').value) || 0;
+  const rsiMax = parseFloat($('rsiMax').value) || 100;
+
+  let filtered = rows.filter(r =>
+    (r.score || 0) >= minScore &&
+    (r.adx || 0) <= maxAdx &&
+    (r.dailyVolPct || 0) >= minVol &&
+    r.rsi >= rsiMin && r.rsi <= rsiMax
+  );
+
+  if (filterVerdict === 'ready') filtered = filtered.filter(r => r.verdict === '🟢 GRID READY');
+  else if (filterVerdict === 'mixed') filtered = filtered.filter(r => r.verdict === '🟡 GRID MIXED');
+  else if (filterVerdict === 'skip')  filtered = filtered.filter(r => r.verdict === '🔴 GRID SKIP');
+
+  return filtered;
+}
+
+function sortRows(rows) {
+  const key = sortKey;
+  const asc = sortAsc;
+  return [...rows].sort((a, b) => {
+    let va = a[key], vb = b[key];
+    if (key === 'verdict') {
+      const order = { '🟢 GRID READY': 0, '🟡 GRID MIXED': 1, '🔴 GRID SKIP': 2 };
+      va = order[a.verdict] ?? 3;
+      vb = order[b.verdict] ?? 3;
+    }
+    if (typeof va === 'string') return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+    if (va == null) va = -Infinity;
+    if (vb == null) vb = -Infinity;
+    return asc ? va - vb : vb - va;
+  });
+}
+
+function mtfDots(d) {
+  // mtfRaw poate fi null pentru un TF (rate limit sau eroare); afișăm 3 dots indicând range/trending/mixed/unknown.
+  const tfs = ['15m', '1h', '4h'];
+  return '<span class="mtf-dots">' + tfs.map(tf => {
+    const v = d.mtfRaw ? d.mtfRaw[tf] : undefined;
+    let cls = 'unknown', title = tf + ': N/A';
+    if (v === 1)       { cls = 'range';    title = tf + ': RANGE'; }
+    else if (v === -1) { cls = 'trending'; title = tf + ': TRENDING'; }
+    else if (v === 0)  { cls = 'mixed';    title = tf + ': mixed'; }
+    return `<span class="mtf-dot ${cls}" title="${title}"></span>`;
+  }).join('') + '</span>';
+}
+
+function scoreBadge(score) {
+  let cls = 'neut';
+  if (score >= 75)      cls = 'score-hi';
+  else if (score >= 60) cls = 'gold';
+  else if (score >= 40) cls = 'warn';
+  else                  cls = 'down';
+  return `<span class="badge ${cls}">${score}</span>`;
+}
+
+function adxBadge(adx) {
+  if (adx == null) return '—';
+  let cls = 'neut';
+  if (adx < 20) cls = 'up';
+  else if (adx < 30) cls = 'gold';
+  else if (adx < 40) cls = 'warn';
+  else cls = 'down';
+  return `<span class="badge ${cls}">${adx.toFixed(1)}</span>`;
+}
+
+function rsiBadge(rsi) {
+  if (rsi == null) return '—';
+  let cls = 'neut';
+  if (rsi >= 40 && rsi <= 60) cls = 'up';
+  else if (rsi > 70 || rsi < 30) cls = 'down';
+  else cls = 'warn';
+  return `<span class="badge ${cls}">${rsi.toFixed(1)}</span>`;
+}
+
+function pionexUrl(base) {
+  // Pionex futures grid bot URL pattern
+  return `https://www.pionex.com/en-US/futures/${base}USDT_PERP`;
+}
+
+function tvUrl(symbol) {
+  return `https://www.tradingview.com/chart/?symbol=BINANCE:${symbol}.P`;
+}
+
+function renderResults() {
+  const tbody = $('resultsBody');
+  const filtered = applyFilters(allResults);
+  const sorted = sortRows(filtered);
+
+  // Update stats (calculate pe TOATE rezultatele, nu doar filtrate)
+  const ready = allResults.filter(r => r.verdict === '🟢 GRID READY').length;
+  const mixed = allResults.filter(r => r.verdict === '🟡 GRID MIXED').length;
+  const skip  = allResults.filter(r => r.verdict === '🔴 GRID SKIP').length;
+  $('statReady').textContent = ready;
+  $('statMixed').textContent = mixed;
+  $('statSkip').textContent = skip;
+  $('gridCount').textContent = ready;
+  $('resultCount').textContent = `${sorted.length}/${allResults.length} rezultate`;
+
+  if (!sorted.length) {
+    tbody.innerHTML = `<tr><td colspan="12" class="empty">
+      <div class="empty-icon">🤖</div>
+      <div class="empty-title">${allResults.length ? 'Niciun rezultat după filtre' : 'Apasă ↻ SCAN ca să detectezi'}</div>
+      <div class="empty-sub">${allResults.length ? 'Relaxează filtrele (Score min, ADX max) sau alege „Toate" la verdict.' : 'Scanner-ul calculează 6 criterii (ADX, RSI, Range%, Buffer, Vol/zi, MTF) și marchează cele mai potrivite pentru grid trading pe Pionex.'}</div>
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = sorted.map((r, i) => {
+    const verdictCls = r.verdict.includes('READY') ? 'ready' : r.verdict.includes('MIXED') ? 'mixed' : 'skip';
+    return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
+      <td>${i + 1}</td>
+      <td class="left">
+        <div class="sym-name">${r.base}</div>
+        <div class="sym-sub">${r.symbol}</div>
+      </td>
+      <td>${fmtUSD(r.currentPrice)}</td>
+      <td>${adxBadge(r.adx)}</td>
+      <td>${rsiBadge(r.rsi)}</td>
+      <td>${fmtPct(r.rangePct)}</td>
+      <td>${fmtPct(r.bufferMin)}</td>
+      <td>${fmtPct(r.dailyVolPct, 2)}</td>
+      <td>${mtfDots(r)}</td>
+      <td>${scoreBadge(r.score)}</td>
+      <td class="verdict-cell ${verdictCls}" title="${(r.reasons || []).join('; ') || 'Toate criteriile aliniate'}">${r.verdict.split(' ').slice(1).join(' ')}</td>
+      <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener" title="Deschide bot Pionex Futures Grid">Bot →</a></td>
+    </tr>`;
+  }).join('');
+
+  // Update sort indicator pe header
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.sort === sortKey);
+    th.classList.toggle('asc', th.dataset.sort === sortKey && sortAsc);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EVENT WIRING
+// ═══════════════════════════════════════════════════════════════
+$('scanBtn').onclick = runScan;
+$('pauseBtn').onclick = () => {
+  if (scanRunning) {
+    scanAborted = true;
+    setStatus('warn', 'oprire în curs…');
+  }
+};
+$('pauseBtn').disabled = true;
+
+// Sort coloane
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (sortKey === k) sortAsc = !sortAsc;
+    else { sortKey = k; sortAsc = false; }
+    renderResults();
+  });
+});
+
+// Filter chip-uri (verdict)
+document.querySelectorAll('.chip[data-verdict]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip[data-verdict]').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    filterVerdict = chip.dataset.verdict;
+    renderResults();
+  });
+});
+
+// Inputs filtre — re-render la modificare
+['minScore', 'maxAdx', 'minVol', 'rsiMin', 'rsiMax'].forEach(id => {
+  $(id).addEventListener('input', renderResults);
+});
+
+// Tab switch (placeholdere pentru Faza 2/3)
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.disabled) return;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentTab = tab.dataset.tab;
+    renderResults();
+  });
+});
+
+// Init
+$('statUniverse').textContent = PIONEX_WHITELIST.size;
+setStatus('', 'ready · apasă SCAN');
+
+// Service Worker (PWA cache pentru shell)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => {
+      console.warn('SW registration failed:', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
