@@ -554,18 +554,45 @@ const filterState = {
   premium: { tier: 'all' },
 };
 
-// Watchlist ⭐ — persistă între sesiuni; filtrabilă cu chip-uri pe orice tab
-const LS_WATCHLIST = 'pionex_watchlist_v1';
+// Watchlist ⭐ — UNIFICAT cu celelalte pagini Scanner Hub (cheia `scanner_watchlist`).
+// Format intern: Set<base symbol> (BTC, SOL). Format storage: array `["BINANCE:XUSDT",...]`.
+// La load: convertesc storage → bases. La save: convertesc bases → BINANCE:XUSDT.
+// Migrare one-time: dacă există `pionex_watchlist_v1` (key vechi), îl merg în scanner_watchlist și șterg.
+const SHARED_WL_KEY = 'scanner_watchlist';
+const LEGACY_WL_KEY = 'pionex_watchlist_v1';
 let watchlist = new Set();           // Set<base symbol>: BTC, SOL, etc.
 let onlyWatchlist = false;           // chip global toggle
 
+function symToBase(sym) {
+  // "BINANCE:BTCUSDT" → "BTC", "BTCUSDT" → "BTC", "BTC" → "BTC"
+  let s = (sym || '').toUpperCase();
+  if (s.includes(':')) s = s.split(':')[1];
+  return s.replace(/USDT$|USDC$|USD$/, '');
+}
+function baseToBinance(base) { return `BINANCE:${base}USDT`; }
+
 function loadWatchlist() {
-  try { watchlist = new Set(JSON.parse(localStorage.getItem(LS_WATCHLIST) || '[]')); }
-  catch (e) {}
+  try {
+    const arr = JSON.parse(localStorage.getItem(SHARED_WL_KEY) || '[]');
+    watchlist = new Set(arr.map(symToBase).filter(Boolean));
+    // Migrare one-time din cheia veche
+    const legacy = localStorage.getItem(LEGACY_WL_KEY);
+    if (legacy) {
+      try {
+        const oldBases = JSON.parse(legacy);
+        if (Array.isArray(oldBases)) oldBases.forEach(b => { if (b) watchlist.add(b.toUpperCase()); });
+      } catch (e) {}
+      localStorage.removeItem(LEGACY_WL_KEY);
+      saveWatchlist(); // persistă merge-ul în scanner_watchlist
+    }
+  } catch (e) {}
 }
 function saveWatchlist() {
-  try { localStorage.setItem(LS_WATCHLIST, JSON.stringify([...watchlist])); }
-  catch (e) {}
+  try {
+    // Convert Set<base> → array de simboluri în format BINANCE:XUSDT (compat cross-page)
+    const arr = [...watchlist].map(baseToBinance);
+    localStorage.setItem(SHARED_WL_KEY, JSON.stringify(arr));
+  } catch (e) {}
 }
 window.toggleWatchlist = function (base) {
   if (watchlist.has(base)) watchlist.delete(base);
