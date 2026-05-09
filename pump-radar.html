@@ -240,16 +240,22 @@
   @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
 
   @media (max-width: 700px) {
-    header h1 { font-size:11.5px; }
-    .alert-grid { grid-template-columns:1fr; }
-    .config-grid { grid-template-columns:1fr; }
+    body { padding: 8px; }
+    header {
+      padding: 8px 11px; gap: 6px; position: relative; top: 0;
+    }
+    header h1 { font-size: 12px; width: 100%; margin-right: 0; }
+    .nav-link { font-size: 10.5px; padding: 4px 8px; }
+    button, select, input { font-size: 11px; padding: 4px 8px; }
+    .alert-grid { grid-template-columns: 1fr; }
+    .config-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>🚨 Pump Radar <span class="ver-badge" id="verBadge">v47</span></h1>
+  <h1>🚨 Pump Radar <span class="ver-badge" id="verBadge">v48</span></h1>
   <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
   <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Scanner</a>
   <a class="nav-link" href="watchlist.html" title="Watchlist Monitor">👁️ Watchlist</a>

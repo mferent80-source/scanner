@@ -21,15 +21,18 @@
     --legacy-1:#a16207; --legacy-2:#ca8a04;
     --ease: cubic-bezier(.4,0,.2,1);
   }
-  html, body { height: 100%; }
+  html, body { min-height: 100%; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
     background: var(--bg);
     background-image: radial-gradient(1400px 700px at 50% -200px, #141c2e 0%, #0b0f17 55%);
     background-attachment: fixed;
     color: var(--text);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 40px 20px;
+    /* IMPORTANT: NU folosim justify-content:center pe mobil — conținutul e mai mare decât
+       viewportul și se tăie sub fold. Folosim min-height ca să rămână centrat doar când
+       încape, altfel curge natural în jos. */
+    display: flex; flex-direction: column; align-items: center;
+    padding: 32px 18px;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -178,6 +181,33 @@
     border-radius: 4px; background: var(--panel2); font-family: inherit; font-size: 10px;
     margin: 0 2px;
   }
+
+  /* === Mobile (≤ 760px) — reduce font, spacing, padding === */
+  @media (max-width: 760px) {
+    body { padding: 18px 12px; }
+    .hub-head { margin-bottom: 24px; }
+    .hub-head h1 { font-size: 26px; letter-spacing: -.5px; }
+    .hub-head p { font-size: 13px; }
+    .hub-head p:nth-of-type(2) { font-size: 11px; }
+    .hub-search { margin: 14px auto 22px; }
+    .hub-search input { font-size: 13px; padding: 10px 14px 10px 38px; }
+    .cards { gap: 12px; }
+    .card { padding: 22px 18px 18px; border-radius: 14px; }
+    .card-icon { width: 44px; height: 44px; font-size: 24px; margin-bottom: 12px; border-radius: 10px; }
+    .card h2 { font-size: 18px; }
+    .card .card-sub { font-size: 12px; margin-bottom: 14px; }
+    .card li { font-size: 11.5px; }
+    .card .card-cta { font-size: 12px; padding: 8px 14px; }
+    .footer { margin-top: 24px; font-size: 10.5px; padding: 0 6px; }
+  }
+
+  /* === Mobile mic (≤ 380px — iPhone SE) — extra compact === */
+  @media (max-width: 380px) {
+    body { padding: 14px 8px; }
+    .hub-head h1 { font-size: 22px; }
+    .card { padding: 18px 14px 14px; }
+    .card h2 { font-size: 16px; }
+  }
 </style>
 
   <!-- PWA metadata -->
@@ -194,7 +224,7 @@
 <body>
   <div class="hub">
     <div class="hub-head">
-      <h1>🪙 Crypto Scanner Pro <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;vertical-align:middle;-webkit-text-fill-color:#5bb0ff" title="Versiune cache SW (debug deploy)">v47</span></h1>
+      <h1>🪙 Crypto Scanner Pro <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;vertical-align:middle;-webkit-text-fill-color:#5bb0ff" title="Versiune cache SW (debug deploy)">v48</span></h1>
       <p>Hub dedicat crypto-ului. Scannere, watchlist, evenimente — toate într-un loc.</p>
       <p style="margin-top:8px;font-size:12px;opacity:.75">📈 Pentru stocks/Nasdaq → <a href="https://mferent80-source.github.io/premarket_scanner.html/nasdaq-scanner/" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">premarket scanner</a> · ⚙️ <a href="settings.html" style="color:var(--accent);text-decoration:none;font-weight:600">Settings central</a></p>
     </div>

@@ -305,12 +305,35 @@
   }
   footer a { color: var(--accent); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
+
+  /* === Mobile (≤ 760px) — header wrap, font/padding mai mic === */
+  @media (max-width: 760px) {
+    body { padding: 8px; font-size: 12px; }
+    header {
+      padding: 8px 11px; gap: 6px; position: relative; top: 0;
+    }
+    header h1 { font-size: 13px; width: 100%; margin-right: 0; }
+    .nav-link { font-size: 10.5px; padding: 4px 8px; }
+    button { font-size: 10.5px; padding: 4px 9px; }
+    .sent-card { padding: 10px 12px; }
+    .sent-value { font-size: 18px; }
+    .panel-head { padding: 8px 11px; }
+    .panel-head h3 { font-size: 11px; }
+    table { font-size: 11px; }
+    thead th { padding: 6px 9px; font-size: 9.5px; }
+    tbody td { padding: 6px 9px; }
+    .heat-tile { padding: 9px 11px; }
+    .heat-tile-pct { font-size: 18px; }
+    .filter-bar { padding: 7px 11px; }
+    .filter-chip { font-size: 10.5px; padding: 3px 10px; }
+    footer { padding: 10px; font-size: 10px; }
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>⚡ Crypto Events <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;vertical-align:middle" title="Versiune cache SW (debug deploy)">v47</span></h1>
+  <h1>⚡ Crypto Events <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;vertical-align:middle" title="Versiune cache SW (debug deploy)">v48</span></h1>
   <a href="scanner-hub.html" class="nav-link">🏠 Hub</a>
   <a href="scanner-crypto.html" class="nav-link">🪙 Scanner</a>
   <a href="news.html" class="nav-link">📰 News</a>

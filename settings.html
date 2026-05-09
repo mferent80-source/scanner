@@ -136,6 +136,26 @@
   }
   .status-pill.on { background:rgba(34,197,94,.18); color:var(--bull-s); border:1px solid rgba(34,197,94,.35); }
   .status-pill.off { background:rgba(239,68,68,.12); color:var(--bear-s); border:1px solid rgba(239,68,68,.35); }
+
+  /* === Mobile (≤ 760px) === */
+  @media (max-width: 760px) {
+    body { padding: 10px; font-size: 12.5px; }
+    header {
+      flex-wrap: wrap; gap: 6px; padding: 10px 12px;
+    }
+    header h1 {
+      font-size: 14px; width: 100%; margin-right: 0; margin-bottom: 4px;
+    }
+    .nav-link { font-size: 10.5px; padding: 4px 8px; }
+    .section { padding: 13px 14px; margin-bottom: 12px; }
+    .section h2 { font-size: 13px; }
+    .field input[type=text], .field input[type=password] { font-size: 12.5px; padding: 8px 10px; }
+    .actions { flex-direction: column; gap: 8px; }
+    .btn { padding: 10px; font-size: 12.5px; }
+    .checkbox { font-size: 12px; }
+    .radio-group label { font-size: 12px; padding: 8px 10px; }
+    .toast { left: 10px; right: 10px; max-width: none; bottom: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -246,7 +266,7 @@
 </div>
 
 <div class="footer">
-  Settings central <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums">v47</span> · config shared cross-page · <a href="scanner-hub.html">← Înapoi la Hub</a>
+  Settings central <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums">v48</span> · config shared cross-page · <a href="scanner-hub.html">← Înapoi la Hub</a>
 </div>
 
 <script>

@@ -230,12 +230,18 @@
 
   /* Mobile */
   @media (max-width: 700px) {
-    .hide-mobile { display:none !important; }
-    table.wl thead th { padding:6px 5px; font-size:9px; }
-    table.wl tbody td { padding:7px 5px; }
-    .sym-name { font-size:11px; }
-    .add-bar input[type=text] { min-width:140px; font-size:11px; }
-    header h1 { font-size:11.5px; }
+    body { padding: 8px; }
+    header {
+      padding: 8px 11px; gap: 6px; position: relative; top: 0;
+    }
+    header h1 { font-size: 12px; width: 100%; margin-right: 0; }
+    .nav-link { font-size: 10.5px; padding: 4px 8px; }
+    button, select, input { font-size: 11px; padding: 4px 8px; }
+    .hide-mobile { display: none !important; }
+    table.wl thead th { padding: 6px 5px; font-size: 9px; }
+    table.wl tbody td { padding: 7px 5px; }
+    .sym-name { font-size: 11px; }
+    .add-bar input[type=text] { min-width: 140px; font-size: 11px; }
   }
 
   /* Trade plan modal */
@@ -285,7 +291,7 @@
 <body>
 
 <header>
-  <h1>👁️ Watchlist Monitor <span class="ver-badge" id="verBadge">v47</span></h1>
+  <h1>👁️ Watchlist Monitor <span class="ver-badge" id="verBadge">v48</span></h1>
   <a class="nav-link" href="scanner-hub.html" title="Hub">🏠 Hub</a>
   <a class="nav-link" href="scanner-crypto.html" title="Crypto Scanner">🪙 Crypto</a>
   <a class="nav-link" href="pump-radar.html" title="Pump Radar — detecție pump/dump pe 5m" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#ef4444">🚨 Pump</a>
