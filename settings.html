@@ -176,6 +176,7 @@
     <label class="checkbox checkbox-tg"><input type="checkbox" id="tgPageStl"> Smart Trade Long — alerte 🚀 READY nou</label>
     <label class="checkbox checkbox-tg"><input type="checkbox" id="tgPageWl"> Watchlist Monitor — alerte 🟢 STRONG LONG nou</label>
     <label class="checkbox checkbox-tg"><input type="checkbox" id="tgPagePump"> Pump Radar — alerte fiecare PUMP/DUMP/VOL/MOM (poate fi spam)</label>
+    <label class="checkbox checkbox-tg"><input type="checkbox" id="tgPagePionex"> Pionex Scanner — alerte la PREMIUM ⭐/💎+ nou la auto-scan</label>
   </div>
 
   <div class="actions">
@@ -245,7 +246,7 @@
 </div>
 
 <div class="footer">
-  Settings central <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums">v46</span> · config shared cross-page · <a href="scanner-hub.html">← Înapoi la Hub</a>
+  Settings central <span style="background:rgba(91,176,255,.15);color:#5bb0ff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums">v47</span> · config shared cross-page · <a href="scanner-hub.html">← Înapoi la Hub</a>
 </div>
 
 <script>
@@ -266,7 +267,7 @@
   function saveJson(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
   let tgCfg = loadJson(TG_CFG_KEY, { token: "", chatId: "" });
-  let tgPages = loadJson(TG_PAGES_KEY, { stl: false, watchlist: false, pump: false });
+  let tgPages = loadJson(TG_PAGES_KEY, { stl: false, watchlist: false, pump: false, pionex: false });
   let aiCfg = loadJson(AI_CFG_KEY, { apiKey: "", model: "claude-sonnet-4-6", enabled: false });
 
   // ── Toast (non-blocking) ──
@@ -291,10 +292,11 @@
       const a = document.getElementById("tgPageStl"); if (a) a.checked = !!tgPages.stl;
       const b = document.getElementById("tgPageWl"); if (b) b.checked = !!tgPages.watchlist;
       const c = document.getElementById("tgPagePump"); if (c) c.checked = !!tgPages.pump;
+      const d = document.getElementById("tgPagePionex"); if (d) d.checked = !!tgPages.pionex;
       const pill = document.getElementById("tgStatusPill");
       if (pill) {
         const configured = !!(tgCfg.token && tgCfg.chatId);
-        const anyOn = tgPages.stl || tgPages.watchlist || tgPages.pump;
+        const anyOn = tgPages.stl || tgPages.watchlist || tgPages.pump || tgPages.pionex;
         if (configured && anyOn) { pill.textContent = "ON"; pill.className = "status-pill on"; }
         else if (configured) { pill.textContent = "configurat (nicio pagină ON)"; pill.className = "status-pill off"; }
         else { pill.textContent = "neconfigurat"; pill.className = "status-pill off"; }
@@ -356,6 +358,7 @@
       tgPages.stl = checked("tgPageStl");
       tgPages.watchlist = checked("tgPageWl");
       tgPages.pump = checked("tgPagePump");
+      tgPages.pionex = checked("tgPagePionex");
       saveJson(TG_CFG_KEY, tgCfg);
       saveJson(TG_PAGES_KEY, tgPages);
       refreshTgUI();
