@@ -1524,6 +1524,133 @@ function tvUrl(symbol) {
 // ═══════════════════════════════════════════════════════════════
 //  QUICK-TRADE MODAL — setup grid pre-completat din scanner data
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  AI EXPLAINER — modal cu Claude API direct (non-stream)
+//  Folosește ai_cfg_v1 din Settings central; explică concret de ce e Premium
+// ═══════════════════════════════════════════════════════════════
+async function callClaudeForExplainer(prompt, aiCfg) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': aiCfg.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: aiCfg.model || 'claude-sonnet-4-6',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  if (!res.ok) {
+    let err = `HTTP ${res.status}`;
+    try { const j = await res.json(); err = j.error?.message || err; } catch(e) {}
+    throw new Error(err);
+  }
+  const j = await res.json();
+  return j.content?.[0]?.text || '(răspuns gol)';
+}
+
+function buildExplainerPrompt(r) {
+  // Context concis cu toate scor-urile + indicatori
+  const passes = r.passes || {};
+  const ctx = [
+    `Coin: ${r.base}/USDT futures (Pionex grid bot candidate)`,
+    `Preț curent: ${fmtUSD(r.currentPrice)}`,
+    `Schimbare 24h: ${r.chg24h?.toFixed(2)}% · Volum 24h: $${(r.quoteVolume / 1e6).toFixed(1)}M`,
+    `Indicatori (klines 1h): ADX ${r.adx?.toFixed(1)}, RSI ${r.rsi?.toFixed(1)}, ATR/preț ${r.dailyVolPct?.toFixed(2)}%/zi, range 100h ${r.rangePct?.toFixed(1)}%`,
+    `MTF (15m/1h/4h): ${r.mtfRangeCount}/${r.mtfTotal} ranges`,
+    ``,
+    `=== Scoruri ===`,
+    `Grid (sweet spot range bots): ${r.score}/100 → ${r.verdict || '—'}${passes.grid ? ' ✓ trece pragul (≥60)' : ''}`,
+    `Early Buy: ${r.earlyScore || 0}/100${passes.early ? ' ✓ trece pragul (≥50)' : ''}`,
+    `Spring (Wyckoff): ${r.springScore || 0}/100${r.isSpring ? ' (DETECTAT)' : ' (nedetectat)'}${passes.spring ? ' ✓ trece pragul (≥45)' : ''}`,
+    `Premium (multi-confluence): ${r.premiumScore}/100 → tier ${r.premiumTier}`,
+    `Confluențe trecute: ${r.passCount}/3`,
+  ];
+  if (r.springInfo) ctx.push(`Spring details: undershoot −${r.springInfo.undershootPct}%, recovery +${r.springInfo.recoveryPct}%, support la ${fmtUSD(r.springInfo.rangeSupport)}`);
+  if (r.reasons?.length) ctx.push(`Grid issues: ${r.reasons.join(', ')}`);
+
+  return `Ești analist crypto pentru un trader Pionex (futures + grid bots).
+Coin-ul de mai jos a fost flagged ca ${r.premiumTier} de un scanner multi-confluence.
+
+${ctx.join('\n')}
+
+Explică în 4-6 puncte concrete (cu cifre):
+1. **De ce e ${r.premiumTier}** — ce confluențe contează cel mai mult aici și ce înseamnă în practică
+2. **Setup-ul recomandat** — Grid bot? Long entry? Spring play? Cu range/SL specific
+3. **Risc principal** — ce poate strica setup-ul (cu cifre concrete: la ce ADX/preț/vol să ieși)
+4. **Așteptare realistă** — ce % profit/cycle, ce timeframe, win-rate aproximativ
+
+Stil: scurt, direct, cifre concrete. NU da disclaimer general. Răspunde în română. Folosește **bold** pentru numere cheie.`;
+}
+
+window.openAiExplainer = function (base) {
+  const r = allResults.find(x => x.base === base);
+  if (!r) return;
+
+  // Verifică AI config
+  let aiCfg = {};
+  try { aiCfg = JSON.parse(localStorage.getItem('ai_cfg_v1') || '{}'); } catch(e) {}
+  if (!aiCfg.apiKey) {
+    alert('Configurează API key Claude în ⚙️ Settings → secțiunea AI.\n\nApoi revino aici și apasă din nou butonul ℹ️.');
+    return;
+  }
+
+  document.getElementById('aiModalOverlay')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'aiModalOverlay';
+  ov.className = 'modal-overlay';
+  ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+  ov.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-head">
+        <div>
+          <h3>🧠 ${r.base}/USDT — De ce ${r.premiumTier || 'Premium'}?</h3>
+          <div class="sub">AI explainer · ${aiCfg.model || 'claude-sonnet-4-6'} · score Premium ${r.premiumScore}/100 (${r.passCount}/3 conflu.)</div>
+        </div>
+        <button class="modal-close" type="button" data-close>×</button>
+      </div>
+      <div class="modal-ai-output" id="aiModalOutput">
+        <span class="modal-ai-loading">⏳ Apel Claude API… (5-15s pentru răspuns complet)</span>
+      </div>
+      <div class="modal-actions">
+        <button type="button" data-action="copy">📋 Copy text</button>
+        <button type="button" data-action="retry">↻ Retry</button>
+        <button type="button" class="modal-primary" data-close>OK</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(ov);
+  ov.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => ov.remove()));
+  ov.querySelector('[data-action="copy"]').addEventListener('click', async () => {
+    try {
+      const txt = ov.querySelector('#aiModalOutput').innerText || '';
+      await navigator.clipboard.writeText(txt);
+      alert('📋 Copiat în clipboard');
+    } catch(e) { alert('Copy eșuat: ' + e.message); }
+  });
+  ov.querySelector('[data-action="retry"]').addEventListener('click', () => runExplainer());
+
+  async function runExplainer() {
+    const out = ov.querySelector('#aiModalOutput');
+    out.innerHTML = '<span class="modal-ai-loading">⏳ Apel Claude API…</span>';
+    try {
+      const text = await callClaudeForExplainer(buildExplainerPrompt(r), aiCfg);
+      // Render simplu: bold între ** + newline as <br>
+      const html = text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+        .replace(/\n/g, '<br>');
+      out.innerHTML = html;
+    } catch(e) {
+      out.innerHTML = `<span style="color:var(--bear-s)">❌ Eroare: ${e.message}</span><br><br><small style="color:var(--muted)">Verifică API key în Settings (must start with sk-ant-...)</small>`;
+    }
+  }
+  runExplainer();
+};
+
 window.openTradeSetup = function (base) {
   const r = allResults.find(x => x.base === base);
   if (!r) { alert('Coin nu mai e în rezultate. Refă scan.'); return; }
@@ -1975,7 +2102,10 @@ function renderPremium() {
       <td class="hide-mobile">${rsiBadge(r.rsi)}</td>
       <td class="hide-mobile">${chgBadge(r.chg24h)}</td>
       <td>${scoreBadge(r.premiumScore)}</td>
-      <td><span class="badge ${tierCls}" style="font-weight:800">${r.premiumTier}</span></td>
+      <td>
+        <span class="info-btn" onclick="event.stopPropagation();window.openAiExplainer('${r.base}')" title="AI: de ce e ${r.premiumTier}?">ℹ️</span>
+        <span class="badge ${tierCls}" style="font-weight:800">${r.premiumTier}</span>
+      </td>
       <td onclick="event.stopPropagation()"><span class="pionex-link" onclick="event.stopPropagation();window.openTradeSetup('${r.base}')" title="Setup grid pre-completat + open Pionex" style="cursor:pointer">🤖 Setup</span></td>
     </tr>`;
   }).join('');
