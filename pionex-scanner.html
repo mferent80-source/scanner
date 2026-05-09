@@ -269,6 +269,95 @@
   .star-btn:hover { color: var(--gold); transform: scale(1.15); }
   .star-btn.on { color: var(--gold); text-shadow: 0 0 6px rgba(255,216,107,.5); }
 
+  /* Modal: setup quick-trade Pionex + AI explainer */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(5,8,15,.78); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+    animation: tga-fadein .2s ease;
+  }
+  @keyframes modal-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+  .modal-box {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6); color: var(--text); font-size: 13px;
+    animation: modal-in .2s ease;
+  }
+  .modal-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 14px; gap: 10px;
+  }
+  .modal-head h3 {
+    font-size: 16px; font-weight: 800; letter-spacing: -.2px; margin: 0;
+    background: linear-gradient(90deg, var(--crypto-1), var(--crypto-2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .modal-head .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .modal-close {
+    background: transparent; border: none; color: var(--muted); font-size: 20px;
+    cursor: pointer; padding: 0 4px; line-height: 1;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-section {
+    background: var(--panel2); border: 1px solid var(--border-soft);
+    border-radius: 8px; padding: 11px 13px; margin-bottom: 10px;
+  }
+  .modal-section-title {
+    font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 7px;
+  }
+  .modal-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .modal-row { display: flex; flex-direction: column; gap: 3px; }
+  .modal-row label {
+    font-size: 10px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .3px; font-weight: 600;
+  }
+  .modal-row input, .modal-row select {
+    padding: 7px 10px; background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; font-size: 13px;
+    font-variant-numeric: tabular-nums; font-family: inherit;
+  }
+  .modal-row input:focus { outline: none; border-color: var(--accent); }
+  .modal-stat {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; font-size: 12px; border-bottom: 1px solid var(--border-soft);
+  }
+  .modal-stat:last-child { border-bottom: 0; }
+  .modal-stat .k { color: var(--muted); }
+  .modal-stat .v { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+  .modal-stat .v.bull { color: var(--bull-s); }
+  .modal-stat .v.gold { color: var(--gold); }
+  .modal-actions {
+    display: flex; gap: 8px; margin-top: 12px;
+  }
+  .modal-actions button {
+    flex: 1; padding: 10px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    font-family: inherit; border: 1px solid var(--border);
+    background: var(--panel2); color: var(--text); transition: all .12s var(--ease);
+  }
+  .modal-actions button:hover { border-color: var(--accent); }
+  .modal-actions button.modal-primary {
+    background: linear-gradient(135deg, var(--crypto-1), var(--crypto-2));
+    border-color: transparent; color: #1a1a1a;
+  }
+  .modal-actions button.modal-primary:hover { filter: brightness(1.08); }
+  .modal-ai-output {
+    background: var(--panel2); border: 1px solid var(--border-soft);
+    border-radius: 8px; padding: 11px 13px; font-size: 12px; line-height: 1.55;
+    color: var(--text-dim); white-space: pre-wrap; max-height: 280px; overflow-y: auto;
+  }
+  .modal-ai-output b, .modal-ai-output strong { color: var(--text); }
+  .modal-ai-loading { color: var(--muted); font-style: italic; }
+  .info-btn {
+    display: inline-block; cursor: pointer; font-size: 12px; color: var(--accent);
+    margin-right: 4px; padding: 1px 5px; border-radius: 3px;
+    background: rgba(91,176,255,.1); border: 1px solid rgba(91,176,255,.25);
+    user-select: none; transition: all .12s var(--ease); line-height: 1;
+  }
+  .info-btn:hover { background: rgba(91,176,255,.2); transform: scale(1.05); }
+
   /* === Empty / loading === */
   .empty {
     padding: 40px 20px; text-align: center; color: var(--muted); font-size: 12px;
@@ -1433,6 +1522,170 @@ function tvUrl(symbol) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  QUICK-TRADE MODAL — setup grid pre-completat din scanner data
+// ═══════════════════════════════════════════════════════════════
+window.openTradeSetup = function (base) {
+  const r = allResults.find(x => x.base === base);
+  if (!r) { alert('Coin nu mai e în rezultate. Refă scan.'); return; }
+
+  // Calc default setup pe baza datelor Grid scoring (finalHigh/finalLow)
+  // Dacă lipsesc, derivăm din high100/low100 (range 100 bare)
+  const high = r.finalHigh || (r.highs ? Math.max(...r.highs) : r.currentPrice * 1.05);
+  const low  = r.finalLow  || (r.lows  ? Math.min(...r.lows)  : r.currentPrice * 0.95);
+  const price = r.currentPrice;
+
+  // Curăță orice modal existent
+  document.getElementById('tradeModalOverlay')?.remove();
+
+  const ov = document.createElement('div');
+  ov.id = 'tradeModalOverlay';
+  ov.className = 'modal-overlay';
+  ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+
+  ov.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-head">
+        <div>
+          <h3>🤖 ${base}/USDT — Pionex Futures Grid setup</h3>
+          <div class="sub">${r.symbol} · preț ${fmtUSD(price)} · ADX ${r.adx?.toFixed(1) || '—'} · RSI ${r.rsi?.toFixed(1) || '—'}</div>
+        </div>
+        <button class="modal-close" type="button" data-close>×</button>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">📐 Range bot (calc din scanner)</div>
+        <div class="modal-grid">
+          <div class="modal-row">
+            <label>Upper (high)</label>
+            <input type="number" id="tsUpper" value="${high.toFixed(price < 1 ? 6 : 2)}" step="any">
+          </div>
+          <div class="modal-row">
+            <label>Lower (low)</label>
+            <input type="number" id="tsLower" value="${low.toFixed(price < 1 ? 6 : 2)}" step="any">
+          </div>
+          <div class="modal-row">
+            <label>Number of grids</label>
+            <input type="number" id="tsGrids" value="50" min="2" max="150" step="1">
+          </div>
+          <div class="modal-row">
+            <label>Investment (USDT)</label>
+            <input type="number" id="tsInvest" value="100" min="10" step="10">
+          </div>
+          <div class="modal-row">
+            <label>Leverage</label>
+            <select id="tsLeverage">
+              <option value="1">1× (no leverage)</option>
+              <option value="2">2×</option>
+              <option value="3" selected>3×</option>
+              <option value="5">5×</option>
+              <option value="10">10× (high risk)</option>
+            </select>
+          </div>
+          <div class="modal-row">
+            <label>Direction</label>
+            <select id="tsDir">
+              <option value="LONG" selected>LONG (bullish bias)</option>
+              <option value="NEUTRAL">NEUTRAL (range)</option>
+              <option value="SHORT">SHORT (bearish bias)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">📊 Estimări (calculate live)</div>
+        <div id="tsStats"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" data-action="copy">📋 Copy text</button>
+        <button type="button" data-action="copy-json">{ } JSON</button>
+        <button type="button" class="modal-primary" data-action="open">🚀 Open Pionex →</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(ov);
+
+  // Close handlers
+  ov.querySelector('[data-close]').addEventListener('click', () => ov.remove());
+
+  // Stats live recalc
+  function recalcStats() {
+    const upper = parseFloat($('tsUpper').value) || 0;
+    const lower = parseFloat($('tsLower').value) || 0;
+    const grids = parseInt($('tsGrids').value, 10) || 1;
+    const invest = parseFloat($('tsInvest').value) || 0;
+    const leverage = parseFloat($('tsLeverage').value) || 1;
+    if (upper <= lower || grids < 2 || invest <= 0) {
+      ov.querySelector('#tsStats').innerHTML = '<div class="modal-stat" style="color:var(--bear-s)">⚠️ Verifică valorile (upper > lower, grids ≥ 2, invest > 0)</div>';
+      return;
+    }
+    const rangePct = (upper - lower) / lower * 100;
+    const gridSpacingPct = rangePct / grids;
+    const profitPerGridPct = gridSpacingPct * leverage;
+    const margin = invest * leverage;
+    const positionSizePerGrid = margin / grids;
+    const profitPerGridUsd = positionSizePerGrid * (gridSpacingPct / 100);
+    const dailyVolPct = (r.dailyVolPct || 1);
+    // Estimare cycli/zi: cât % se mișcă prețul pe zi împărțit la spacing-ul grid-ului
+    const estCyclesPerDay = Math.max(0.1, dailyVolPct / gridSpacingPct);
+    const estProfitPerDayUsd = estCyclesPerDay * profitPerGridUsd;
+    const liqPriceLong = lower * (1 - 1 / leverage * 0.85); // ~85% margin call point estimative
+
+    ov.querySelector('#tsStats').innerHTML = `
+      <div class="modal-stat"><span class="k">Range total</span><span class="v">${rangePct.toFixed(2)}% (${fmtUSD(upper - lower)})</span></div>
+      <div class="modal-stat"><span class="k">Spacing per grid</span><span class="v">${gridSpacingPct.toFixed(3)}%</span></div>
+      <div class="modal-stat"><span class="k">Profit/grid (cu leverage)</span><span class="v bull">${profitPerGridPct.toFixed(3)}% / ${fmtUSD(profitPerGridUsd)}</span></div>
+      <div class="modal-stat"><span class="k">Margin total</span><span class="v gold">${fmtUSD(margin)} (${invest}$ × ${leverage}×)</span></div>
+      <div class="modal-stat"><span class="k">Cycli estim. / zi (din ATR)</span><span class="v">${estCyclesPerDay.toFixed(1)}</span></div>
+      <div class="modal-stat"><span class="k">Profit estim. / zi</span><span class="v bull">≈ ${fmtUSD(estProfitPerDayUsd)} (${(estProfitPerDayUsd / invest * 100).toFixed(2)}% din invest)</span></div>
+      <div class="modal-stat"><span class="k">Liq. price LONG (estim.)</span><span class="v" style="color:var(--bear-s)">${fmtUSD(liqPriceLong)}</span></div>
+    `;
+  }
+  ['tsUpper', 'tsLower', 'tsGrids', 'tsInvest', 'tsLeverage', 'tsDir'].forEach(id => {
+    $(id).addEventListener('input', recalcStats);
+    $(id).addEventListener('change', recalcStats);
+  });
+  recalcStats();
+
+  // Action handlers
+  function getCurrentSetup() {
+    return {
+      coin: base, pair: `${base}/USDT`,
+      direction: $('tsDir').value,
+      upper: parseFloat($('tsUpper').value),
+      lower: parseFloat($('tsLower').value),
+      grids: parseInt($('tsGrids').value, 10),
+      investment_usdt: parseFloat($('tsInvest').value),
+      leverage: parseFloat($('tsLeverage').value),
+      currentPrice: r.currentPrice,
+      adx: r.adx, rsi: r.rsi,
+      gridScore: r.score, verdict: r.verdict,
+      timestamp: new Date().toISOString(),
+    };
+  }
+  ov.querySelector('[data-action="copy"]').addEventListener('click', async () => {
+    const s = getCurrentSetup();
+    const txt = `🤖 ${s.pair} ${s.direction} Futures Grid (Pionex)
+Upper: ${s.upper}
+Lower: ${s.lower}
+Grids: ${s.grids}
+Investment: ${s.investment_usdt} USDT × ${s.leverage}× leverage
+Current: ${fmtUSD(s.currentPrice)} · ADX ${s.adx?.toFixed(1)} · RSI ${s.rsi?.toFixed(1)}
+Scanner verdict: ${s.verdict || '—'} (score ${s.gridScore || '—'})`;
+    try { await navigator.clipboard.writeText(txt); alert('📋 Text copiat în clipboard'); }
+    catch (e) { alert('Copy eșuat: ' + e.message); }
+  });
+  ov.querySelector('[data-action="copy-json"]').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(JSON.stringify(getCurrentSetup(), null, 2)); alert('📋 JSON copiat în clipboard'); }
+    catch (e) { alert('Copy eșuat: ' + e.message); }
+  });
+  ov.querySelector('[data-action="open"]').addEventListener('click', () => {
+    window.open(pionexUrl(base), '_blank', 'noopener');
+  });
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  TAB-AWARE RENDER ORCHESTRATOR
 // ═══════════════════════════════════════════════════════════════
 const TAB_META = {
@@ -1565,7 +1818,7 @@ function renderGrid() {
       <td class="hide-mobile">${mtfDots(r)}</td>
       <td>${scoreBadge(r.score)}</td>
       <td class="verdict-cell ${verdictCls}" title="${(r.reasons || []).join('; ') || 'Toate criteriile aliniate'}">${r.verdict.split(' ').slice(1).join(' ')}</td>
-      <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener" title="Pionex Futures Grid">Bot →</a></td>
+      <td onclick="event.stopPropagation()"><span class="pionex-link" onclick="event.stopPropagation();window.openTradeSetup('${r.base}')" title="Setup grid pre-completat + open Pionex" style="cursor:pointer">🤖 Setup</span></td>
     </tr>`;
   }).join('');
 }
@@ -1615,7 +1868,7 @@ function renderEarly() {
       <td class="hide-mobile">${sparklineSVG(r.sparkline)}</td>
       <td>${scoreBadge(r.earlyScore)}</td>
       <td class="hide-mobile"><span class="badge ${stage.cls}">${stage.txt}</span></td>
-      <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener">Bot →</a></td>
+      <td onclick="event.stopPropagation()"><span class="pionex-link" onclick="event.stopPropagation();window.openTradeSetup('${r.base}')" title="Setup grid pre-completat + open Pionex" style="cursor:pointer">🤖 Setup</span></td>
     </tr>`;
   }).join('');
 }
@@ -1667,7 +1920,7 @@ function renderSpring() {
       <td><span class="badge ${(r.volRatio || 0) >= 1.5 ? 'gold' : 'neut'}">${(r.volRatio || 0).toFixed(2)}×</span></td>
       <td>${scoreBadge(r.springScore)}</td>
       <td class="hide-mobile">${chgBadge(r.chg24h)}</td>
-      <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener">Bot →</a></td>
+      <td onclick="event.stopPropagation()"><span class="pionex-link" onclick="event.stopPropagation();window.openTradeSetup('${r.base}')" title="Setup grid pre-completat + open Pionex" style="cursor:pointer">🤖 Setup</span></td>
     </tr>`;
   }).join('');
 }
@@ -1723,7 +1976,7 @@ function renderPremium() {
       <td class="hide-mobile">${chgBadge(r.chg24h)}</td>
       <td>${scoreBadge(r.premiumScore)}</td>
       <td><span class="badge ${tierCls}" style="font-weight:800">${r.premiumTier}</span></td>
-      <td onclick="event.stopPropagation()"><a class="pionex-link" href="${pionexUrl(r.base)}" target="_blank" rel="noopener">Bot →</a></td>
+      <td onclick="event.stopPropagation()"><span class="pionex-link" onclick="event.stopPropagation();window.openTradeSetup('${r.base}')" title="Setup grid pre-completat + open Pionex" style="cursor:pointer">🤖 Setup</span></td>
     </tr>`;
   }).join('');
 }
