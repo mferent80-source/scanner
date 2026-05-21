@@ -2695,7 +2695,7 @@ renderResults();
     const r = (typeof allResults !== "undefined" ? allResults : []).find(x => x.symbol === symbol);
     if (!r) return `${symbol} (date indisponibile)`;
     const parts = [`${r.base} (${r.symbol})`];
-    if (r.price != null) parts.push(`Preț: ${fmtUSD(r.price)}`);
+    if (r.currentPrice != null) parts.push(`Preț: ${fmtUSD(r.currentPrice)}`);
     if (r.score != null) parts.push(`Grid score: ${r.score}/100 · ${r.verdict || "—"}`);
     const tech = [];
     if (r.rsi != null) tech.push(`RSI ${r.rsi.toFixed(0)}`);
