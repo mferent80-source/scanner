@@ -2696,6 +2696,7 @@ renderResults();
     if (!r) return `${symbol} (date indisponibile)`;
     const parts = [`${r.base} (${r.symbol})`];
     if (r.currentPrice != null) parts.push(`Preț: ${fmtUSD(r.currentPrice)}`);
+    if (r.chg24h != null) parts.push(`24h: ${r.chg24h >= 0 ? "+" : ""}${r.chg24h.toFixed(2)}%${r.quoteVolume ? ` · Vol $${(r.quoteVolume / 1e6).toFixed(0)}M` : ""}`);
     if (r.score != null) parts.push(`Grid score: ${r.score}/100 · ${r.verdict || "—"}`);
     const tech = [];
     if (r.rsi != null) tech.push(`RSI ${r.rsi.toFixed(0)}`);
@@ -2799,7 +2800,8 @@ window._buildPionexContext = function () {
   const lines = sorted.slice(0, 20).map(r => {
     const tags = [];
     if (r.passes) { if (r.passes.grid) tags.push("Grid"); if (r.passes.early) tags.push("Early"); if (r.passes.spring) tags.push("Spring"); }
-    return `- ${r.base} | grid ${r.score != null ? r.score : "—"}/100 | ${r.verdict || "—"} | RSI ${r.rsi != null ? r.rsi.toFixed(0) : "—"} | ADX ${r.adx != null ? r.adx.toFixed(0) : "—"}${tags.length ? " | " + tags.join("+") : ""}`;
+    const chg = r.chg24h != null ? `${r.chg24h >= 0 ? "+" : ""}${r.chg24h.toFixed(1)}%` : "—";
+    return `- ${r.base} | grid ${r.score != null ? r.score : "—"}/100 | ${r.verdict || "—"} | 24h ${chg} | RSI ${r.rsi != null ? r.rsi.toFixed(0) : "—"} | ADX ${r.adx != null ? r.adx.toFixed(0) : "—"}${tags.length ? " | " + tags.join("+") : ""}`;
   }).join("\n");
   return `🤖 PIONEX SCANNER — top ${Math.min(20, sorted.length)} din ${allResults.length} (whitelist Pionex Futures):\n${lines}`;
 };
