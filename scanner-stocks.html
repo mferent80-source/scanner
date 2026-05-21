@@ -3355,7 +3355,14 @@ async function scan() {
     const cryptoSyms = SYMBOLS.filter(isCrypto);
     const stockSyms  = SYMBOLS.filter(s => !isCrypto(s));
 
-    const cryptoProm = Promise.all(cryptoSyms.map(processSym));
+    // Crypto: batch-uri de 10 paralel (nu toate deodată) ca să nu lovim rate-limit Binance.
+    const cryptoProm = (async () => {
+      const BATCH = 10;
+      for (let i = 0; i < cryptoSyms.length; i += BATCH) {
+        await Promise.all(cryptoSyms.slice(i, i + BATCH).map(processSym));
+        if (i + BATCH < cryptoSyms.length) await new Promise(r => setTimeout(r, 200));
+      }
+    })();
     const stocksProm = (async () => {
       for (const sym of stockSyms) {
         await processSym(sym);

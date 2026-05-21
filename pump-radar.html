@@ -712,15 +712,16 @@ async function runScan() {
     // Telegram (modul shared decide dacă trimite — bazat pe `tg_pages_v1.pump`)
     if (typeof window.sendTelegram === "function") {
       const lines = newAlerts.slice(0, 5).map(a => {
-        const d = a.details || {};
-        const chg5m = (d.chg5m !== undefined) ? `${d.chg5m > 0 ? "+" : ""}${d.chg5m.toFixed(2)}%` : "—";
+        const d = a.details || a;   // câmpurile sunt la nivel top pe obiectul alertă
+        const chg5m = (d.chg5m !== undefined && d.chg5m !== null) ? `${d.chg5m > 0 ? "+" : ""}${d.chg5m.toFixed(2)}%` : "—";
         const vol = d.volRatio ? `${d.volRatio.toFixed(2)}x` : "—";
         const rsi = d.rsi ? d.rsi.toFixed(0) : "—";
         return `${alertTypeEmoji(a.type)} <b>${shortName(a.sym)}</b> · score <b>${a.score}</b>\n` +
                `  Δ5m ${chg5m} · vol ${vol} · RSI ${rsi}`;
       }).join("\n\n");
       const more = newAlerts.length > 5 ? `\n\n... +${newAlerts.length - 5} alte alerte` : "";
-      window.sendTelegram(`🚨 <b>Pump Radar</b> — ${newAlerts.length} alertă nouă\n\n${lines}${more}`);
+      const nNew = newAlerts.length === 1 ? "1 alertă nouă" : `${newAlerts.length} alerte noi`;
+      window.sendTelegram(`🚨 <b>Pump Radar</b> — ${nNew}\n\n${lines}${more}`);
     }
   }
 
@@ -1206,7 +1207,7 @@ init();
 window._buildPumpContext = function() {
   if (!STATE.alerts || !STATE.alerts.length) return "(Niciun alert încă — pornește scan-ul cu ▶ Pornește.)";
   const recent = STATE.alerts.slice(0, 20).map(a => {
-    const d = a.details || {};
+    const d = a.details || a;   // câmpurile sunt la nivel top pe obiectul alertă
     const time = a.time ? new Date(a.time).toLocaleTimeString("ro-RO") : "—";
     const chg5m = d.chg5m != null ? `${d.chg5m >= 0 ? "+" : ""}${d.chg5m.toFixed(2)}%` : "—";
     const vol = d.volRatio ? `${d.volRatio.toFixed(2)}x` : "—";

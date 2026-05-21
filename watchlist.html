@@ -1702,9 +1702,9 @@ init();
 
   const styles = document.createElement("style");
   styles.textContent = `
-    body.wl-select-mode #cardsContainer tr { cursor: cell !important; }
-    body.wl-select-mode #cardsContainer tr:hover { background: rgba(217,70,239,.08) !important; }
-    #cardsContainer tr.wl-row-selected { background: rgba(217,70,239,.18) !important; outline: 2px solid #d946ef; outline-offset: -2px; }
+    body.wl-select-mode #listContainer tr { cursor: cell !important; }
+    body.wl-select-mode #listContainer tr:hover { background: rgba(217,70,239,.08) !important; }
+    #listContainer tr.wl-row-selected { background: rgba(217,70,239,.18) !important; outline: 2px solid #d946ef; outline-offset: -2px; }
     #wlSelectBtn.active { background: linear-gradient(135deg,#d946ef,#a78bfa) !important; color:#fff !important; border-color:transparent !important; }
     #wlCompareBar {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9000;
@@ -1747,7 +1747,7 @@ init();
     document.body.appendChild(bar);
     bar.querySelector('[data-action="clear"]').addEventListener("click", () => {
       sel.clear();
-      document.querySelectorAll("#cardsContainer tr.wl-row-selected").forEach(t => t.classList.remove("wl-row-selected"));
+      document.querySelectorAll("#listContainer tr.wl-row-selected").forEach(t => t.classList.remove("wl-row-selected"));
       updateBar();
     });
     bar.querySelector('[data-action="exit"]').addEventListener("click", toggleMode);
@@ -1766,7 +1766,7 @@ init();
     mode = !mode;
     if (!mode) {
       sel.clear();
-      document.querySelectorAll("#cardsContainer tr.wl-row-selected").forEach(t => t.classList.remove("wl-row-selected"));
+      document.querySelectorAll("#listContainer tr.wl-row-selected").forEach(t => t.classList.remove("wl-row-selected"));
     }
     document.body.classList.toggle("wl-select-mode", mode);
     const btn = document.getElementById("wlSelectBtn");
