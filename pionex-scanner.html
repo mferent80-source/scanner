@@ -419,6 +419,7 @@
 
 <!-- Module shared (sincron, înaintea scriptului main pentru ca window.setupTelegramAlerts să fie disponibil) -->
 <script defer src="tg-alerts.js"></script>
+<script defer src="ai-bubble.js"></script>
 </head>
 <body>
 
@@ -2071,7 +2072,7 @@ function renderGrid() {
   }
   $('resultsBody').innerHTML = sorted.map((r, i) => {
     const verdictCls = r.verdict.includes('READY') ? 'ready' : r.verdict.includes('MIXED') ? 'mixed' : 'skip';
-    return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
+    return `<tr onclick="window._pioRowClick(event,'${r.symbol}','${tvUrl(r.symbol)}')">
       <td>${i + 1}</td>
       <td class="left"><div class="sym-name">${starButton(r.base)}${chartButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
@@ -2122,7 +2123,7 @@ function renderEarly() {
 
   $('resultsBody').innerHTML = sorted.map((r, i) => {
     const stage = earlyStage(r);
-    return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
+    return `<tr onclick="window._pioRowClick(event,'${r.symbol}','${tvUrl(r.symbol)}')">
       <td>${i + 1}</td>
       <td class="left"><div class="sym-name">${starButton(r.base)}${chartButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
@@ -2174,7 +2175,7 @@ function renderSpring() {
     const info = r.springInfo || {};
     const undershootCls = parseFloat(info.undershootPct) <= 3 ? 'up' : 'warn';
     const recoveryCls = parseFloat(info.recoveryPct) >= 2 ? 'up' : 'warn';
-    return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
+    return `<tr onclick="window._pioRowClick(event,'${r.symbol}','${tvUrl(r.symbol)}')">
       <td>${i + 1}</td>
       <td class="left"><div class="sym-name">${starButton(r.base)}${chartButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
@@ -2228,7 +2229,7 @@ function renderPremium() {
     const tierCls = r.premiumTier === '💎 PREMIUM+' ? 'gold'
                   : r.premiumTier === '⭐ PREMIUM' ? 'up'
                   : 'warn';
-    return `<tr onclick="window.open('${tvUrl(r.symbol)}', '_blank', 'noopener')">
+    return `<tr onclick="window._pioRowClick(event,'${r.symbol}','${tvUrl(r.symbol)}')">
       <td>${i + 1}</td>
       <td class="left"><div class="sym-name">${starButton(r.base)}${chartButton(r.base)}${r.base}</div><div class="sym-sub">${r.symbol}</div></td>
       <td>${fmtUSD(r.currentPrice)}</td>
@@ -2664,6 +2665,153 @@ applyLoadedStateToUI();
 setStatus('', 'ready · apasă SCAN');
 // Populez header-ul + stats strip (înainte de primul scan)
 renderResults();
+
+// ════════════════════════════════════════════════════════════
+//  AI — comparație multi-coin + clasament top (modul shared ai-bubble.js)
+// ════════════════════════════════════════════════════════════
+(function () {
+  const sel = new Set();
+  let mode = false;
+
+  // CSS pentru rândurile selectate (idempotent)
+  if (!document.getElementById("pio-ai-styles")) {
+    const s = document.createElement("style");
+    s.id = "pio-ai-styles";
+    s.textContent = `
+      #tbody tr.row-selected { background: rgba(217,70,239,.18) !important; outline: 2px solid #d946ef; outline-offset: -2px; }
+      #pionexSelectBtn.active { background: linear-gradient(135deg,#d946ef,#a78bfa) !important; color:#fff !important; border-color:transparent !important; }
+      #pionexCompareBar { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:9000;
+        display:flex; align-items:center; gap:10px; background:#121826; border:1px solid #242b3e;
+        border-radius:12px; padding:8px 14px; box-shadow:0 12px 40px rgba(0,0,0,.5); font-size:12px; color:#d6dde8; flex-wrap:wrap; }
+      #pionexCompareBar button { padding:5px 11px; border-radius:7px; font-size:11px; font-weight:700; cursor:pointer;
+        font-family:inherit; border:1px solid #242b3e; background:#1f2638; color:#d6dde8; }
+      #pionexCompareBar button.primary { background:linear-gradient(135deg,#d946ef,#a78bfa); border-color:transparent; color:#fff; }
+    `;
+    document.head.appendChild(s);
+  }
+
+  // Rezumat text al unui coin pentru prompt-ul AI.
+  function buildSummary(symbol) {
+    const r = (typeof allResults !== "undefined" ? allResults : []).find(x => x.symbol === symbol);
+    if (!r) return `${symbol} (date indisponibile)`;
+    const parts = [`${r.base} (${r.symbol})`];
+    if (r.price != null) parts.push(`Preț: ${fmtUSD(r.price)}`);
+    if (r.score != null) parts.push(`Grid score: ${r.score}/100 · ${r.verdict || "—"}`);
+    const tech = [];
+    if (r.rsi != null) tech.push(`RSI ${r.rsi.toFixed(0)}`);
+    if (r.adx != null) tech.push(`ADX ${r.adx.toFixed(0)}`);
+    if (tech.length) parts.push(tech.join(" · "));
+    const tags = [];
+    if (r.passes) { if (r.passes.grid) tags.push("🤖 Grid"); if (r.passes.early) tags.push("🌱 Early"); if (r.passes.spring) tags.push("💎 Spring"); }
+    if (tags.length) parts.push("Setup: " + tags.join(" · "));
+    if (r.reasons && r.reasons.length) parts.push("Motive: " + r.reasons.slice(0, 3).join("; "));
+    return parts.join("\n");
+  }
+
+  function updateBar() {
+    document.getElementById("pionexCompareBar")?.remove();
+    if (!mode || sel.size < 1) return;
+    const bar = document.createElement("div");
+    bar.id = "pionexCompareBar";
+    bar.innerHTML = `<span>📋 ${sel.size} selectate (max 5)</span>
+      <button data-action="clear">Curăță</button>
+      <button class="primary" data-action="compare" ${sel.size < 2 ? 'disabled style="opacity:.5"' : ''}>🪄 Compară</button>
+      <button data-action="exit">✕ Ieșire</button>`;
+    document.body.appendChild(bar);
+    bar.querySelector('[data-action="clear"]').addEventListener("click", () => {
+      sel.clear();
+      document.querySelectorAll("#tbody tr.row-selected").forEach(t => t.classList.remove("row-selected"));
+      updateBar();
+    });
+    bar.querySelector('[data-action="exit"]').addEventListener("click", () => {
+      mode = false; sel.clear();
+      document.querySelectorAll("#tbody tr.row-selected").forEach(t => t.classList.remove("row-selected"));
+      document.getElementById("pionexSelectBtn")?.classList.remove("active");
+      updateBar();
+    });
+    bar.querySelector('[data-action="compare"]').addEventListener("click", () => {
+      if (sel.size < 2) return;
+      const summaries = [...sel].map(buildSummary);
+      if (typeof window.aiCompareCoins === "function") {
+        window.aiCompareCoins(summaries, { pageLabel: "Pionex Scanner", maxTokens: 1100 });
+      } else { alert("Modul AI nu e încărcat. Reîmprospătează pagina (Ctrl+Shift+R)."); }
+    });
+  }
+
+  function toggleMode() {
+    mode = !mode;
+    if (!mode) {
+      sel.clear();
+      document.querySelectorAll("#tbody tr.row-selected").forEach(t => t.classList.remove("row-selected"));
+    }
+    document.getElementById("pionexSelectBtn")?.classList.toggle("active", mode);
+    updateBar();
+  }
+
+  // Click pe rând: în mod selecție togglează, altfel deschide TradingView.
+  window._pioRowClick = function (ev, symbol, url) {
+    if (mode) {
+      ev.stopPropagation(); ev.preventDefault();
+      if (ev.target.closest("button, a, .star-btn, .info-btn")) return;
+      if (sel.has(symbol)) sel.delete(symbol);
+      else if (sel.size < 5) sel.add(symbol);
+      else { alert("Maxim 5 coinuri pentru comparație"); return; }
+      ev.currentTarget.classList.toggle("row-selected", sel.has(symbol));
+      updateBar();
+    } else {
+      window.open(url, "_blank", "noopener");
+    }
+  };
+
+  // Clasament automat: top 5 după grid score.
+  function rankTopAI() {
+    const valid = (typeof allResults !== "undefined" ? allResults : []).filter(r => r.score != null);
+    if (valid.length < 2) { alert("Prea puține rezultate — apasă SCAN întâi."); return; }
+    const top = [...valid].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5);
+    const summaries = top.map(r => buildSummary(r.symbol));
+    if (typeof window.aiCompareCoins === "function") {
+      window.aiCompareCoins(summaries, { pageLabel: "Clasament top " + top.length, maxTokens: 1200 });
+    } else { alert("Modul AI nu e încărcat. Reîmprospătează pagina (Ctrl+Shift+R)."); }
+  }
+
+  // Butoane în header
+  function injectBtn() {
+    const header = document.querySelector("header");
+    if (!header || document.getElementById("pionexSelectBtn")) return;
+    const mk = (id, txt, title, fn, extra) => {
+      const b = document.createElement("button");
+      b.id = id; b.type = "button"; b.title = title; b.textContent = txt;
+      b.style.cssText = "background:#1f2638;color:#d6dde8;border:1px solid #242b3e;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;" + (extra || "");
+      b.addEventListener("click", fn);
+      header.appendChild(b);
+    };
+    mk("pionexSelectBtn", "📋 Compară AI", "Mod selecție multi-coin pentru comparație AI", toggleMode, "margin-left:auto");
+    mk("pionexRankBtn", "🏆 Clasament AI", "Clasament AI automat al top 5 după grid score", rankTopAI);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", injectBtn);
+  else injectBtn();
+})();
+
+// Context pentru bubble-ul AI shared.
+window._buildPionexContext = function () {
+  if (typeof allResults === "undefined" || !allResults.length) return "(Niciun scan încă — apasă SCAN ca să am date.)";
+  const sorted = [...allResults].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const lines = sorted.slice(0, 20).map(r => {
+    const tags = [];
+    if (r.passes) { if (r.passes.grid) tags.push("Grid"); if (r.passes.early) tags.push("Early"); if (r.passes.spring) tags.push("Spring"); }
+    return `- ${r.base} | grid ${r.score != null ? r.score : "—"}/100 | ${r.verdict || "—"} | RSI ${r.rsi != null ? r.rsi.toFixed(0) : "—"} | ADX ${r.adx != null ? r.adx.toFixed(0) : "—"}${tags.length ? " | " + tags.join("+") : ""}`;
+  }).join("\n");
+  return `🤖 PIONEX SCANNER — top ${Math.min(20, sorted.length)} din ${allResults.length} (whitelist Pionex Futures):\n${lines}`;
+};
+window.addEventListener("load", () => {
+  if (typeof setupAiBubble === "function") {
+    setupAiBubble({
+      page: "Pionex Scanner",
+      getContext: window._buildPionexContext,
+      systemHint: "User-ul vede Pionex Scanner cu 4 tab-uri: 🤖 Futures Grid (sweet spot range bots), 🌱 Early Buy, 💎 Spring (Wyckoff), ⭐ Premium (confluence). Scor 0-100 pe whitelist Pionex (~430 coins). Întrebări tipice: ce grid setup e cel mai bun acum?, de ce X are score mic?, ce coin pentru bot?",
+    });
+  }
+});
 
 // Service Worker (PWA cache pentru shell)
 if ('serviceWorker' in navigator) {
