@@ -3037,6 +3037,7 @@ function updateSignalLog() {
       sym: r.sym, dir, entry: r.price, tp, sl, slPct,
       score: r.score, rsi: r.rsi, adx: r.adx, atr: r.atr,
       mtfAligned: Math.abs(r.mtfScore) === 3,
+      confirmed: isConfirmedSignal(r),   // trecea gate-ul "Confirmat" la momentul semnalului?
       ts: now, status: "open",
       exitPrice: null, exitTs: null, pnlPct: null, rMultiple: null
     });
@@ -3057,6 +3058,11 @@ function renderSignalLog() {
   const open = SIGNAL_LOG.filter(e => e.status === "open").length;
   const resolved = wins + losses;
   const winRate = resolved > 0 ? (wins / resolved) * 100 : 0;
+  // Win-rate segmentat: doar semnalele care treceau gate-ul "Confirmat" la momentul lor.
+  const confClosed = closed.filter(e => e.confirmed);
+  const confWins = confClosed.filter(e => e.status === "tp").length;
+  const confResolved = confWins + confClosed.filter(e => e.status === "sl").length;
+  const confWinRate = confResolved > 0 ? (confWins / confResolved) * 100 : 0;
   const totalPnL = closed.reduce((a, e) => a + (e.pnlPct || 0), 0);
   const avgR = closed.length > 0
     ? closed.reduce((a, e) => a + (e.rMultiple || 0), 0) / closed.length
@@ -3073,6 +3079,7 @@ function renderSignalLog() {
     <div class="log-stat bear"><div class="log-stat-label">🛑 SL Hit</div><div class="log-stat-value" style="color:var(--bear-s)">${losses}</div></div>
     <div class="log-stat"><div class="log-stat-label">Expired</div><div class="log-stat-value" style="color:var(--muted)">${expired}</div></div>
     <div class="log-stat ${winRate >= 50 ? "bull" : "bear"}"><div class="log-stat-label">Win Rate</div><div class="log-stat-value">${winRate.toFixed(0)}%</div></div>
+    <div class="log-stat ${confResolved === 0 ? "" : (confWinRate >= winRate ? "bull" : "bear")}" title="Win-rate doar pentru semnalele care treceau gate-ul ✅ Confirmat. Compară cu Win Rate general ca să vezi dacă filtrul aduce valoare."><div class="log-stat-label">✅ Win Confirmat ${confResolved > 0 && resolved > 0 ? (confWinRate >= winRate ? "▲" : "▼") + Math.abs(confWinRate - winRate).toFixed(0) : ""}</div><div class="log-stat-value">${confResolved > 0 ? confWinRate.toFixed(0) + "%" : "—"}<span style="font-size:.62rem;opacity:.6"> (${confResolved})</span></div></div>
     <div class="log-stat ${totalPnL >= 0 ? "bull" : "bear"}"><div class="log-stat-label">P&amp;L Total</div><div class="log-stat-value">${totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(1)}%</div></div>
     <div class="log-stat ${avgR >= 0 ? "bull" : "bear"}"><div class="log-stat-label">Avg R</div><div class="log-stat-value">${avgR >= 0 ? "+" : ""}${avgR.toFixed(2)}</div></div>
   `;
