@@ -619,6 +619,7 @@
   <button class="chip bull" data-filter="sig" data-val="buy">Buy</button>
   <button class="chip bear" data-filter="sig" data-val="sell">Sell</button>
   <button class="chip" data-filter="sig" data-val="mtf">MTF ✓</button>
+  <button class="chip" data-filter="sig" data-val="confirmed" title="Gate anti-semnale-false: trend MTF aliniat ≥2/3 TF în direcția semnalului + volum ≥1.3× + ADX ≥18 (nu lateral) + nu supraextins (RSI)">✅ Confirmat</button>
   <button class="chip" data-filter="sig" data-val="ob">RSI&gt;70</button>
   <button class="chip" data-filter="sig" data-val="os">RSI&lt;30</button>
   <button class="chip" data-filter="sig" data-val="volhot">Vol&gt;1.5</button>
@@ -2123,6 +2124,21 @@ function mtfDots(p, h1, h2, labels) {
 //  FILTERING
 // ═══════════════════════════════════════════════════════════════
 
+// ── GATE ANTI-SEMNALE-FALSE ──
+// "Trend confirmat" = confluență pe 4 condiții care elimină majoritatea fakeout-urilor.
+function isConfirmedSignal(r) {
+  if (r.error) return false;
+  const dir = Math.sign(r.score || 0);
+  if (dir === 0) return false;
+  if (r.mtfScore == null || Math.abs(r.mtfScore) < 2) return false;  // trend nedefinit / lateral (≠ N/A)
+  if (Math.sign(r.mtfScore) !== dir) return false;                   // MTF contrazice semnalul
+  if (!(r.vol >= 1.3)) return false;                                 // volum insuficient = posibil fakeout
+  if (!(r.adx >= 18)) return false;                                  // ADX mic = chop, nu trend
+  if (dir > 0 && r.rsi >= 72) return false;                          // long supraextins
+  if (dir < 0 && r.rsi <= 28) return false;                          // short supraextins
+  return true;
+}
+
 function applyFilters(list) {
   return list.filter(r => {
     if (r.error) return FILTERS.asset === "all" && FILTERS.sig === "all";
@@ -2131,6 +2147,7 @@ function applyFilters(list) {
     if (FILTERS.sig === "buy" && !(r.score > 2)) return false;
     if (FILTERS.sig === "sell" && !(r.score < -2)) return false;
     if (FILTERS.sig === "mtf" && Math.abs(r.mtfScore) < 3) return false;
+    if (FILTERS.sig === "confirmed" && !isConfirmedSignal(r)) return false;
     if (FILTERS.sig === "ob" && !(r.rsi > 70)) return false;
     if (FILTERS.sig === "os" && !(r.rsi < 30)) return false;
     if (FILTERS.sig === "volhot" && !(r.vol > 1.5)) return false;
