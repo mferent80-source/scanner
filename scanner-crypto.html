@@ -4421,7 +4421,20 @@ function showInstallBanner() {
     }
   };
 
-  // Buton toggle în header — adăugat după ce DOM-ul e gata
+  // Clasament automat: ia top N după score (cele mai bullish) și le compară direct.
+  function rankTopAI() {
+    const valid = (typeof rows !== "undefined" ? rows : []).filter(r => !r.error);
+    if (valid.length < 2) { alert("Prea puține simboluri — apasă ↻ SCAN întâi."); return; }
+    const top = [...valid].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5);
+    const summaries = top.map(r => buildSummary(r.sym));
+    if (typeof window.aiCompareCoins === "function") {
+      window.aiCompareCoins(summaries, { pageLabel: "Clasament top " + top.length, maxTokens: 1200 });
+    } else {
+      alert("Modul AI nu e încărcat. Reîmprospătează pagina (Ctrl+Shift+R).");
+    }
+  }
+
+  // Butoane în header — adăugate după ce DOM-ul e gata
   function injectBtn() {
     const header = document.querySelector("header");
     if (!header || document.getElementById("cryptoSelectBtn")) return;
@@ -4433,6 +4446,15 @@ function showInstallBanner() {
     btn.textContent = "📋 Compară AI";
     btn.addEventListener("click", toggleMode);
     header.appendChild(btn);
+    // Clasament automat al top oportunităților (fără selecție manuală).
+    const rankBtn = document.createElement("button");
+    rankBtn.id = "cryptoRankBtn";
+    rankBtn.type = "button";
+    rankBtn.title = "Clasament AI automat al top 5 simboluri după scor";
+    rankBtn.style.cssText = "background:#1f2638;color:#d6dde8;border:1px solid #242b3e;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit";
+    rankBtn.textContent = "🏆 Clasament AI";
+    rankBtn.addEventListener("click", rankTopAI);
+    header.appendChild(rankBtn);
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", injectBtn);
